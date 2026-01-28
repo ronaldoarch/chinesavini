@@ -101,11 +101,26 @@ export const AuthProvider = ({ children }) => {
       const response = await api.getCurrentUser()
       if (response.success) {
         setUser(response.data.user)
+        return { success: true, user: response.data.user }
       }
+      return { success: false }
     } catch (error) {
       console.error('Error refreshing user:', error)
+      return { success: false, error: error.message }
     }
   }
+  
+  // Auto-refresh user data when role might have changed
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      // Refresh user data every 30 seconds to catch role changes
+      const interval = setInterval(() => {
+        refreshUser()
+      }, 30000) // 30 seconds
+      
+      return () => clearInterval(interval)
+    }
+  }, [isAuthenticated, user])
 
   const isAdmin = user?.role === 'admin' || user?.role === 'superadmin'
   const isSuperAdmin = user?.role === 'superadmin'

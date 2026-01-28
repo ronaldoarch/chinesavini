@@ -6,8 +6,22 @@ import AdminTransactions from '../pages/admin/AdminTransactions'
 import './AdminLayout.css'
 
 function AdminLayout() {
-  const { user, isAdmin, isAuthenticated, loading, logout } = useAuth()
+  const { user, isAdmin, isAuthenticated, loading, logout, refreshUser } = useAuth()
   const [activePage, setActivePage] = useState('dashboard')
+  const [refreshing, setRefreshing] = useState(false)
+  
+  // Try to refresh user data if not admin but authenticated
+  useEffect(() => {
+    if (isAuthenticated && !isAdmin && user && !loading) {
+      // User is logged in but not admin - try refreshing
+      const tryRefresh = async () => {
+        setRefreshing(true)
+        await refreshUser()
+        setRefreshing(false)
+      }
+      tryRefresh()
+    }
+  }, [isAuthenticated, isAdmin, user, loading])
 
   // Show loading while checking auth
   if (loading) {
@@ -60,45 +74,73 @@ function AdminLayout() {
         <div className="admin-error">
           <i className="fa-solid fa-lock"></i>
           <h2>Acesso Negado</h2>
-          <p>Você não tem permissão para acessar o painel administrativo.</p>
-          <div style={{ marginTop: '20px', padding: '15px', backgroundColor: 'rgba(0,0,0,0.3)', borderRadius: '8px', textAlign: 'left' }}>
-            <p style={{ fontSize: '14px', opacity: 0.9, marginBottom: '8px' }}>
-              <strong>Usuário logado:</strong> {user?.username || 'N/A'}
-            </p>
-            <p style={{ fontSize: '14px', opacity: 0.9, marginBottom: '8px' }}>
-              <strong>Role atual:</strong> <span style={{ color: user?.role === 'admin' || user?.role === 'superadmin' ? '#10b981' : '#ef4444' }}>{user?.role || 'user'}</span>
-            </p>
-            <p style={{ fontSize: '14px', opacity: 0.9 }}>
-              <strong>Role necessário:</strong> admin ou superadmin
-            </p>
-          </div>
-          <p style={{ marginTop: '20px', fontSize: '14px', opacity: 0.8 }}>
-            Para tornar este usuário admin, execute no terminal do Colify:
-          </p>
-          <div style={{ marginTop: '10px', padding: '10px', backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: '8px', fontFamily: 'monospace', fontSize: '12px' }}>
-            npm run create-admin {user?.username || 'username'} admin
-          </div>
-          <p style={{ marginTop: '15px', fontSize: '12px', opacity: 0.7 }}>
-            Depois, faça logout e login novamente para atualizar o token.
-          </p>
-          <button
-            type="button"
-            onClick={() => {
-              window.location.href = '/'
-            }}
-            style={{
-              marginTop: '20px',
-              padding: '10px 20px',
-              backgroundColor: '#8b5cf6',
-              color: 'white',
-              border: 'none',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              fontSize: '16px'
-            }}
-          >
-            Voltar para o Site
-          </button>
+          {refreshing ? (
+            <p>Atualizando informações do usuário...</p>
+          ) : (
+            <>
+              <p>Você não tem permissão para acessar o painel administrativo.</p>
+              <div style={{ marginTop: '20px', padding: '15px', backgroundColor: 'rgba(0,0,0,0.3)', borderRadius: '8px', textAlign: 'left' }}>
+                <p style={{ fontSize: '14px', opacity: 0.9, marginBottom: '8px' }}>
+                  <strong>Usuário logado:</strong> {user?.username || 'N/A'}
+                </p>
+                <p style={{ fontSize: '14px', opacity: 0.9, marginBottom: '8px' }}>
+                  <strong>Role atual no token:</strong> <span style={{ color: user?.role === 'admin' || user?.role === 'superadmin' ? '#10b981' : '#ef4444' }}>{user?.role || 'user'}</span>
+                </p>
+                <p style={{ fontSize: '14px', opacity: 0.9 }}>
+                  <strong>Role necessário:</strong> admin ou superadmin
+                </p>
+              </div>
+              <p style={{ marginTop: '20px', fontSize: '14px', opacity: 0.8 }}>
+                ⚠️ Se você acabou de tornar este usuário admin, o token precisa ser atualizado.
+              </p>
+              <div style={{ marginTop: '15px', display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    setRefreshing(true)
+                    await refreshUser()
+                    setRefreshing(false)
+                    // Force reload after refresh
+                    setTimeout(() => window.location.reload(), 1000)
+                  }}
+                  style={{
+                    padding: '10px 20px',
+                    backgroundColor: '#10b981',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    fontWeight: '600'
+                  }}
+                >
+                  🔄 Atualizar Token Agora
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    logout()
+                    window.location.href = '/'
+                  }}
+                  style={{
+                    padding: '10px 20px',
+                    backgroundColor: '#8b5cf6',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    fontWeight: '600'
+                  }}
+                >
+                  🔐 Fazer Logout e Login Novamente
+                </button>
+              </div>
+              <p style={{ marginTop: '20px', fontSize: '12px', opacity: 0.7, textAlign: 'center' }}>
+                💡 <strong>Recomendado:</strong> Faça logout e login novamente para garantir que o token seja atualizado.
+              </p>
+            </>
+          )}
         </div>
       </div>
     )
