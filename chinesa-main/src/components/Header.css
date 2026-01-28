@@ -1,0 +1,232 @@
+.header-bar {
+  position: sticky;
+  top: 0;
+  left: 0;
+  width: 100%;
+  max-width: 100%;
+  z-index: 1029;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: nowrap;
+  padding: 0px 12px;
+  background: var(--header-bg);
+  border-bottom: 2px solid var(--header-border-color);
+  min-height: 48px;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.menu-hamburger {
+  color: var(--header-icon);
+  cursor: pointer;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.6)) brightness(1.1);
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+}
+
+.menu-hamburger.is-open {
+  transform: rotate(180deg);
+}
+
+.logo-link {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.logo-img {
+  max-width: 150px;
+  height: auto;
+  display: block;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-shrink: 0;
+}
+
+.header-right.is-logged-in {
+  gap: 8px;
+}
+
+.header-balance {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 1;
+  min-width: 0;
+}
+
+.balance-display {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--header-border-color);
+  color: var(--header-text);
+}
+
+.balance-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.balance-value {
+  font-weight: var(--font-weight-bold);
+  font-size: var(--font-size-sm);
+  white-space: nowrap;
+}
+
+.refresh-balance {
+  color: #fff;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: none;
+}
+
+.refresh-balance.is-rotating {
+  transform: rotate(180deg);
+  transition: transform 0.7s ease;
+}
+
+.search-button {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  justify-content: center;
+}
+
+.search-button i {
+  color: #fff;
+}
+
+.btn-login {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--header-text);
+  font-weight: var(--font-weight-bold);
+  cursor: pointer;
+}
+
+.header-bar .btn.btn-warning {
+  background: var(--gradient-primary);
+  color: var(--color-bg-secondary);
+  border: none;
+  border-radius: 5px;
+  font-weight: var(--font-weight-bold);
+  font-size: var(--font-size-sm);
+  padding: 5px 16px;
+  box-shadow: var(--shadow-primary);
+  transition: background var(--transition-base), color var(--transition-base), box-shadow var(--transition-base), transform var(--transition-fast);
+  outline: none;
+  position: relative;
+}
+
+.register-button-radar::after {
+  content: '';
+  position: absolute;
+  top: -3px;
+  left: -3px;
+  right: -3px;
+  bottom: -3px;
+  border-radius: 7px;
+  border: 1px solid var(--header-register-pulse);
+  opacity: 0;
+  animation: radar-pulse 3s ease-in-out infinite 1.5s;
+}
+
+.register-button-radar::before {
+  content: '';
+  position: absolute;
+  top: -3px;
+  left: -3px;
+  right: -3px;
+  bottom: -3px;
+  border-radius: var(--border-radius-lg);
+  border: 1px solid rgba(var(--color-primary-rgb), 0.5);
+  opacity: 0;
+  animation: radar-pulse 3s ease-in-out infinite;
+}
+
+.register-badge-pix {
+  position: absolute;
+  top: -7px;
+  right: -7px;
+  background-color: var(--color-primary);
+  color: var(--color-text-on-primary);
+  font-size: 0.6rem;
+  padding: 0 5px;
+  border-radius: 30px;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  z-index: 10;
+  line-height: 1;
+  font-weight: 800;
+  text-transform: uppercase;
+  box-shadow: none;
+  border: none;
+}
+
+.register-badge-pix svg {
+  width: 11px;
+  height: 16px;
+  margin-right: 2px;
+}
+
+.register-badge-pix path {
+  fill: rgb(50, 188, 173);
+}
+
+@keyframes radar-pulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+  100% {
+    transform: scale(1.3);
+    opacity: 0;
+  }
+}
+
+@media (max-width: 480x) {
+  .register-badge-pix {
+    top: -10px;
+    right: -5px;
+    font-size: 0.65rem;
+    padding: 1px 6px;
+  }
+
+  .register-badge-pix svg {
+    width: 9px;
+    height: 13px;
+  }
+}
+
+@media (max-width: 600px) {
+  .header-bar .header-balance {
+    flex-shrink: 1;
+    min-width: 0;
+  }
+}
+
+.header-bar .btn.btn-warning:hover,
+.header-bar .btn.btn-warning:focus {
+  background: linear-gradient(90deg, var(--color-primary-light) 70%, var(--color-primary-dark) 100%);
+  color: var(--color-bg-tertiary);
+  box-shadow: 0 4px 18px rgba(255, 179, 0, 0.33);
+  transform: scale(1.04);
+}

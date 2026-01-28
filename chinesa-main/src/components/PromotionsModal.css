@@ -1,0 +1,129 @@
+.promotions-modal {
+  position: fixed;
+  inset: 0;
+  background: var(--primary-purple);
+  z-index: 3000;
+  display: flex;
+  flex-direction: column;
+  animation: promo-modal-in 0.6s ease;
+  max-width: 480px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.promotions-modal.is-closing {
+  animation: promo-modal-out 0.6s ease forwards;
+}
+
+.promotions-header {
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--light-purple);
+  position: relative;
+  font-weight: var(--font-weight-bold);
+}
+
+.promotions-back {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--text-white);
+  font-size: 18px;
+  cursor: pointer;
+}
+
+.promotions-title {
+  color: var(--text-white);
+  font-weight: 500
+}
+
+.promotions-content {
+  padding: var(--spacing-md);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  scrollbar-width: thin;
+  scrollbar-color: var(--gold) var(--primary-purple);
+}
+
+.promotions-card {
+  background: #2b0f3a;
+  border-radius: 12px;
+  padding: 0;
+  border: 1px solid #f1f1f140;
+  animation: promo-slide-down 0.6s ease;
+}
+
+.promotions-card:hover {
+  border-color: var(--gold);
+}
+
+.promotions-card img {
+  width: 100%;
+  display: block;
+  border-radius: 10px;
+}
+
+.promotions-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.promotions-content::-webkit-scrollbar-track {
+  background: var(--primary-purple);
+}
+
+.promotions-content::-webkit-scrollbar-thumb {
+  background: var(--gold);
+  border-radius: 8px;
+}
+
+@keyframes promo-slide-down {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes promo-slide-up {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes promo-modal-in {
+  from {
+    transform: translateY(10px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes promo-modal-out {
+  from {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(-10px);
+    opacity: 0;
+  }
+}
+

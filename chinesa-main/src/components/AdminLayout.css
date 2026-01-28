@@ -1,0 +1,120 @@
+.admin-layout {
+  display: flex;
+  min-height: 100vh;
+  background: var(--primary-purple);
+}
+
+.admin-sidebar {
+  width: 250px;
+  background: linear-gradient(180deg, var(--primary-purple) 0%, var(--dark-purple) 100%);
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  height: 100vh;
+  overflow-y: auto;
+}
+
+.sidebar-header {
+  padding: var(--spacing-lg);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.sidebar-header h2 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  color: var(--gold);
+  font-size: var(--font-size-lg);
+}
+
+.sidebar-menu {
+  flex: 1;
+  list-style: none;
+  padding: var(--spacing-md) 0;
+  margin: 0;
+}
+
+.sidebar-menu li {
+  margin: 0;
+}
+
+.sidebar-menu button {
+  width: 100%;
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.7);
+  padding: var(--spacing-md) var(--spacing-lg);
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: var(--font-size-md);
+}
+
+.sidebar-menu button:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-white);
+}
+
+.sidebar-menu button.active {
+  background: rgba(225, 181, 74, 0.2);
+  color: var(--gold);
+  border-left: 3px solid var(--gold);
+}
+
+.sidebar-menu button i {
+  width: 20px;
+  text-align: center;
+}
+
+.sidebar-footer {
+  padding: var(--spacing-md);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.logout-btn {
+  width: 100%;
+  background: rgba(244, 67, 54, 0.2);
+  border: 1px solid rgba(244, 67, 54, 0.3);
+  color: #f44336;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-sm);
+  font-weight: var(--font-weight-bold);
+  transition: all 0.2s;
+}
+
+.logout-btn:hover {
+  background: rgba(244, 67, 54, 0.3);
+}
+
+.admin-main {
+  flex: 1;
+  margin-left: 250px;
+  min-height: 100vh;
+}
+
+@media (max-width: 768px) {
+  .admin-sidebar {
+    width: 200px;
+  }
+  
+  .admin-main {
+    margin-left: 200px;
+  }
+  
+  .sidebar-menu button span {
+    display: none;
+  }
+  
+  .sidebar-menu button {
+    justify-content: center;
+  }
+}

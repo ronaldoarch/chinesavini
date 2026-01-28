@@ -1,0 +1,13 @@
+.app {
+  width: 100%;
+  min-height: 100vh;
+  background: linear-gradient(
+    90deg,
+    var(--primary-purple) 0%,
+    var(--primary-purple) 1%,
+    var(--secondary-purple) 8%,
+    var(--secondary-purple) 100%
+  );
+  padding-bottom: 80px;
+}
+

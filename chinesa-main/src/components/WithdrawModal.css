@@ -1,0 +1,567 @@
+.withdraw-modal {
+  position: fixed;
+  inset: 0;
+  background: var(--light-purple);
+  z-index: 3400;
+  display: flex;
+  flex-direction: column;
+  animation: withdraw-modal-in 0.6s ease;
+  max-width: var(--mobile-width);
+  width: 100%;
+  margin: 0 auto;
+  color: var(--text-white);
+}
+
+.withdraw-modal.is-closing {
+  animation: withdraw-modal-out 0.6s ease forwards;
+}
+
+.withdraw-header {
+  height: 56px;
+  background: var(--light-purple);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px;
+  position: relative;
+  border-bottom: 1px solid var(--primary-purple);
+  box-shadow: 0 5px 5px 0px rgba(0, 0, 0, 0.2);
+}
+
+.withdraw-back,
+.withdraw-close {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--text-white);
+  font-size: 18px;
+}
+
+.withdraw-back {
+  left: 12px;
+}
+
+.withdraw-close {
+  right: 12px;
+}
+
+.withdraw-tabs {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.withdraw-tab {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.7);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  padding: 6px 4px;
+}
+
+.withdraw-tab i {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.withdraw-tab.active {
+  color: var(--gold);
+}
+
+.withdraw-tab.active i {
+  color: var(--gold);
+}
+
+.withdraw-content {
+  padding: var(--spacing-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--gold) var(--primary-purple);
+}
+
+.withdraw-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.withdraw-content::-webkit-scrollbar-track {
+  background: var(--primary-purple);
+}
+
+.withdraw-content::-webkit-scrollbar-thumb {
+  background: var(--gold);
+  border-radius: 8px;
+}
+
+.withdraw-alert {
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(225, 181, 74, 0.35);
+  border-radius: 12px;
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-white);
+}
+
+.withdraw-alert i {
+  color: var(--gold);
+}
+
+.withdraw-alert button {
+  background: none;
+  border: none;
+  color: var(--gold);
+  font-weight: 600;
+  padding: 0;
+}
+
+.withdraw-card {
+  background: none;
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.withdraw-balance {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--primary-purple);
+  border-radius: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--gold);
+  border-left: 4px solid var(--gold);
+}
+
+.withdraw-balance span {
+  font-weight: 500;
+  font-size: 16px;
+}
+
+.withdraw-balance strong {
+  color: #e1b54a;
+  font-size: 20px;
+}
+
+.withdraw-currency {
+  color: rgba(255, 255, 255, 0.7);
+  font-family: 'Poppins', sans-serif;
+  font-weight: 600;
+}
+
+.withdraw-request {
+  background: var(--gold);
+  color: #2a1605;
+  border-radius: 10px;
+  padding: 15px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-weight: 600;
+}
+
+.withdraw-request i {
+  color: #2a1605;
+}
+
+.withdraw-request.is-active {
+  background: var(--gradient-primary);
+  color: var(--color-bg-secondary);
+}
+
+.withdraw-request.is-active i {
+  color: var(--color-bg-secondary);
+}
+
+.withdraw-request.is-active:hover {
+  box-shadow: 0 0 15px rgba(225, 181, 74, 0.4), inset 0 0 10px rgba(225, 181, 74, 0.2);
+  transform: scale(1.02) translateY(-1px);
+}
+
+.withdraw-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.withdraw-summary-card {
+  background: var(--primary-purple);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.withdraw-summary-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--text-white);
+  font-weight: 500;
+}
+
+.withdraw-summary-edit {
+  background: none;
+  border: none;
+  color: var(--gold);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 500;
+}
+
+.withdraw-summary-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--text-white);
+}
+
+.withdraw-summary-row span {
+  color: var(--gold);
+  font-weight: 500;
+}
+
+.withdraw-summary-row strong {
+  color: var(--gold);
+  font-weight: 600;
+}
+
+.withdraw-password {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.withdraw-password-alert {
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-white);
+}
+
+.withdraw-password-alert i {
+  color: var(--gold);
+}
+
+.withdraw-pin-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+
+.withdraw-pin-row input {
+  height: 60px;
+  border-radius: 8px;
+  border: 1px solid var(--primary-purple);
+  background: linear-gradient(135deg, var(--light-purple) 0%, var(--primary-purple) 50%, var(--primary-purple) 100%);
+  color: var(--text-white);
+  text-align: center;
+  font-size: 25px;
+  width: 60px;
+  font-family: 'Poppins', sans-serif;
+}
+
+.withdraw-pin-toggle {
+  background: none;
+  border: none;
+  color: var(--gold);
+  font-size: 18px;
+}
+
+.withdraw-accounts {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.withdraw-accounts-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--gold);
+  font-weight: 600;
+}
+
+.withdraw-add-account {
+  background: var(--gradient-primary);
+  color: var(--color-bg-secondary);
+  border-radius: 999px;
+  padding: 6px 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.withdraw-empty-card {
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  padding: 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.withdraw-empty-card i {
+  color: var(--gold);
+}
+
+.withdraw-accounts-card {
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(113, 255, 168, 0.6);
+  border-radius: 12px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.withdraw-accounts-card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.withdraw-account-name {
+  font-weight: 600;
+  color: var(--text-white);
+}
+
+.withdraw-account-status {
+  background: #2ecc71;
+  color: #0b2c17;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+
+.withdraw-account-trash {
+  margin-left: auto;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: #f5c048;
+  color: #2a1605;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.withdraw-accounts-card-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--text-white);
+}
+
+.withdraw-accounts-card-row span {
+  color: #fff;
+  font-weight: 500;
+}
+
+.withdraw-history-empty {
+  min-height: 240px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: rgba(255, 255, 255, 0.8);
+  text-align: center;
+}
+
+.withdraw-history-empty i {
+  font-size: 2.4rem;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.withdraw-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.withdraw-field-withdraw {
+  display: grid;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.withdraw-field-withdraw small {
+  font-size: 14px;
+  color: #fff;
+  text-align: -webkit-center;
+  font-weight: 600;
+}
+
+.withdraw-field {
+  display: flex;
+  flex-direction: row;
+  gap: 15px;
+}
+
+.withdraw-field label {
+  color: #fff;
+  font-weight: 600;
+  font-size: 16px;
+
+}
+
+.withdraw-input {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: linear-gradient(135deg, var(--light-purple) 0%, var(--primary-purple) 50%, var(--primary-purple) 100%);
+  border: 1px solid var(--primary-purple);
+  border-radius: 10px;
+  padding: 10px 12px;
+  color: var(--text-white);
+}
+
+.withdraw-input i {
+  color: var(--gold);
+}
+
+.withdraw-input input {
+  background: none;
+  border: none;
+  outline: none;
+  color: var(--text-white);
+  width: 100%;
+  font-family: 'Poppins', sans-serif;
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.withdraw-input input::placeholder {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.withdraw-select {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  padding: 10px 12px;
+  color: var(--text-white);
+  position: relative;
+  cursor: pointer;
+}
+
+.withdraw-select select {
+  background: none;
+  border: none !important;
+  outline: none;
+  color: var(--text-white);
+  width: 100%;
+  appearance: none;
+  padding: 5px;
+  border-radius: 10px !important;
+}
+
+.withdraw-select select option {
+  background: var(--primary-purple);
+  color: var(--text-white);
+  border-radius: 10px;
+  border: none;
+}
+
+.withdraw-select select:focus {
+  color: var(--text-white);
+}
+
+.withdraw-select i {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--gold);
+  pointer-events: none;
+}
+
+.withdraw-field small {
+  color: #fff;
+  font-size: 14px;
+  text-align: -webkit-center;
+}
+
+.withdraw-form-actions {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.withdraw-back-btn,
+.withdraw-save-btn {
+  border-radius: 10px;
+  padding:7px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-weight: 600;
+}
+
+.withdraw-back-btn {
+  background: rgba(255, 204, 71, 0.85);
+  color: #2a1605;
+}
+
+.withdraw-save-btn {
+  background: var(--gradient-primary);
+  color: var(--color-bg-secondary);
+}
+
+.withdraw-save-btn:hover {
+  box-shadow: 0 0 15px rgba(225, 181, 74, 0.4), inset 0 0 10px rgba(225, 181, 74, 0.2);
+  transform: scale(1.02) translateY(-1px);
+}
+
+@keyframes withdraw-modal-in {
+  from {
+    transform: translateY(10px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes withdraw-modal-out {
+  from {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(-10px);
+    opacity: 0;
+  }
+}

@@ -1,0 +1,35 @@
+.jackpot-display {
+  padding: 10px;
+  text-align: center;
+}
+
+.jackpot-image-wrapper {
+  position: relative;
+}
+
+.jackpot-img-full {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  object-fit: contain;
+  border-radius: var(--border-radius);
+}
+
+.jackpot-value-absolute {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  top: 56%;
+  left: 50%;
+  font-size: 1.5rem;
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 2px;
+  pointer-events: none;
+  width: 100%;
+  text-align: center;
+  line-height: 1;
+  padding-top: 15px;
+  color: rgb(255, 255, 255);
+  text-shadow: none;
+  white-space: nowrap;
+}
+

@@ -1,0 +1,137 @@
+.edit-profile-modal {
+  position: fixed;
+  inset: 0;
+  background: var(--primary-purple);
+  z-index: 3400;
+  display: flex;
+  flex-direction: column;
+  animation: edit-profile-in 0.6s ease;
+  max-width: var(--mobile-width);
+  width: 100%;
+  margin: 0 auto;
+  color: var(--text-white);
+}
+
+.edit-profile-modal.is-closing {
+  animation: edit-profile-out 0.6s ease forwards;
+}
+
+.edit-profile-header {
+  height: 56px;
+  background: var(--light-purple);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  font-weight: var(--font-weight-bold);
+}
+
+.edit-profile-title {
+  color: var(--text-white);
+  font-weight: 500;
+}
+
+.edit-profile-back,
+.edit-profile-close {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--text-white);
+  font-size: 18px;
+}
+
+.edit-profile-back {
+  left: 12px;
+}
+
+.edit-profile-close {
+  right: 12px;
+}
+
+.edit-profile-content {
+  padding: var(--spacing-md);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--gold) var(--primary-purple);
+}
+
+.edit-profile-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.edit-profile-content::-webkit-scrollbar-track {
+  background: var(--primary-purple);
+}
+
+.edit-profile-content::-webkit-scrollbar-thumb {
+  background: var(--gold);
+  border-radius: 8px;
+}
+
+.edit-profile-input {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: linear-gradient(135deg, #7a2b9e 0%, #3f1453 100%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  padding: 12px 14px;
+  color: var(--text-white);
+}
+
+.edit-profile-input i {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.edit-profile-input input {
+  background: none;
+  border: none;
+  outline: none;
+  color: var(--text-white);
+  width: 100%;
+  font-family: 'Poppins', sans-serif;
+}
+
+.edit-profile-input input::placeholder {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.edit-profile-save {
+  margin-top: 8px;
+  background: var(--gradient-primary);
+  color: var(--color-bg-secondary);
+  border-radius: 12px;
+  padding: 12px 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-weight: 600;
+}
+
+@keyframes edit-profile-in {
+  from {
+    transform: translateY(10px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes edit-profile-out {
+  from {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(-10px);
+    opacity: 0;
+  }
+}
