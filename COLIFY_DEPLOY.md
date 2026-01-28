@@ -65,7 +65,8 @@ https://github.com/ronaldoarch/chinesavini
 - **Branch:** `main`
 - **Build Pack:** `Nixpacks`
 - **Base Directory:** `/chinesa-main` ⚠️ **IMPORTANTE: Use `/chinesa-main`**
-- **Port:** `3000` ✅ (está correto)
+- **Publish Directory:** `/dist` ✅ **IMPORTANTE: Configure como `/dist`**
+- **Port:** `80` ⚠️ **Fica desabilitado quando marca static site - isso é NORMAL!**
 - **Is it a static site?** ✅ **SIM** (marque esta opção!)
 
 ### Variáveis de Ambiente (Frontend)
@@ -85,14 +86,14 @@ VITE_API_URL=https://seu-backend.colify.app/api
 cd chinesa-main && npm install && npm run build
 ```
 
-**Start Command (se não marcar como static):**
-```bash
-cd chinesa-main && npm run preview -- --port 3000 --host 0.0.0.0
-```
+**Quando marcar como static site:**
+- ✅ **Port fica desabilitada (80)** - Isso é NORMAL e correto!
+- ✅ O Colify servirá automaticamente a pasta `dist/` na porta 80/443
+- ✅ Não precisa de start command
+- ✅ O Colify gerencia HTTPS automaticamente
 
-**OU se marcar como static site:**
-- O Colify servirá automaticamente a pasta `dist/`
-- Não precisa de start command
+**Publish Directory:**
+- Configure como `/dist` (pasta onde o Vite gera os arquivos estáticos)
 
 ---
 
