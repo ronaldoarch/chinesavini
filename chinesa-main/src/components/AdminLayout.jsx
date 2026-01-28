@@ -6,9 +6,54 @@ import AdminTransactions from '../pages/admin/AdminTransactions'
 import './AdminLayout.css'
 
 function AdminLayout() {
-  const { isAdmin, logout } = useAuth()
+  const { user, isAdmin, isAuthenticated, loading, logout } = useAuth()
   const [activePage, setActivePage] = useState('dashboard')
 
+  // Show loading while checking auth
+  if (loading) {
+    return (
+      <div className="admin-container">
+        <div className="admin-loading">
+          <i className="fa-solid fa-spinner fa-spin"></i>
+          <p>Verificando permissões...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Show message if not authenticated
+  if (!isAuthenticated) {
+    return (
+      <div className="admin-container">
+        <div className="admin-error">
+          <i className="fa-solid fa-lock"></i>
+          <h2>Acesso Negado</h2>
+          <p>Você precisa fazer login para acessar o painel administrativo.</p>
+          <button
+            type="button"
+            onClick={() => {
+              // Redirect to main app login
+              window.location.href = '/'
+            }}
+            style={{
+              marginTop: '20px',
+              padding: '10px 20px',
+              backgroundColor: '#8b5cf6',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontSize: '16px'
+            }}
+          >
+            Ir para Login
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // Show message if not admin
   if (!isAdmin) {
     return (
       <div className="admin-container">
@@ -16,6 +61,30 @@ function AdminLayout() {
           <i className="fa-solid fa-lock"></i>
           <h2>Acesso Negado</h2>
           <p>Você não tem permissão para acessar o painel administrativo.</p>
+          <p style={{ marginTop: '10px', fontSize: '14px', opacity: 0.8 }}>
+            Usuário logado: <strong>{user?.username}</strong> (Role: <strong>{user?.role || 'user'}</strong>)
+          </p>
+          <p style={{ marginTop: '10px', fontSize: '14px', opacity: 0.8 }}>
+            Para acessar, você precisa ter role <strong>admin</strong> ou <strong>superadmin</strong>.
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              window.location.href = '/'
+            }}
+            style={{
+              marginTop: '20px',
+              padding: '10px 20px',
+              backgroundColor: '#8b5cf6',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontSize: '16px'
+            }}
+          >
+            Voltar para o Site
+          </button>
         </div>
       </div>
     )

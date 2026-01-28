@@ -1,3 +1,51 @@
+.admin-loading,
+.admin-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 20px;
+  text-align: center;
+}
+
+.admin-loading i,
+.admin-error i {
+  font-size: 64px;
+  color: #8b5cf6;
+  margin-bottom: 20px;
+}
+
+.admin-loading p,
+.admin-error h2 {
+  font-size: 24px;
+  color: #fff;
+  margin-bottom: 10px;
+}
+
+.admin-error p {
+  font-size: 16px;
+  color: rgba(255, 255, 255, 0.8);
+  margin-bottom: 10px;
+}
+
+.admin-error button {
+  margin-top: 20px;
+  padding: 12px 24px;
+  background-color: #8b5cf6;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 600;
+  transition: background-color 0.3s;
+}
+
+.admin-error button:hover {
+  background-color: #7c3aed;
+}
+
 .admin-layout {
   display: flex;
   min-height: 100vh;
