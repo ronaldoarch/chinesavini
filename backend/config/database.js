@@ -14,10 +14,7 @@ const connectDB = async () => {
       console.log('💡 Consider migrating to Sequelize or Prisma for PostgreSQL support.')
     }
     
-    const conn = await mongoose.connect(dbUri, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    })
+    const conn = await mongoose.connect(dbUri)
 
     console.log(`✅ Database Connected: ${conn.connection.host || 'Connected'}`)
   } catch (error) {

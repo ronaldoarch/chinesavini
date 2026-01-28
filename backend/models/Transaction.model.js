@@ -33,7 +33,6 @@ const transactionSchema = new mongoose.Schema(
     // Dados do PIX
     idTransaction: {
       type: String,
-      unique: true,
       sparse: true
     },
     qrCode: {
@@ -89,7 +88,7 @@ const transactionSchema = new mongoose.Schema(
 
 // Indexes
 transactionSchema.index({ user: 1, createdAt: -1 })
-transactionSchema.index({ idTransaction: 1 })
+transactionSchema.index({ idTransaction: 1 }, { unique: true, sparse: true })
 transactionSchema.index({ status: 1 })
 transactionSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 })
 

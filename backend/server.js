@@ -15,6 +15,9 @@ dotenv.config()
 const app = express()
 const PORT = process.env.PORT || 5000
 
+// Trust proxy - Required when behind a reverse proxy (Colify, Railway, etc.)
+app.set('trust proxy', true)
+
 // Connect to database
 connectDB()
 
