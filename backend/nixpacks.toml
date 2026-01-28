@@ -1,0 +1,14 @@
+# Nixpacks configuration for FortuneBet Backend
+# This file helps Nixpacks build the application correctly
+
+[phases.setup]
+nixPkgs = ["nodejs-22_x", "npm-10_x"]
+
+[phases.install]
+cmds = ["npm ci --omit=dev"]
+
+[phases.build]
+cmds = ["echo 'No build step needed for backend'"]
+
+[start]
+cmd = "npm start"
