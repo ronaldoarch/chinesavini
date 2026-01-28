@@ -1,7 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react'
+import { useAuth } from '../contexts/AuthContext'
 import './WithdrawModal.css'
 
 function WithdrawModal({ isOpen, onClose, onBack, initialTab = 'saque' }) {
+  const { user } = useAuth()
   const [isClosing, setIsClosing] = useState(false)
   const [activeTab, setActiveTab] = useState(initialTab)
   const [showAccountForm, setShowAccountForm] = useState(false)
@@ -118,7 +120,15 @@ function WithdrawModal({ isOpen, onClose, onBack, initialTab = 'saque' }) {
             <div className="withdraw-card">
               <div className="withdraw-balance">
                 <span>Saldo Disponível</span>
-                <strong>R$ 0,00</strong>
+                <strong>
+                  {user?.balance
+                    ? new Intl.NumberFormat('pt-BR', {
+                        style: 'currency',
+                        currency: 'BRL',
+                        minimumFractionDigits: 2
+                      }).format(user.balance)
+                    : 'R$ 0,00'}
+                </strong>
               </div>
 
               <div className="withdraw-field-withdraw">

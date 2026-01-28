@@ -35,7 +35,8 @@ const listUsers = async () => {
     console.log('─'.repeat(80))
     console.log(`\nTotal: ${users.length} usuário(s)`)
     console.log('\n💡 Para tornar um usuário admin, use:')
-    console.log('   npm run create-admin <username> admin\n')
+    console.log('   npm run create-admin username admin')
+    console.log('   (Substitua "username" pelo username real do usuário)\n')
 
     process.exit(0)
   } catch (error) {

@@ -1,12 +1,25 @@
 import React, { useEffect, useState } from 'react'
+import { useAuth } from '../contexts/AuthContext'
 import './InviteModal.css'
 
 function InviteModal({ isOpen, onClose }) {
+  const { user, isAuthenticated } = useAuth()
   const [isClosing, setIsClosing] = useState(false)
   const [activeTab, setActiveTab] = useState('convite')
   const [showLoginNotice, setShowLoginNotice] = useState(false)
   const [isLinkCopied, setIsLinkCopied] = useState(false)
-  const inviteLink = 'https://fortunebet.win/?ref=2ea83'
+  
+  // Get referral code from user or use default
+  const referralCode = user?.referralCode || '0000000000'
+  const baseUrl = window.location.origin
+  const inviteLink = `${baseUrl}/?ref=${referralCode}`
+  
+  const formatCurrency = (value) =>
+    new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+      minimumFractionDigits: 2
+    }).format(value || 0)
 
   useEffect(() => {
     if (isOpen) {
@@ -173,7 +186,13 @@ function InviteModal({ isOpen, onClose }) {
             <div className="bg-modal-chests invite-balance-card">
               <div className="invite-balance-row">
                 <span className="chest-mobile-text text-white">Saldo Afiliado</span>
-                <span className="invite-balance-amount">R$ 0,00</span>
+                <span className="invite-balance-amount">
+                  {user?.balance ? new Intl.NumberFormat('pt-BR', {
+                    style: 'currency',
+                    currency: 'BRL',
+                    minimumFractionDigits: 2
+                  }).format(user.balance) : 'R$ 0,00'}
+                </span>
                 <button type="button" className="btn btn-warning btn-sm invite-balance-action">Sacar</button>
                 <button type="button" className="btn btn-outline-warning btn-sm">Transferir</button>
               </div>
@@ -226,7 +245,13 @@ function InviteModal({ isOpen, onClose }) {
               </div>
               <div className="performance-card">
                 <span>Total Depósitos</span>
-                <strong>R$ 0,00</strong>
+                <strong>
+                  {user?.balance ? new Intl.NumberFormat('pt-BR', {
+                    style: 'currency',
+                    currency: 'BRL',
+                    minimumFractionDigits: 2
+                  }).format(user.balance) : 'R$ 0,00'}
+                </strong>
               </div>
               <div className="performance-card">
                 <span>Depositantes</span>

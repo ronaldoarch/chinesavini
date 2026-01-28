@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import { useAuth } from '../contexts/AuthContext'
 import './ProfileModal.css'
 
 function ProfileModal({
@@ -13,9 +14,29 @@ function ProfileModal({
   onOpenChangePassword,
   onOpenVip
 }) {
+  const { user } = useAuth()
   const [isClosing, setIsClosing] = useState(false)
   const [isIdCopied, setIsIdCopied] = useState(false)
-  const profileId = '949136014'
+  
+  // Get user data
+  const profileId = user?.id?.toString().slice(-9) || user?._id?.toString().slice(-9) || '000000000'
+  const username = user?.username || 'Usuário'
+  const userInitials = username.substring(0, 2).toUpperCase()
+  const vipLevel = user?.vipLevel || 0
+  const nextVipLevel = vipLevel + 1
+  
+  // Calculate VIP progress (mockado por enquanto - precisa de API)
+  const vipProgress1 = 0 // user?.vipProgress1 || 0
+  const vipTarget1 = 50
+  const vipProgress2 = 0 // user?.vipProgress2 || 0
+  const vipTarget2 = 10
+  
+  const formatCurrency = (value) =>
+    new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+      minimumFractionDigits: 2
+    }).format(value || 0)
 
   useEffect(() => {
     if (isOpen) {
@@ -106,13 +127,22 @@ function ProfileModal({
 
   const handleCopyId = async () => {
     try {
-      await navigator.clipboard.writeText(profileId)
+      const idToCopy = user?.id?.toString() || user?._id?.toString() || profileId
+      await navigator.clipboard.writeText(idToCopy)
       setIsIdCopied(true)
       setTimeout(() => setIsIdCopied(false), 1500)
     } catch (error) {
       setIsIdCopied(false)
     }
   }
+  
+  const calculateVipProgress = (current, target) => {
+    if (!target || target === 0) return 0
+    return Math.min((current / target) * 100, 100)
+  }
+  
+  const vipProgress1Percent = calculateVipProgress(vipProgress1, vipTarget1)
+  const vipProgress2Percent = calculateVipProgress(vipProgress2, vipTarget2)
 
   if (!isOpen && !isClosing) return null
 
@@ -127,8 +157,8 @@ function ProfileModal({
 
       <div className="profile-content">
         <div className="profile-card">
-          <div className="profile-avatar">DI</div>
-          <div className="profile-name">diago97</div>
+          <div className="profile-avatar">{userInitials}</div>
+          <div className="profile-name">{username}</div>
           <div className="profile-id-row">
             <div className="profile-id">ID: {profileId}</div>
             <button
@@ -163,23 +193,23 @@ function ProfileModal({
           tabIndex={0}
         >
           <div className="profile-vip-header">
-            <span className="profile-vip-badge">VIP0</span>
-            <span className="profile-vip-title">Restantes VIP1</span>
+            <span className="profile-vip-badge">VIP{vipLevel}</span>
+            <span className="profile-vip-title">Restantes VIP{nextVipLevel}</span>
             <i className="fa-solid fa-chevron-right"></i>
           </div>
           <div className="profile-vip-content">
-            <img className="profile-vip-level" src="/level/level1.png" alt="VIP 1" />
+            <img className="profile-vip-level" src={`/level/level${nextVipLevel}.png`} alt={`VIP ${nextVipLevel}`} />
             <div className="profile-vip-bars">
               <div className="profile-vip-progress">
                 <div className="profile-vip-track">
-                  <span className="profile-vip-fill" style={{ width: '0%' }}></span>
-                  <span className="profile-vip-value">R$ 0,00/R$ 50,00</span>
+                  <span className="profile-vip-fill" style={{ width: `${vipProgress1Percent}%` }}></span>
+                  <span className="profile-vip-value">{formatCurrency(vipProgress1)}/{formatCurrency(vipTarget1)}</span>
                 </div>
               </div>
               <div className="profile-vip-progress">
                 <div className="profile-vip-track">
-                  <span className="profile-vip-fill" style={{ width: '0%' }}></span>
-                  <span className="profile-vip-value">R$ 0,00/R$ 10,00</span>
+                  <span className="profile-vip-fill" style={{ width: `${vipProgress2Percent}%` }}></span>
+                  <span className="profile-vip-value">{formatCurrency(vipProgress2)}/{formatCurrency(vipTarget2)}</span>
                 </div>
               </div>
             </div>

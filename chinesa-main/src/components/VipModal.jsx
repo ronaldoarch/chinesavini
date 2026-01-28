@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import { useAuth } from '../contexts/AuthContext'
 import './VipModal.css'
 
 const vipLevels = [
@@ -12,7 +13,30 @@ const vipLevels = [
 ]
 
 function VipModal({ isOpen, onClose, onBack }) {
+  const { user } = useAuth()
   const [isClosing, setIsClosing] = useState(false)
+  
+  // Get VIP progress from user (mockado por enquanto - precisa de API)
+  const vipLevel = user?.vipLevel || 0
+  const vipProgress1 = 0 // user?.vipProgress1 || 0
+  const vipTarget1 = 10
+  const vipProgress2 = 0 // user?.vipProgress2 || 0
+  const vipTarget2 = 50
+  
+  const formatCurrency = (value) =>
+    new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+      minimumFractionDigits: 2
+    }).format(value || 0)
+  
+  const calculateVipProgress = (current, target) => {
+    if (!target || target === 0) return 0
+    return Math.min((current / target) * 100, 100)
+  }
+  
+  const vipProgress1Percent = calculateVipProgress(vipProgress1, vipTarget1)
+  const vipProgress2Percent = calculateVipProgress(vipProgress2, vipTarget2)
 
   useEffect(() => {
     if (isOpen) setIsClosing(false)
@@ -65,15 +89,19 @@ function VipModal({ isOpen, onClose, onBack }) {
             <div className="vip-summary-item">
               <span>Depósitos para promoção</span>
               <div className="vip-progress">
-                <span className="vip-progress-fill" style={{ width: '0%' }}></span>
-                <span className="vip-progress-text" style={{ fontSize: '11px' }}>R$ 0,00/R$ 10,00</span>
+                <span className="vip-progress-fill" style={{ width: `${vipProgress1Percent}%` }}></span>
+                <span className="vip-progress-text" style={{ fontSize: '11px' }}>
+                  {formatCurrency(vipProgress1)}/{formatCurrency(vipTarget1)}
+                </span>
               </div>
             </div>
             <div className="vip-summary-item">
               <span>Apostas para promoção</span>
               <div className="vip-progress">
-                <span className="vip-progress-fill" style={{ width: '0%' }}></span>
-                <span className="vip-progress-text" style={{ fontSize: '11px' }}>R$ 0,00/R$ 50,00</span>
+                <span className="vip-progress-fill" style={{ width: `${vipProgress2Percent}%` }}></span>
+                <span className="vip-progress-text" style={{ fontSize: '11px' }}>
+                  {formatCurrency(vipProgress2)}/{formatCurrency(vipTarget2)}
+                </span>
               </div>
             </div>
           </div>
