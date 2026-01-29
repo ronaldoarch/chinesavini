@@ -5,6 +5,7 @@ import AdminUsers from '../pages/admin/AdminUsers'
 import AdminTransactions from '../pages/admin/AdminTransactions'
 import AdminGamesConfig from '../pages/admin/AdminGamesConfig'
 import AdminGatewayConfig from '../pages/admin/AdminGatewayConfig'
+import AdminTheme from '../pages/admin/AdminTheme'
 import './AdminLayout.css'
 
 function AdminLayout() {
@@ -175,6 +176,8 @@ function AdminLayout() {
         return <AdminGamesConfig />
       case 'gateway':
         return <AdminGatewayConfig />
+      case 'theme':
+        return <AdminTheme />
       default:
         return <AdminDashboard />
     }
@@ -233,6 +236,15 @@ function AdminLayout() {
             >
               <i className="fa-solid fa-credit-card"></i>
               <span>Gateway</span>
+            </button>
+          </li>
+          <li>
+            <button
+              className={activePage === 'theme' ? 'active' : ''}
+              onClick={() => setActivePage('theme')}
+            >
+              <i className="fa-solid fa-palette"></i>
+              <span>Temas</span>
             </button>
           </li>
         </ul>

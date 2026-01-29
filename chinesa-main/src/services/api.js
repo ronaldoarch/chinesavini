@@ -223,6 +223,51 @@ class ApiService {
       method: 'POST'
     })
   }
+
+  // Theme endpoints
+  async getActiveTheme() {
+    return this.request('/theme/active', {
+      method: 'GET'
+    })
+  }
+
+  async getThemes() {
+    return this.request('/theme', {
+      method: 'GET'
+    })
+  }
+
+  async getTheme(id) {
+    return this.request(`/theme/${id}`, {
+      method: 'GET'
+    })
+  }
+
+  async createTheme(themeData) {
+    return this.request('/theme', {
+      method: 'POST',
+      body: JSON.stringify(themeData)
+    })
+  }
+
+  async updateTheme(id, themeData) {
+    return this.request(`/theme/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(themeData)
+    })
+  }
+
+  async deleteTheme(id) {
+    return this.request(`/theme/${id}`, {
+      method: 'DELETE'
+    })
+  }
+
+  async duplicateTheme(id) {
+    return this.request(`/theme/${id}/duplicate`, {
+      method: 'POST'
+    })
+  }
 }
 
 export default new ApiService()

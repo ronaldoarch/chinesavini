@@ -1,5 +1,6 @@
 import React from 'react'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
+import { ThemeProvider } from './contexts/ThemeContext'
 import Header from './components/Header'
 import NavigationIcons from './components/NavigationIcons'
 import BonusBanner from './components/BonusBanner'
@@ -282,9 +283,11 @@ function AppContent() {
 
 function App() {
   return (
-    <AuthProvider>
-      <AppContent />
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
+    </ThemeProvider>
   )
 }
 
