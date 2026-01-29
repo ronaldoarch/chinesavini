@@ -7,6 +7,7 @@ function BottomNavigation({
   onPromotionsClick,
   onDepositClick,
   onProfileClick,
+  onInviteClick,
   isLoggedIn = false
 }) {
   const handleRegisterOrDeposit = () => {
@@ -25,10 +26,15 @@ function BottomNavigation({
     }
   }
 
+  const handleHomeClick = (e) => {
+    e.preventDefault()
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
   return (
     <div className="bottom-nav menu-bottom fixed-bottom">
       <div className="container-fluid d-flex justify-content-around align-items-center">
-        <a href="home" className="text-center nav-item active">
+        <button type="button" className="text-center nav-item p-0" onClick={handleHomeClick}>
           <div className="nav-icon-container">
             <div className="icon-circle">
               <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 26 26" fill="none">
@@ -43,7 +49,7 @@ function BottomNavigation({
             </div>
             <small>Início</small>
           </div>
-        </a>
+        </button>
         <button type="button" className="text-center nav-item p-0" id="bannersBtn" onClick={onPromotionsClick}>
           <div className="nav-icon-container">
             <div className="icon-circle">
@@ -58,7 +64,7 @@ function BottomNavigation({
             <small>Promoção</small>
           </div>
         </button>
-        <button type="button" className="text-center nav-item p-0" id="referralsBtn">
+        <button type="button" className="text-center nav-item p-0" id="referralsBtn" onClick={onInviteClick}>
           <div className="nav-icon-container">
             <div className="icon-circle">
               <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 23 23" fill="none">

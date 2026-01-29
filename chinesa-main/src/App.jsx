@@ -158,6 +158,7 @@ function AppContent() {
         onRegisterClick={openRegister}
         onPromotionsClick={openPromotions}
         onDepositClick={openDeposit}
+        onInviteClick={openInvite}
         onProfileClick={() => {
           closeMenu()
           openProfile()
