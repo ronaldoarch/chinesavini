@@ -9,19 +9,26 @@ function AdminLayout() {
   const { user, isAdmin, isAuthenticated, loading, logout, refreshUser } = useAuth()
   const [activePage, setActivePage] = useState('dashboard')
   const [refreshing, setRefreshing] = useState(false)
+  const [hasTriedRefresh, setHasTriedRefresh] = useState(false)
   
-  // Try to refresh user data if not admin but authenticated
+  // Reset refresh flag when user changes
   useEffect(() => {
-    if (isAuthenticated && !isAdmin && user && !loading) {
-      // User is logged in but not admin - try refreshing
+    setHasTriedRefresh(false)
+  }, [user?.id])
+  
+  // Try to refresh user data if not admin but authenticated (only once per user)
+  useEffect(() => {
+    if (isAuthenticated && !isAdmin && user && !loading && !refreshing && !hasTriedRefresh) {
+      // User is logged in but not admin - try refreshing once
       const tryRefresh = async () => {
         setRefreshing(true)
+        setHasTriedRefresh(true)
         await refreshUser()
         setRefreshing(false)
       }
       tryRefresh()
     }
-  }, [isAuthenticated, isAdmin, user, loading])
+  }, [isAuthenticated, isAdmin, user, loading, refreshing, hasTriedRefresh, refreshUser])
 
   // Show loading while checking auth
   if (loading) {

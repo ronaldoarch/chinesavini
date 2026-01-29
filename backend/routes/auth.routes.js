@@ -120,6 +120,7 @@ router.post(
             balance: user.balance,
             referralCode: user.referralCode,
             vipLevel: user.vipLevel,
+            role: user.role,
             createdAt: user.createdAt
           }
         }
@@ -211,6 +212,7 @@ router.post(
             balance: user.balance,
             referralCode: user.referralCode,
             vipLevel: user.vipLevel,
+            role: user.role,
             createdAt: user.createdAt
           }
         }
@@ -243,6 +245,7 @@ router.get('/me', protect, async (req, res) => {
           balance: user.balance,
           referralCode: user.referralCode,
           vipLevel: user.vipLevel,
+          role: user.role,
           totalDeposits: user.totalDeposits,
           totalWithdrawals: user.totalWithdrawals,
           createdAt: user.createdAt,
