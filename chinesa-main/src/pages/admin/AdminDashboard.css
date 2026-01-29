@@ -3,6 +3,9 @@
   background: linear-gradient(135deg, var(--primary-purple) 0%, var(--secondary-purple) 100%);
   padding: var(--spacing-lg);
   color: var(--text-white);
+  width: 100%;
+  box-sizing: border-box;
+  overflow-x: hidden;
 }
 
 .admin-header {
@@ -12,6 +15,8 @@
   margin-bottom: var(--spacing-xl);
   padding-bottom: var(--spacing-md);
   border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+  flex-wrap: wrap;
+  gap: var(--spacing-md);
 }
 
 .admin-header h1 {
@@ -20,6 +25,10 @@
   gap: var(--spacing-sm);
   font-size: var(--font-size-xxl);
   color: var(--gold);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 
 .admin-user-info {
@@ -31,6 +40,8 @@
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: var(--spacing-lg);
   margin-bottom: var(--spacing-xl);
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .dashboard-card {
@@ -39,6 +50,9 @@
   padding: var(--spacing-lg);
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
   border: 1px solid rgba(255, 255, 255, 0.1);
+  width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 .card-header {
@@ -71,6 +85,18 @@
   justify-content: space-between;
   align-items: center;
   padding: var(--spacing-xs) 0;
+  gap: var(--spacing-sm);
+  min-width: 0;
+}
+
+.stat-item .stat-label {
+  flex-shrink: 0;
+}
+
+.stat-item .stat-value {
+  flex-shrink: 1;
+  text-align: right;
+  word-break: break-word;
 }
 
 .stat-item.large {

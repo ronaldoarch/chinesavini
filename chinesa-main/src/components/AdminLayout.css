@@ -46,10 +46,26 @@
   background-color: #7c3aed;
 }
 
+/* Override global root max-width for admin pages */
+body.admin-page #root {
+  max-width: 100% !important;
+  width: 100% !important;
+  margin: 0 !important;
+  box-shadow: none !important;
+}
+
+body.admin-page {
+  overflow: auto !important;
+}
+
 .admin-layout {
   display: flex;
   min-height: 100vh;
   background: var(--primary-purple);
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  box-shadow: none;
 }
 
 .admin-sidebar {
@@ -147,6 +163,9 @@
   flex: 1;
   margin-left: 250px;
   min-height: 100vh;
+  width: calc(100% - 250px);
+  overflow-x: auto;
+  overflow-y: auto;
 }
 
 @media (max-width: 768px) {
@@ -156,6 +175,7 @@
   
   .admin-main {
     margin-left: 200px;
+    width: calc(100% - 200px);
   }
   
   .sidebar-menu button span {
@@ -164,5 +184,15 @@
   
   .sidebar-menu button {
     justify-content: center;
+  }
+}
+
+@media (max-width: 1024px) {
+  .admin-header h1 {
+    font-size: var(--font-size-xl);
+  }
+  
+  .dashboard-grid {
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
   }
 }

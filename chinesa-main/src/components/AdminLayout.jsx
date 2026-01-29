@@ -11,6 +11,14 @@ function AdminLayout() {
   const [refreshing, setRefreshing] = useState(false)
   const [hasTriedRefresh, setHasTriedRefresh] = useState(false)
   
+  // Add admin class to body for CSS overrides
+  useEffect(() => {
+    document.body.classList.add('admin-page')
+    return () => {
+      document.body.classList.remove('admin-page')
+    }
+  }, [])
+  
   // Reset refresh flag when user changes
   useEffect(() => {
     setHasTriedRefresh(false)
