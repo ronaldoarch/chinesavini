@@ -11,6 +11,7 @@ import AdminBanners from '../pages/admin/AdminBanners'
 import AdminBonusConfig from '../pages/admin/AdminBonusConfig'
 import AdminPopups from '../pages/admin/AdminPopups'
 import AdminJackpot from '../pages/admin/AdminJackpot'
+import AdminTracking from '../pages/admin/AdminTracking'
 import './AdminLayout.css'
 
 function AdminLayout() {
@@ -193,6 +194,8 @@ function AdminLayout() {
         return <AdminPopups />
       case 'jackpot':
         return <AdminJackpot />
+      case 'tracking':
+        return <AdminTracking />
       default:
         return <AdminDashboard />
     }
@@ -305,6 +308,15 @@ function AdminLayout() {
             >
               <i className="fa-solid fa-coins"></i>
               <span>Jackpot</span>
+            </button>
+          </li>
+          <li>
+            <button
+              className={activePage === 'tracking' ? 'active' : ''}
+              onClick={() => setActivePage('tracking')}
+            >
+              <i className="fa-solid fa-chart-line"></i>
+              <span>Rastreamento</span>
             </button>
           </li>
         </ul>

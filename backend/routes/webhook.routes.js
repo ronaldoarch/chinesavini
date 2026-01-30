@@ -1,9 +1,27 @@
 import express from 'express'
 import Transaction from '../models/Transaction.model.js'
 import User from '../models/User.model.js'
+import WebhookLog from '../models/WebhookLog.model.js'
 import affiliateService from '../services/affiliate.service.js'
+import facebookService from '../services/facebook.service.js'
 
 const router = express.Router()
+
+function logWebhook(source, req, extra = {}) {
+  const body = req.body || {}
+  const bodyStr = JSON.stringify(body)
+  const bodySummary = bodyStr.length > 2000 ? bodyStr.slice(0, 2000) + '...' : bodyStr
+  WebhookLog.create({
+    source,
+    path: req.path,
+    method: req.method,
+    bodySummary,
+    bodyKeys: Object.keys(body),
+    idTransaction: body.idTransaction || body.transactionId || body.transaction_id || body.tx_id || body?.data?.idTransaction,
+    ip: req.ip || req.connection?.remoteAddress,
+    ...extra
+  }).catch(err => console.error('WebhookLog create error:', err))
+}
 
 // Middleware to parse JSON (webhooks may not send proper headers)
 router.use(express.json())
@@ -13,6 +31,7 @@ router.use(express.urlencoded({ extended: true }))
 // @desc    Webhook for PIX payment confirmation (deposit)
 // @access  Public (but should be validated in production)
 router.post('/pix', async (req, res) => {
+  logWebhook('pix', req)
   try {
     const body = req.body || {}
     const { status, type, data } = body
@@ -52,6 +71,7 @@ router.post('/pix', async (req, res) => {
     if (paymentStatus === 'paid' && transaction.type === 'deposit') {
       const user = await User.findById(transaction.user)
       if (user) {
+        const isFirstDeposit = user.totalDeposits === 0
         user.balance += transaction.netAmount
         user.totalDeposits += transaction.netAmount
         await user.save()
@@ -59,6 +79,11 @@ router.post('/pix', async (req, res) => {
         // Update referral qualification and VIP level
         await affiliateService.updateReferralQualification(user._id)
         await affiliateService.updateVipLevel(user._id)
+
+        // Facebook Conversions API: first deposit = Purchase
+        if (isFirstDeposit) {
+          facebookService.sendFirstDeposit(user, transaction.netAmount, 'BRL').catch(() => {})
+        }
       }
     }
 
@@ -74,6 +99,7 @@ router.post('/pix', async (req, res) => {
 // @desc    Webhook for PIX withdrawal confirmation
 // @access  Public (but should be validated in production)
 router.post('/pix-withdraw', async (req, res) => {
+  logWebhook('pix-withdraw', req)
   try {
     const body = req.body || {}
     const { type, status, amount, fee } = body

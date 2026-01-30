@@ -1,0 +1,204 @@
+.admin-tracking .admin-header {
+  margin-bottom: var(--spacing-lg);
+}
+
+.tracking-tabs {
+  display: flex;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-lg);
+}
+
+.tracking-tabs button {
+  padding: var(--spacing-sm) var(--spacing-lg);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-white);
+  cursor: pointer;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tracking-tabs button:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.tracking-tabs button.active {
+  background: var(--primary-purple, #7a2b9e);
+  border-color: var(--light-purple, #9d4edd);
+  color: white;
+}
+
+.tracking-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-md);
+}
+
+.tracking-filters select,
+.tracking-filters input[type="date"] {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  padding: var(--spacing-sm) var(--spacing-md);
+  color: var(--text-white);
+  cursor: pointer;
+}
+
+.tracking-filters input[type="date"] {
+  cursor: text;
+  min-width: 140px;
+}
+
+.tracking-table-wrap {
+  background: linear-gradient(135deg, rgba(106, 46, 132, 0.9) 0%, rgba(63, 20, 83, 0.9) 100%);
+  border-radius: 12px;
+  padding: var(--spacing-lg);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  overflow-x: auto;
+}
+
+.tracking-total {
+  margin-bottom: var(--spacing-md);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.tracking-error {
+  color: #f87171;
+  margin-bottom: var(--spacing-md);
+}
+
+.tracking-loading {
+  padding: var(--spacing-lg);
+  text-align: center;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.tracking-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.tracking-table th {
+  text-align: left;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+  color: var(--gold, #fbbf24);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.tracking-table td {
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  vertical-align: top;
+}
+
+.tracking-table tr:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.tracking-table .body-cell {
+  max-width: 280px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.badge.source {
+  background: rgba(59, 130, 246, 0.3);
+  color: #93c5fd;
+}
+
+.badge.event {
+  background: rgba(37, 99, 235, 0.3);
+  color: #93c5fd;
+}
+
+.badge.status.received,
+.badge.status.sent {
+  background: rgba(34, 197, 94, 0.3);
+  color: #86efac;
+}
+
+.badge.status.success {
+  background: rgba(34, 197, 94, 0.3);
+  color: #86efac;
+}
+
+.badge.status.processed {
+  background: rgba(34, 197, 94, 0.3);
+  color: #86efac;
+}
+
+.badge.status.error {
+  background: rgba(239, 68, 68, 0.3);
+  color: #fca5a5;
+}
+
+.tracking-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-md);
+  margin-top: var(--spacing-lg);
+  padding-top: var(--spacing-md);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.tracking-pagination button {
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-white);
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.tracking-pagination button:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.tracking-pagination button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.tracking-info {
+  margin-top: var(--spacing-xl);
+  padding: var(--spacing-lg);
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.tracking-info p {
+  margin-bottom: var(--spacing-sm);
+}
+
+.tracking-info p:last-child {
+  margin-bottom: 0;
+}
+
+.tracking-info code {
+  background: rgba(0, 0, 0, 0.3);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.85rem;
+}

@@ -22,6 +22,7 @@ import bannerRoutes from './routes/banner.routes.js'
 import bonusRoutes from './routes/bonus.routes.js'
 import popupRoutes from './routes/popup.routes.js'
 import jackpotRoutes from './routes/jackpot.routes.js'
+import trackingRoutes from './routes/tracking.routes.js'
 import { errorHandler } from './middleware/errorHandler.js'
 
 // Load environment variables
@@ -85,6 +86,7 @@ app.use('/api/banners', bannerRoutes)
 app.use('/api/bonus', bonusRoutes)
 app.use('/api/popups', popupRoutes)
 app.use('/api/jackpot', jackpotRoutes)
+app.use('/api/admin/tracking', trackingRoutes)
 
 // Health check
 app.get('/api/health', (req, res) => {

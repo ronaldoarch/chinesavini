@@ -6,6 +6,7 @@ import Referral from '../models/Referral.model.js'
 import generateToken from '../utils/generateToken.js'
 import { validatePhone } from '../utils/validatePhone.js'
 import { protect } from '../middleware/auth.middleware.js'
+import facebookService from '../services/facebook.service.js'
 
 const router = express.Router()
 
@@ -122,6 +123,9 @@ router.post(
         referrer.totalReferrals = (referrer.totalReferrals || 0) + 1
         await referrer.save()
       }
+
+      // Facebook Conversions API: Lead (cadastro)
+      facebookService.sendLead(user).catch(() => {})
 
       // Generate token
       const token = generateToken(user._id)

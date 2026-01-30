@@ -389,6 +389,17 @@ class ApiService {
     })
   }
 
+  // Tracking (admin): webhooks e eventos Facebook
+  async getTrackingWebhooks(params = {}) {
+    const q = new URLSearchParams(params).toString()
+    return this.request(`/admin/tracking/webhooks${q ? '?' + q : ''}`, { method: 'GET' })
+  }
+
+  async getTrackingFacebookEvents(params = {}) {
+    const q = new URLSearchParams(params).toString()
+    return this.request(`/admin/tracking/facebook-events${q ? '?' + q : ''}`, { method: 'GET' })
+  }
+
   // Bonus config (public for deposit modal)
   async getBonusConfig() {
     return this.request('/bonus/config', {
