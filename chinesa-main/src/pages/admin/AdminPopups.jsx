@@ -6,8 +6,11 @@ import './AdminPopups.css'
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
 const getImageUrl = (url) => {
   if (!url) return ''
+  const baseUrl = API_BASE_URL.replace(/\/api\/?$/, '')
   if (url.startsWith('http')) return url
-  if (url.startsWith('/uploads')) return API_BASE_URL.replace('/api', '') + url
+  if (url.startsWith('/uploads')) return baseUrl + url
+  const i = url.indexOf('/uploads/')
+  if (i !== -1) return baseUrl + url.slice(i)
   return url
 }
 

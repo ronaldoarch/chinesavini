@@ -5,15 +5,11 @@ import './Header.css'
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
 const getImageUrl = (imagePath) => {
   if (!imagePath) return '/logo_plataforma.png'
-  // If already a full URL, return as is
-  if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
-    return imagePath
-  }
-  // If starts with /uploads, use API base URL (without /api)
-  if (imagePath.startsWith('/uploads')) {
-    const baseUrl = API_BASE_URL.replace('/api', '')
-    return `${baseUrl}${imagePath}`
-  }
+  const baseUrl = API_BASE_URL.replace(/\/api\/?$/, '')
+  if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) return imagePath
+  if (imagePath.startsWith('/uploads')) return `${baseUrl}${imagePath}`
+  const uploadsIndex = imagePath.indexOf('/uploads/')
+  if (uploadsIndex !== -1) return `${baseUrl}${imagePath.slice(uploadsIndex)}`
   return imagePath
 }
 

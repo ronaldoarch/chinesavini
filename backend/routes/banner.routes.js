@@ -12,8 +12,8 @@ const router = express.Router()
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
-// Ensure uploads directory exists
-const uploadsDir = path.join(__dirname, '../../chinesa-main/public/uploads')
+// Uploads inside backend folder so deploy works when only backend is deployed
+const uploadsDir = path.join(__dirname, '../uploads')
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true })
 }
@@ -108,9 +108,8 @@ router.post('/admin', protect, isAdmin, upload.single('image'), async (req, res)
       })
     }
 
-    // Use absolute URL if API_URL is set, otherwise relative path
-    const baseUrl = process.env.API_URL || ''
-    const imageUrl = baseUrl ? `${baseUrl}/uploads/${req.file.filename}` : `/uploads/${req.file.filename}`
+    // Store only path so frontend can build correct URL (evita URL quebrada tipo .dominio/uploads/...)
+    const imageUrl = `/uploads/${req.file.filename}`
 
     const banner = await Banner.create({
       title: title || 'Banner',
@@ -158,10 +157,8 @@ router.put('/admin/:id', protect, isAdmin, upload.single('image'), async (req, r
     if (order !== undefined) updateData.order = parseInt(order)
     if (isActive !== undefined) updateData.isActive = isActive === 'true' || isActive === true
 
-    // Update image if new one uploaded
     if (req.file) {
-      const baseUrl = process.env.API_URL || ''
-      updateData.imageUrl = baseUrl ? `${baseUrl}/uploads/${req.file.filename}` : `/uploads/${req.file.filename}`
+      updateData.imageUrl = `/uploads/${req.file.filename}`
     }
 
     const updatedBanner = await Banner.findByIdAndUpdate(
@@ -249,8 +246,7 @@ router.post('/admin/logo', protect, isAdmin, upload.single('logo'), async (req, 
       })
     }
 
-    const baseUrl = process.env.API_URL || ''
-    const imageUrl = baseUrl ? `${baseUrl}/uploads/${req.file.filename}` : `/uploads/${req.file.filename}`
+    const imageUrl = `/uploads/${req.file.filename}`
 
     // Deactivate all existing logos
     await Logo.updateMany({}, { isActive: false })

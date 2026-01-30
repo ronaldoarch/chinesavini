@@ -51,15 +51,16 @@ app.use(cors({
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
 
-// Serve static files from frontend public folder (for uploaded images)
-// IMPORTANT: Serve static files BEFORE routes to avoid conflicts
-const publicPath = path.join(__dirname, '../chinesa-main/public')
-app.use('/uploads', express.static(path.join(publicPath, 'uploads'), {
+// Serve uploaded images from backend/uploads (works in production when only backend is deployed)
+const uploadsPath = path.join(__dirname, 'uploads')
+app.use('/uploads', express.static(uploadsPath, {
   setHeaders: (res, path) => {
     res.set('Cross-Origin-Resource-Policy', 'cross-origin')
     res.set('Access-Control-Allow-Origin', '*')
   }
 }))
+// Optional: serve frontend public for local dev (banners, etc.)
+const publicPath = path.join(__dirname, '../chinesa-main/public')
 app.use(express.static(publicPath, {
   setHeaders: (res, path) => {
     if (path.endsWith('.png') || path.endsWith('.jpg') || path.endsWith('.jpeg') || path.endsWith('.gif') || path.endsWith('.webp')) {

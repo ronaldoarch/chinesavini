@@ -5,14 +5,20 @@ import './AdminBanners.css'
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
 const getImageUrl = (imagePath) => {
   if (!imagePath) return ''
+  const baseUrl = API_BASE_URL.replace(/\/api\/?$/, '')
   // If already a full URL, return as is
   if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
     return imagePath
   }
-  // If starts with /uploads, use API base URL (without /api)
+  // If starts with /uploads, use API base URL
   if (imagePath.startsWith('/uploads')) {
-    const baseUrl = API_BASE_URL.replace('/api', '')
     return `${baseUrl}${imagePath}`
+  }
+  // Paths like ".domain.com/uploads/..." or "domain.com/uploads/..." (stored wrong) → use /uploads/... from API
+  const uploadsIndex = imagePath.indexOf('/uploads/')
+  if (uploadsIndex !== -1) {
+    const pathFromUploads = imagePath.slice(uploadsIndex)
+    return `${baseUrl}${pathFromUploads}`
   }
   return imagePath
 }
