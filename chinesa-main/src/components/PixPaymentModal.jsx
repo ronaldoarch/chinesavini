@@ -7,10 +7,15 @@ function PixPaymentModal({ isOpen, onClose, onBack, amountValue = 0, transaction
   const [remainingSeconds, setRemainingSeconds] = useState(0)
   const [initialSeconds, setInitialSeconds] = useState(0)
   
-  // Get PIX data from transaction
+  // Get PIX data from transaction (support base64 image)
   const pixCode = transaction?.pixCopyPaste || transaction?.qrCode || ''
-  const qrCodeImage = transaction?.qrCodeImage || '/qr-code-temporario.png'
+  let qrCodeImage = transaction?.qrCodeImage || ''
+  if (qrCodeImage && !qrCodeImage.startsWith('data:') && !qrCodeImage.startsWith('http')) {
+    qrCodeImage = qrCodeImage.startsWith('base64,') ? `data:image/png;${qrCodeImage}` : `data:image/png;base64,${qrCodeImage}`
+  }
+  if (!qrCodeImage) qrCodeImage = '/qr-code-temporario.png'
   const expiresAt = transaction?.expiresAt ? new Date(transaction.expiresAt) : null
+  const hasPixCode = !!pixCode
 
   useEffect(() => {
     if (isOpen && transaction && expiresAt) {
@@ -119,7 +124,7 @@ function PixPaymentModal({ isOpen, onClose, onBack, amountValue = 0, transaction
             </div>
 
             <div className="pix-code-section">
-              {pixCode ? (
+              {hasPixCode ? (
                 <>
                   <div className="pix-code">
                     {pixCode}
@@ -133,6 +138,12 @@ function PixPaymentModal({ isOpen, onClose, onBack, amountValue = 0, transaction
                     {isCopied ? 'Código copiado' : 'Copiar Código PIX'}
                   </button>
                 </>
+              ) : transaction ? (
+                <div className="pix-code-error">
+                  <i className="fa-solid fa-triangle-exclamation"></i>
+                  <span>Código PIX não foi gerado. Volte e tente o depósito novamente.</span>
+                  <span className="pix-code-error-hint">Verifique as credenciais do gateway no painel admin.</span>
+                </div>
               ) : (
                 <div className="pix-code-loading">
                   <i className="fa-solid fa-spinner fa-spin"></i>

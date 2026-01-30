@@ -18,7 +18,8 @@ router.post(
       .isFloat({ min: 10, max: 10000 })
       .withMessage('Valor deve estar entre R$ 10,00 e R$ 10.000,00'),
     body('cpf')
-      .matches(/^\d{3}\.\d{3}\.\d{3}-\d{2}$/)
+      .optional()
+      .custom((val) => !val || /^\d{3}\.\d{3}\.\d{3}-\d{2}$/.test(val) || /^\d{11}$/.test(val))
       .withMessage('CPF inválido')
   ],
   async (req, res) => {
@@ -32,7 +33,14 @@ router.post(
         })
       }
 
-      const { amount, cpf } = req.body
+      let { amount, cpf } = req.body
+      // Normalize CPF: accept 11 digits or formatted 000.000.000-00
+      if (cpf && typeof cpf === 'string') {
+        const digits = cpf.replace(/\D/g, '')
+        if (digits.length === 11) {
+          cpf = `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`
+        }
+      }
       const user = req.user
 
       // Create transaction record
@@ -63,26 +71,37 @@ router.post(
         })
       }
 
-      // Update transaction with PIX data
+      // Update transaction with PIX data (support multiple gateway response formats)
       const pixData = pixResult.data
-      transaction.idTransaction = pixData.idTransaction || pixData.tx_id
-      
-      // Handle different response formats
-      if (pixData.data) {
-        // Full response format
-        transaction.qrCode = pixData.data.pix_copy_and_paste
-        transaction.qrCodeImage = pixData.data.base_64_image_url || pixData.data.base_64_image
-        transaction.pixCopyPaste = pixData.data.pix_copy_and_paste
-        
-        // Set expiration date
-        if (pixData.data.expiration_date) {
-          transaction.expiresAt = new Date(pixData.data.expiration_date)
-        }
-      } else if (pixData.qrCode) {
-        // Simple response format
-        transaction.qrCode = pixData.qrCode
-        transaction.qrCodeImage = pixData.qrCodeImage
-        transaction.pixCopyPaste = pixData.qrCode
+      const raw = pixData?.data || pixData
+      transaction.idTransaction = pixData?.idTransaction || pixData?.tx_id || raw?.idTransaction || raw?.tx_id
+
+      const copyPaste = raw?.pix_copy_and_paste || raw?.pixCopyPaste || raw?.copy_paste || raw?.qr_code || raw?.qrcode || pixData?.qrCode || pixData?.pixCopyPaste
+      const qrImage = raw?.base_64_image_url || raw?.base_64_image || raw?.qrCodeImage || raw?.qr_code_image || pixData?.qrCodeImage
+      const expDate = raw?.expiration_date || raw?.expiresAt || raw?.expires_at || pixData?.expiration_date
+
+      if (copyPaste) {
+        transaction.pixCopyPaste = copyPaste
+        transaction.qrCode = copyPaste
+      }
+      if (qrImage) {
+        transaction.qrCodeImage = qrImage
+      }
+      if (expDate) {
+        transaction.expiresAt = new Date(expDate)
+      }
+      // Default: expire in 30 minutes if gateway didn't send expiration
+      if (!transaction.expiresAt) {
+        transaction.expiresAt = new Date(Date.now() + 30 * 60 * 1000)
+      }
+
+      // If gateway didn't return PIX code, fail the transaction and return error
+      if (!transaction.pixCopyPaste) {
+        await transaction.updateStatus('failed')
+        return res.status(502).json({
+          success: false,
+          message: 'Gateway não retornou o código PIX. Verifique as credenciais do gateway no admin ou tente novamente.'
+        })
       }
 
       await transaction.save()
