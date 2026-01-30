@@ -220,9 +220,10 @@ class ApiService {
     })
   }
 
-  async testGateway() {
+  async testGateway(realTest = false) {
     return this.request('/gateway/test', {
-      method: 'POST'
+      method: 'POST',
+      ...(realTest && { body: JSON.stringify({ realTest: true }) })
     })
   }
 

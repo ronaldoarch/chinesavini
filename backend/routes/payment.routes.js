@@ -73,19 +73,25 @@ router.post(
 
       // Update transaction with PIX data (support multiple gateway response formats)
       const pixData = pixResult.data
-      const raw = pixData?.data || pixData
+      const raw = pixData?.data || pixData || {}
       transaction.idTransaction = pixData?.idTransaction || pixData?.tx_id || raw?.idTransaction || raw?.tx_id
 
-      const copyPaste = raw?.pix_copy_and_paste || raw?.pixCopyPaste || raw?.copy_paste || raw?.qr_code || raw?.qrcode || pixData?.qrCode || pixData?.pixCopyPaste
-      const qrImage = raw?.base_64_image_url || raw?.base_64_image || raw?.qrCodeImage || raw?.qr_code_image || pixData?.qrCodeImage
-      const expDate = raw?.expiration_date || raw?.expiresAt || raw?.expires_at || pixData?.expiration_date
+      // Try all known field names for PIX copy-paste (different gateways use different names)
+      const copyPaste =
+        raw?.pix_copy_and_paste || raw?.pixCopyPaste || raw?.copy_paste || raw?.qr_code || raw?.qrcode ||
+        raw?.codigo_pix || raw?.codigo || raw?.pix_copia_cola || raw?.brcode || raw?.emv || raw?.payload ||
+        pixData?.qrCode || pixData?.pixCopyPaste || pixData?.codigo_pix || pixData?.copy_paste
+      const qrImage =
+        raw?.base_64_image_url || raw?.base_64_image || raw?.qrCodeImage || raw?.qr_code_image ||
+        raw?.imagem_qr || raw?.qrcode_base64 || pixData?.qrCodeImage || pixData?.base_64_image
+      const expDate = raw?.expiration_date || raw?.expiresAt || raw?.expires_at || raw?.expiracao || pixData?.expiration_date
 
       if (copyPaste) {
-        transaction.pixCopyPaste = copyPaste
-        transaction.qrCode = copyPaste
+        transaction.pixCopyPaste = typeof copyPaste === 'string' ? copyPaste : (copyPaste?.valor || copyPaste?.code || String(copyPaste))
+        transaction.qrCode = transaction.pixCopyPaste
       }
       if (qrImage) {
-        transaction.qrCodeImage = qrImage
+        transaction.qrCodeImage = typeof qrImage === 'string' ? qrImage : (qrImage?.url || qrImage?.data || String(qrImage))
       }
       if (expDate) {
         transaction.expiresAt = new Date(expDate)
@@ -95,8 +101,9 @@ router.post(
         transaction.expiresAt = new Date(Date.now() + 30 * 60 * 1000)
       }
 
-      // If gateway didn't return PIX code, fail the transaction and return error
+      // If gateway didn't return PIX code, log raw response for debugging and fail
       if (!transaction.pixCopyPaste) {
+        console.warn('NXGATE deposit success but no PIX code found. Raw response:', JSON.stringify(pixData, null, 2))
         await transaction.updateStatus('failed')
         return res.status(502).json({
           success: false,

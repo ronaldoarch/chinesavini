@@ -75,13 +75,12 @@ router.put('/config', protect, isAdmin, async (req, res) => {
 })
 
 // @route   POST /api/gateway/test
-// @desc    Test gateway connection
+// @desc    Test gateway connection (validates config; optional real PIX test)
 // @access  Private/Admin
 router.post('/test', protect, isAdmin, async (req, res) => {
   try {
     const config = await GatewayConfig.getConfig()
-    
-    // Simple validation test - check if API key is set
+
     if (!config.apiKey || config.apiKey.trim() === '') {
       return res.status(400).json({
         success: false,
@@ -89,10 +88,44 @@ router.post('/test', protect, isAdmin, async (req, res) => {
       })
     }
 
-    // You can add a real API test here if NXGATE provides a test endpoint
+    const { realTest } = req.body || {}
+    if (realTest) {
+      // Real test: call NXGATE /pix/gerar with minimal amount to validate response format
+      const nxgateService = (await import('../services/nxgate.service.js')).default
+      const webhookBase = config.webhookBaseUrl || process.env.WEBHOOK_BASE_URL || 'http://localhost:5000'
+      const result = await nxgateService.generatePix({
+        nome_pagador: 'Teste Admin',
+        documento_pagador: '00000000000',
+        valor: 10,
+        webhook: `${webhookBase}/api/webhooks/pix`
+      })
+      if (!result.success) {
+        return res.status(400).json({
+          success: false,
+          message: result.message || 'Falha ao chamar a API NXGATE',
+          data: { detail: result.error }
+        })
+      }
+      const data = result.data?.data || result.data || {}
+      const hasCode = data.pix_copy_and_paste || data.pixCopyPaste || data.copy_paste || data.codigo_pix || data.codigo || data.qr_code || data.qrcode || data.pix_copia_cola || data.brcode || data.emv || data.payload
+      if (!hasCode) {
+        console.warn('NXGATE test response (no PIX code found):', JSON.stringify(result.data, null, 2))
+        return res.status(400).json({
+          success: false,
+          message: 'API respondeu mas não retornou código PIX. Verifique o formato da resposta no backend.',
+          data: { rawKeys: Object.keys(data) }
+        })
+      }
+      return res.json({
+        success: true,
+        message: 'Teste real: PIX gerado com sucesso.',
+        data: { apiKeyConfigured: 'Sim', webhookBaseUrl: config.webhookBaseUrl, apiUrl: config.apiUrl }
+      })
+    }
+
     res.json({
       success: true,
-      message: 'Configuração válida',
+      message: 'Configuração válida (teste rápido). Use "Teste real" para validar geração de PIX.',
       data: {
         apiKeyConfigured: config.apiKey ? 'Sim' : 'Não',
         webhookBaseUrl: config.webhookBaseUrl,

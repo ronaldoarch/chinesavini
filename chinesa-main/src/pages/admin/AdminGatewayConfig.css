@@ -124,6 +124,17 @@
   box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);
 }
 
+.test-btn-real {
+  background: rgba(76, 175, 80, 0.2);
+  color: #4caf50;
+  border: 1px solid rgba(76, 175, 80, 0.4);
+}
+
+.test-btn-real:hover:not(:disabled) {
+  background: rgba(76, 175, 80, 0.3);
+  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+}
+
 .save-btn {
   background: var(--gold);
   color: var(--primary-purple);

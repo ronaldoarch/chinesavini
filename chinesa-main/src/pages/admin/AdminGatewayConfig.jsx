@@ -8,6 +8,7 @@ function AdminGatewayConfig() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [testing, setTesting] = useState(false)
+  const [testingReal, setTestingReal] = useState(false)
   const [error, setError] = useState(null)
   const [success, setSuccess] = useState(null)
   const [testResult, setTestResult] = useState(null)
@@ -81,14 +82,15 @@ function AdminGatewayConfig() {
     }
   }
 
-  const handleTest = async () => {
+  const handleTest = async (realTest = false) => {
     try {
-      setTesting(true)
+      if (realTest) setTestingReal(true)
+      else setTesting(true)
       setError(null)
       setTestResult(null)
-      
-      const response = await api.testGateway()
-      
+
+      const response = await api.testGateway(realTest)
+
       if (response.success) {
         setTestResult({
           success: true,
@@ -98,16 +100,19 @@ function AdminGatewayConfig() {
       } else {
         setTestResult({
           success: false,
-          message: response.message || 'Erro ao testar gateway'
+          message: response.message || 'Erro ao testar gateway',
+          data: response.data
         })
       }
     } catch (err) {
       setTestResult({
         success: false,
-        message: err.message || 'Erro ao testar gateway'
+        message: err.response?.data?.message || err.message || 'Erro ao testar gateway',
+        data: err.response?.data
       })
     } finally {
       setTesting(false)
+      setTestingReal(false)
     }
   }
 
@@ -245,9 +250,10 @@ function AdminGatewayConfig() {
 
       <div className="config-actions">
         <button
-          onClick={handleTest}
-          disabled={testing || saving}
+          onClick={() => handleTest(false)}
+          disabled={testing || testingReal || saving}
           className="test-btn"
+          title="Só valida se API Key e URLs estão preenchidos"
         >
           {testing ? (
             <>
@@ -257,7 +263,25 @@ function AdminGatewayConfig() {
           ) : (
             <>
               <i className="fa-solid fa-vial"></i>
-              Testar Conexão
+              Teste rápido
+            </>
+          )}
+        </button>
+        <button
+          onClick={() => handleTest(true)}
+          disabled={testing || testingReal || saving}
+          className="test-btn test-btn-real"
+          title="Chama a API NXGATE e gera um PIX de teste (R$ 10)"
+        >
+          {testingReal ? (
+            <>
+              <i className="fa-solid fa-spinner fa-spin"></i>
+              Gerando PIX...
+            </>
+          ) : (
+            <>
+              <i className="fa-solid fa-bolt"></i>
+              Teste real (PIX)
             </>
           )}
         </button>
