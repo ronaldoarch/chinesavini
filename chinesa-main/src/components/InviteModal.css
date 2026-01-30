@@ -42,9 +42,12 @@
 
 .invite-tabs {
   display: flex;
-  gap: 20px;
+  flex-wrap: wrap;
+  gap: 8px;
   align-items: center;
+  justify-content: center;
   height: 100%;
+  padding: 0 8px;
 }
 
 .invite-tab {
@@ -52,12 +55,14 @@
   border: none;
   color: rgba(255, 255, 255, 0.7);
   font-weight: 500;
+  font-size: 12px;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   position: relative;
-  padding: 8px 0;
+  padding: 6px 8px;
   cursor: pointer;
+  white-space: nowrap;
 }
 
 .invite-tab.active {
@@ -459,6 +464,125 @@
   padding: 10px;
   background-color: var(--light-purple);
   border-radius: 10px;
+}
+
+.section-title {
+  color: var(--gold);
+  font-size: 1rem;
+  margin: 0 0 var(--spacing-sm) 0;
+}
+
+.subsection-title {
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 0.9rem;
+  margin: var(--spacing-md) 0 var(--spacing-xs) 0;
+}
+
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--spacing-sm);
+}
+
+.kpi-grid.kpi-small {
+  grid-template-columns: 1fr;
+}
+
+.kpi-item {
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.kpi-item span {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 11px;
+  line-height: 1.2;
+}
+
+.kpi-item strong {
+  color: var(--gold);
+  font-size: 14px;
+}
+
+.kpi-item.kpi-underline strong {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.kpi-item.kpi-red strong {
+  color: #f44336;
+}
+
+.invite-meus-dados .performance-filters,
+.invite-performance .performance-filters {
+  margin-bottom: var(--spacing-md);
+}
+
+.invite-comissao .comissao-cards {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.comissao-card {
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  padding: var(--spacing-md);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.comissao-card.highlight {
+  border-color: var(--gold);
+  background: rgba(225, 181, 74, 0.08);
+}
+
+.comissao-card span {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 13px;
+}
+
+.comissao-card strong {
+  color: var(--gold);
+  font-size: 1.25rem;
+}
+
+.btn-comissao {
+  margin-top: 8px;
+  padding: 10px 16px;
+  background: var(--gold);
+  color: var(--primary-purple);
+  border: none;
+  border-radius: 8px;
+  font-weight: var(--font-weight-bold);
+  cursor: pointer;
+  align-self: flex-start;
+}
+
+.btn-comissao:hover:not(:disabled) {
+  filter: brightness(1.1);
+}
+
+.btn-comissao:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.comissao-info {
+  margin-top: var(--spacing-md);
+  padding: var(--spacing-sm);
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 13px;
+  line-height: 1.4;
 }
 
 .performance-filters {

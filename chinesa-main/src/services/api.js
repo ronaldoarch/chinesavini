@@ -304,8 +304,9 @@ class ApiService {
   }
 
   // Affiliate endpoints
-  async getAffiliateStats() {
-    return this.request('/affiliate/stats', {
+  async getAffiliateStats(period = 'all') {
+    const params = period && period !== 'all' ? `?period=${encodeURIComponent(period)}` : ''
+    return this.request(`/affiliate/stats${params}`, {
       method: 'GET'
     })
   }

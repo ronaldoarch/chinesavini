@@ -7,12 +7,21 @@ function InviteModal({ isOpen, onClose }) {
   const { user, isAuthenticated, updateUser } = useAuth()
   const [isClosing, setIsClosing] = useState(false)
   const [activeTab, setActiveTab] = useState('convite')
+  const [period, setPeriod] = useState('all')
   const [showLoginNotice, setShowLoginNotice] = useState(false)
   const [isLinkCopied, setIsLinkCopied] = useState(false)
   const [loading, setLoading] = useState(false)
   const [chests, setChests] = useState([])
   const [affiliateStats, setAffiliateStats] = useState(null)
   const [claimingChest, setClaimingChest] = useState(null)
+
+  const PERIOD_OPTIONS = [
+    { value: 'all', label: 'Tudo' },
+    { value: 'this_week', label: 'Esta Semana' },
+    { value: 'last_week', label: 'Última Semana' },
+    { value: 'this_month', label: 'Este Mês' },
+    { value: 'last_month', label: 'Mês passado' }
+  ]
   
   // Get referral code from user or use default
   const referralCode = user?.referralCode || '0000000000'
@@ -32,7 +41,7 @@ function InviteModal({ isOpen, onClose }) {
       setActiveTab('convite')
       if (isAuthenticated) {
         loadChests()
-        loadAffiliateStats()
+        loadAffiliateStats(period)
       }
     }
   }, [isOpen, isAuthenticated])
@@ -76,12 +85,11 @@ function InviteModal({ isOpen, onClose }) {
     }
   }
 
-  const loadAffiliateStats = async () => {
+  const loadAffiliateStats = async (periodFilter = period) => {
     try {
-      const response = await api.getAffiliateStats()
+      const response = await api.getAffiliateStats(periodFilter)
       if (response.success) {
         setAffiliateStats(response.data)
-        // Update user with affiliate balance
         if (response.data.affiliateBalance !== undefined) {
           updateUser({ affiliateBalance: response.data.affiliateBalance })
         }
@@ -89,6 +97,11 @@ function InviteModal({ isOpen, onClose }) {
     } catch (error) {
       console.error('Error loading affiliate stats:', error)
     }
+  }
+
+  const handlePeriodChange = (newPeriod) => {
+    setPeriod(newPeriod)
+    if (isAuthenticated) loadAffiliateStats(newPeriod)
   }
 
   const handleClaimChest = async (chestId) => {
@@ -226,11 +239,27 @@ function InviteModal({ isOpen, onClose }) {
           </button>
           <button
             type="button"
+            className={`invite-tab ${activeTab === 'meus-dados' ? 'active' : ''}`}
+            onClick={() => { setActiveTab('meus-dados'); if (isAuthenticated) loadAffiliateStats(period) }}
+          >
+            <i className="fa-solid fa-database"></i>
+            Meus Dados
+          </button>
+          <button
+            type="button"
             className={`invite-tab ${activeTab === 'desempenho' ? 'active' : ''}`}
-            onClick={() => setActiveTab('desempenho')}
+            onClick={() => { setActiveTab('desempenho'); if (isAuthenticated) loadAffiliateStats(period) }}
           >
             <i className="fa-solid fa-chart-line"></i>
             Desempenho
+          </button>
+          <button
+            type="button"
+            className={`invite-tab ${activeTab === 'comissao' ? 'active' : ''}`}
+            onClick={() => { setActiveTab('comissao'); if (isAuthenticated) loadAffiliateStats() }}
+          >
+            <i className="fa-solid fa-coins"></i>
+            Comissão
           </button>
         </div>
       </div>
@@ -381,35 +410,115 @@ function InviteModal({ isOpen, onClose }) {
           </>
         )}
 
+        {activeTab === 'meus-dados' && (
+          <div className="invite-performance invite-meus-dados">
+            <h3 className="section-title">Dados do Subordinado</h3>
+            <div className="performance-filters">
+              {PERIOD_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  className={`filter ${period === opt.value ? 'active' : ''}`}
+                  onClick={() => handlePeriodChange(opt.value)}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+            <div className="kpi-grid">
+              <div className="kpi-item">
+                <span>Novos subordinados</span>
+                <strong>{affiliateStats?.newSubordinates ?? affiliateStats?.totalReferrals ?? 0}</strong>
+              </div>
+              <div className="kpi-item kpi-underline">
+                <span>Depósitos</span>
+                <strong>{affiliateStats?.depositsCount ?? 0}</strong>
+              </div>
+              <div className="kpi-item kpi-underline">
+                <span>Primeiros Depósitos</span>
+                <strong>{affiliateStats?.firstDepositsCount ?? 0}</strong>
+              </div>
+              <div className="kpi-item kpi-underline">
+                <span>Usuários registrados com 1º depósito</span>
+                <strong>{affiliateStats?.usersWithFirstDeposit ?? 0}</strong>
+              </div>
+              <div className="kpi-item">
+                <span>Depósito (Total)</span>
+                <strong>{formatCurrency(affiliateStats?.totalDepositsInPeriod ?? affiliateStats?.totalDeposits)}</strong>
+              </div>
+              <div className="kpi-item">
+                <span>Valor do primeiro depósito</span>
+                <strong>{formatCurrency(affiliateStats?.firstDepositValue)}</strong>
+              </div>
+              <div className="kpi-item">
+                <span>Registro e 1º depósito</span>
+                <strong>{formatCurrency(affiliateStats?.registrationAndFirstDeposit)}</strong>
+              </div>
+              <div className="kpi-item">
+                <span>Valor do Saque</span>
+                <strong>{formatCurrency(affiliateStats?.withdrawalsTotalInPeriod ?? 0)}</strong>
+              </div>
+              <div className="kpi-item kpi-underline">
+                <span>Número de saques</span>
+                <strong>{affiliateStats?.withdrawalsCount ?? 0}</strong>
+              </div>
+              <div className="kpi-item kpi-underline">
+                <span>Receber recompensas</span>
+                <strong>{formatCurrency(affiliateStats?.totalRewards)}</strong>
+              </div>
+              <div className="kpi-item kpi-underline">
+                <span>Apostas Válidas</span>
+                <strong>{formatCurrency(affiliateStats?.validBets ?? affiliateStats?.totalBets)}</strong>
+              </div>
+              <div className="kpi-item kpi-red">
+                <span>V/D diretas</span>
+                <strong>{formatCurrency(affiliateStats?.directWL)}</strong>
+              </div>
+              <div className="kpi-item">
+                <span>Direto</span>
+                <strong>{formatCurrency(affiliateStats?.directIncome ?? 0)}</strong>
+              </div>
+            </div>
+            <h4 className="subsection-title">De renda direta</h4>
+            <div className="kpi-grid kpi-small">
+              <div className="kpi-item">
+                <span>Renda direta no período</span>
+                <strong>{formatCurrency(affiliateStats?.totalRewards)}</strong>
+              </div>
+            </div>
+          </div>
+        )}
+
         {activeTab === 'desempenho' && (
           <div className="invite-performance">
             <div className="performance-filters">
-              <button type="button" className="filter active">Tudo</button>
+              {PERIOD_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  className={`filter ${period === opt.value ? 'active' : ''}`}
+                  onClick={() => handlePeriodChange(opt.value)}
+                >
+                  {opt.label}
+                </button>
+              ))}
             </div>
             <div className="performance-cards">
               <div className="performance-card">
                 <span>Cadastros</span>
-                <strong>{affiliateStats?.totalReferrals || 0}</strong>
+                <strong>{affiliateStats?.newSubordinates ?? affiliateStats?.totalReferrals ?? 0}</strong>
               </div>
               <div className="performance-card">
                 <span>Total Depósitos</span>
-                <strong>
-                  {affiliateStats?.totalDeposits
-                    ? new Intl.NumberFormat('pt-BR', {
-                        style: 'currency',
-                        currency: 'BRL',
-                        minimumFractionDigits: 2
-                      }).format(affiliateStats.totalDeposits)
-                    : 'R$ 0,00'}
-                </strong>
+                <strong>{formatCurrency(affiliateStats?.totalDepositsInPeriod ?? affiliateStats?.totalDeposits)}</strong>
               </div>
               <div className="performance-card">
                 <span>Depositantes</span>
-                <strong>{affiliateStats?.qualifiedReferrals || 0}</strong>
+                <strong>{affiliateStats?.qualifiedReferrals ?? 0}</strong>
               </div>
               <div className="performance-card">
                 <span>Qualificados</span>
-                <strong>{affiliateStats?.qualifiedReferrals || 0}</strong>
+                <strong>{affiliateStats?.qualifiedReferrals ?? 0}</strong>
               </div>
             </div>
             {affiliateStats?.referrals && affiliateStats.referrals.length > 0 ? (
@@ -470,6 +579,39 @@ function InviteModal({ isOpen, onClose }) {
             )}
           </div>
         )}
+
+        {activeTab === 'comissao' && (
+          <div className="invite-performance invite-comissao">
+            <h3 className="section-title">Comissão e Recompensas</h3>
+            <div className="comissao-cards">
+              <div className="comissao-card highlight">
+                <span>Saldo Afiliado</span>
+                <strong>{formatCurrency(affiliateStats?.affiliateBalance ?? user?.affiliateBalance)}</strong>
+                <button
+                  type="button"
+                  className="btn-comissao"
+                  onClick={handleWithdrawAffiliate}
+                  disabled={loading || !affiliateStats || (affiliateStats?.affiliateBalance ?? 0) <= 0}
+                >
+                  Transferir para saldo
+                </button>
+              </div>
+              <div className="comissao-card">
+                <span>Total de recompensas recebidas</span>
+                <strong>{formatCurrency(affiliateStats?.totalRewards)}</strong>
+              </div>
+              <div className="comissao-card">
+                <span>Referidos qualificados</span>
+                <strong>{affiliateStats?.qualifiedReferrals ?? 0}</strong>
+              </div>
+            </div>
+            <p className="comissao-info">
+              Suas recompensas por referidos qualificados ficam disponíveis no Saldo Afiliado. 
+              Você pode transferir para o saldo principal a qualquer momento.
+            </p>
+          </div>
+        )}
+
         {showLoginNotice && (
           <div className="invite-login-notice" role="status">
             Você precisa estar logado para acessar este recurso.
