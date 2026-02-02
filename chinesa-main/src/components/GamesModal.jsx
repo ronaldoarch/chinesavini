@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useMemo } from 'react'
+import api from '../services/api'
 import Header from './Header'
 import Footer from './Footer'
 import BottomNavigation from './BottomNavigation'
@@ -19,19 +20,23 @@ function GamesModal({
   balance
 }) {
   const [isClosing, setIsClosing] = useState(false)
-  const [activeProvider, setActiveProvider] = useState('pg')
+  const [providersData, setProvidersData] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [activeProvider, setActiveProvider] = useState('all')
   const [activeTab, setActiveTab] = useState(initialTab || 'all')
+  const [searchTerm, setSearchTerm] = useState('')
+  const [currentPage, setCurrentPage] = useState(1)
 
   useEffect(() => {
     if (isOpen && initialTab) {
       setActiveTab(initialTab)
     }
   }, [isOpen, initialTab])
-  const [currentPage, setCurrentPage] = useState(1)
 
   useEffect(() => {
     if (isOpen) {
       setIsClosing(false)
+      loadGames()
     }
   }, [isOpen])
 
@@ -46,6 +51,24 @@ function GamesModal({
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [isOpen])
 
+  const loadGames = async () => {
+    try {
+      setLoading(true)
+      const response = await api.getSelectedGames()
+      if (response.success && response.data?.providers?.length > 0) {
+        setProvidersData(response.data.providers)
+        setActiveProvider('all')
+      } else {
+        setProvidersData([])
+      }
+    } catch (error) {
+      console.error('Error loading games:', error)
+      setProvidersData([])
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const handleClose = () => {
     setIsClosing(true)
     setTimeout(() => {
@@ -54,77 +77,60 @@ function GamesModal({
     }, 600)
   }
 
-  if (!isOpen && !isClosing) return null
+  const providers = useMemo(() => {
+    const list = [{ id: 'all', code: 'all', label: 'Todos', initial: 'T' }]
+    providersData.forEach((p) => {
+      list.push({
+        id: p.code,
+        code: p.code,
+        label: p.name || p.code,
+        initial: (p.name || p.code).charAt(0).toUpperCase()
+      })
+    })
+    return list
+  }, [providersData])
 
-  const games = [
-    { id: 1, title: 'FORTUNE TIGER', provider: 'PG Soft' },
-    { id: 2, title: 'FORTUNE RABBIT', provider: 'PG Soft' },
-    { id: 3, title: 'FORTUNE OX', provider: 'PG Soft' },
-    { id: 4, title: 'FORTUNE MOUSE', provider: 'PG Soft' },
-    { id: 5, title: 'FORTUNE SNAKE', provider: 'PG Soft' },
-    { id: 6, title: 'FORTUNE DRAGON', provider: 'PG Soft' },
-    { id: 7, title: 'FORTUNE GODS', provider: 'PG Soft' },
-    { id: 8, title: 'CASH MANIA', provider: 'PG Soft' },
-    { id: 9, title: 'DOUBLE FORTUNE', provider: 'PG Soft' },
-    { id: 10, title: 'GANESHA', provider: 'PG Soft' },
-    { id: 11, title: 'MAHJONG WAYS 2', provider: 'PG Soft' },
-    { id: 12, title: 'BIKINI PARADISE', provider: 'PG Soft' },
-    { id: 13, title: 'DRAGON HATCH', provider: 'PG Soft' },
-    { id: 14, title: 'LEPRECHAUN', provider: 'PG Soft' },
-    { id: 15, title: 'Bounty', provider: 'PG Soft' },
-    { id: 16, title: 'TREASURE', provider: 'PG Soft' },
-    { id: 17, title: 'Lucky Neko', provider: 'PG Soft' },
-    { id: 18, title: 'Ganesha Fortune', provider: 'PG Soft' },
-    { id: 19, title: 'Mahjong Ways', provider: 'PG Soft' },
-    { id: 20, title: 'Candy Bonanza', provider: 'PG Soft' },
-    { id: 21, title: 'Pirate King', provider: 'PG Soft' },
-    { id: 22, title: 'Wild Bandito', provider: 'PG Soft' },
-    { id: 23, title: 'Sweet Bonanza', provider: 'PG Soft' },
-    { id: 24, title: 'Gates of Olympus', provider: 'PG Soft' },
-    { id: 25, title: 'Book of Dead', provider: 'PG Soft' },
-    { id: 26, title: 'Viking Runecraft', provider: 'PG Soft' },
-    { id: 27, title: 'Fish Prawn Crab', provider: 'PG Soft' },
-    { id: 28, title: 'Thai River Wonders', provider: 'PG Soft' },
-    { id: 29, title: 'Phoenix Rises', provider: 'PG Soft' },
-    { id: 30, title: 'Gladiator Legends', provider: 'PG Soft' },
-    { id: 31, title: 'Majestic Treasures', provider: 'PG Soft' },
-    { id: 32, title: 'Sun & Moon', provider: 'PG Soft' },
-    { id: 33, title: 'Tropical Tiki', provider: 'PG Soft' },
-    { id: 34, title: 'Ocean Explorer', provider: 'PG Soft' },
-    { id: 35, title: 'Galaxy Spin', provider: 'PG Soft' },
-    { id: 36, title: 'Dragon Tiger', provider: 'PG Soft' },
-    { id: 37, title: 'Jade Blossom', provider: 'PG Soft' },
-    { id: 38, title: 'Lucky Phoenix', provider: 'PG Soft' },
-    { id: 39, title: 'Mystic Genie', provider: 'PG Soft' },
-    { id: 40, title: 'Golden Lotus', provider: 'PG Soft' },
-    { id: 41, title: 'Safari Adventure', provider: 'PG Soft' },
-    { id: 42, title: 'Neon City', provider: 'PG Soft' },
-    { id: 43, title: 'Temple Quest', provider: 'PG Soft' },
-    { id: 44, title: 'Fortune Wheel', provider: 'PG Soft' },
-    { id: 45, title: 'Royal Tiger', provider: 'PG Soft' },
-    { id: 46, title: 'Treasure Vault', provider: 'PG Soft' },
-    { id: 47, title: 'Lucky Coins', provider: 'PG Soft' },
-    { id: 48, title: 'Mega Riches', provider: 'PG Soft' }
-  ]
+  const allGames = useMemo(() => {
+    const games = []
+    providersData.forEach((provider) => {
+      (provider.games || []).forEach((game, idx) => {
+        games.push({
+          id: `${provider.code}-${game.gameCode || idx}`,
+          title: game.gameName || game.title || 'Jogo',
+          gameCode: game.gameCode,
+          providerCode: game.providerCode || provider.code,
+          banner: game.banner
+        })
+      })
+    })
+    return games
+  }, [providersData])
 
-  const providers = [
-    { id: 'all', label: 'Todos', initial: 'T' },
-    { id: 'pg', label: 'PG Soft', initial: 'P' },
-    { id: 'pp', label: 'Pragmatic Play', initial: 'P' },
-    { id: 'tada', label: 'Tada', initial: 'T' },
-    { id: 'jili', label: 'Jili Games', initial: 'J' },
-    { id: 'jdb', label: 'Jdb', initial: 'J' },
-    { id: 'popok', label: 'PopOk', initial: 'P' }
-  ]
+  const filteredGames = useMemo(() => {
+    let list = allGames
+    if (activeProvider !== 'all') {
+      list = list.filter((g) => (g.providerCode || '').toUpperCase() === (activeProvider || '').toUpperCase())
+    }
+    if (searchTerm.trim()) {
+      const term = searchTerm.trim().toLowerCase()
+      list = list.filter((g) => (g.title || '').toLowerCase().includes(term))
+    }
+    return list
+  }, [allGames, activeProvider, searchTerm])
 
   const itemsPerPage = 24
-  const totalPages = Math.max(1, Math.ceil(games.length / itemsPerPage))
+  const totalPages = Math.max(1, Math.ceil(filteredGames.length / itemsPerPage))
   const safePage = Math.min(Math.max(currentPage, 1), totalPages)
   const startIndex = (safePage - 1) * itemsPerPage
-  const paginatedGames = games.slice(startIndex, startIndex + itemsPerPage)
+  const paginatedGames = filteredGames.slice(startIndex, startIndex + itemsPerPage)
 
   const handleTabChange = (tabId) => {
     setActiveTab(tabId)
+    setCurrentPage(1)
+  }
+
+  const handleProviderChange = (providerId) => {
+    setActiveProvider(providerId)
     setCurrentPage(1)
   }
 
@@ -132,6 +138,28 @@ function GamesModal({
     if (page < 1 || page > totalPages) return
     setCurrentPage(page)
   }
+
+  const handleGameClick = async (game) => {
+    if (!isLoggedIn) {
+      handleClose()
+      setTimeout(() => onLoginClick?.(), 350)
+      return
+    }
+    if (!game.providerCode || !game.gameCode) return
+    try {
+      const response = await api.launchGame(game.providerCode, game.gameCode, 'pt')
+      if (response.success && response.data?.launchUrl) {
+        window.open(response.data.launchUrl, '_blank')
+      } else {
+        alert('Erro ao iniciar jogo. Tente novamente.')
+      }
+    } catch (error) {
+      console.error('Launch game error:', error)
+      alert('Erro ao iniciar jogo. Tente novamente.')
+    }
+  }
+
+  if (!isOpen && !isClosing) return null
 
   return (
     <div className={`games-modal ${isClosing ? 'is-closing' : ''}`}>
@@ -147,8 +175,15 @@ function GamesModal({
       <div className="games-modal-body">
         <div className="games-modal-toolbar">
           <div className="games-modal-search">
-            <input type="text" placeholder="Buscar jogos..." />
-            <button type="button">Buscar</button>
+            <input
+              type="text"
+              placeholder="Buscar jogos..."
+              value={searchTerm}
+              onChange={(e) => {
+                setSearchTerm(e.target.value)
+                setCurrentPage(1)
+              }}
+            />
           </div>
         </div>
 
@@ -159,7 +194,7 @@ function GamesModal({
                 key={provider.id}
                 type="button"
                 className={`games-provider${activeProvider === provider.id ? ' active' : ''}`}
-                onClick={() => setActiveProvider(provider.id)}
+                onClick={() => handleProviderChange(provider.id)}
               >
                 <span className="provider-logo">{provider.initial}</span>
                 <span className="provider-name">{provider.label}</span>
@@ -196,13 +231,79 @@ function GamesModal({
             </div>
 
             {activeTab === 'all' ? (
-              <div className="games-modal-grid">
-                {paginatedGames.map((game) => (
-                  <div key={game.id} className="games-modal-card">
-                    <div className="games-modal-thumb" />
+              <>
+                {loading ? (
+                  <div className="games-modal-loading">
+                    <i className="fa-solid fa-spinner fa-spin"></i>
+                    <span>Carregando jogos...</span>
                   </div>
-                ))}
-              </div>
+                ) : paginatedGames.length === 0 ? (
+                  <div className="games-modal-empty">
+                    <i className="fa-regular fa-face-sad-tear"></i>
+                    <span>
+                      {providersData.length === 0
+                        ? 'Nenhum jogo configurado. Configure os jogos no painel admin.'
+                        : searchTerm.trim()
+                          ? 'Nenhum jogo encontrado para esta busca.'
+                          : 'Nenhum jogo neste provedor.'}
+                    </span>
+                  </div>
+                ) : (
+                  <div className="games-modal-grid">
+                    {paginatedGames.map((game) => (
+                      <button
+                        key={game.id}
+                        type="button"
+                        className="games-modal-card"
+                        onClick={() => handleGameClick(game)}
+                      >
+                        <div className="games-modal-thumb">
+                          {game.banner ? (
+                            <img src={game.banner} alt={game.title} />
+                          ) : (
+                            <span className="games-modal-thumb-placeholder">🎮</span>
+                          )}
+                        </div>
+                        <span className="games-modal-title">{game.title}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {activeTab === 'all' && !loading && filteredGames.length > 0 && totalPages > 1 && (
+                  <div className="games-modal-pagination">
+                    <button
+                      type="button"
+                      className="page-btn"
+                      disabled={safePage === 1}
+                      onClick={() => handlePageChange(safePage - 1)}
+                    >
+                      «
+                    </button>
+                    {Array.from({ length: totalPages }, (_, index) => {
+                      const page = index + 1
+                      return (
+                        <button
+                          key={page}
+                          type="button"
+                          className={`page-btn${safePage === page ? ' active' : ''}`}
+                          onClick={() => handlePageChange(page)}
+                        >
+                          {page}
+                        </button>
+                      )
+                    })}
+                    <button
+                      type="button"
+                      className="page-btn"
+                      disabled={safePage === totalPages}
+                      onClick={() => handlePageChange(safePage + 1)}
+                    >
+                      »
+                    </button>
+                  </div>
+                )}
+              </>
             ) : (
               <div className="games-modal-empty">
                 <i className="fa-regular fa-face-sad-tear"></i>
@@ -211,40 +312,6 @@ function GamesModal({
                     ? 'Você ainda não tem jogos favoritos.'
                     : 'Você ainda não jogou nenhum jogo recentemente.'}
                 </span>
-              </div>
-            )}
-
-            {activeTab === 'all' && totalPages > 1 && (
-              <div className="games-modal-pagination">
-                <button
-                  type="button"
-                  className="page-btn"
-                  disabled={safePage === 1}
-                  onClick={() => handlePageChange(safePage - 1)}
-                >
-                  «
-                </button>
-                {Array.from({ length: totalPages }, (_, index) => {
-                  const page = index + 1
-                  return (
-                    <button
-                      key={page}
-                      type="button"
-                      className={`page-btn${safePage === page ? ' active' : ''}`}
-                      onClick={() => handlePageChange(page)}
-                    >
-                      {page}
-                    </button>
-                  )
-                })}
-                <button
-                  type="button"
-                  className="page-btn"
-                  disabled={safePage === totalPages}
-                  onClick={() => handlePageChange(safePage + 1)}
-                >
-                  »
-                </button>
               </div>
             )}
           </div>
