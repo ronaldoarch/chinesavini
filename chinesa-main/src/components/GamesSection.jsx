@@ -3,7 +3,7 @@ import api from '../services/api'
 import { useAuth } from '../contexts/AuthContext'
 import './GamesSection.css'
 
-function GamesSection({ onViewAll }) {
+function GamesSection({ onViewAll, onLaunchGame }) {
   const { isAuthenticated } = useAuth()
   const [providersData, setProvidersData] = useState([])
   const [loading, setLoading] = useState(true)
@@ -67,15 +67,18 @@ function GamesSection({ onViewAll }) {
 
   const handleGameClick = async (game) => {
     if (!isAuthenticated) {
-      // Show login modal or redirect
       return
     }
 
     if (game.providerCode && game.gameCode) {
       try {
         const response = await api.launchGame(game.providerCode, game.gameCode, 'pt')
-        if (response.success && response.data.launchUrl) {
-          window.open(response.data.launchUrl, '_blank')
+        if (response.success && response.data?.launchUrl) {
+          if (onLaunchGame) {
+            onLaunchGame(response.data.launchUrl)
+          } else {
+            window.open(response.data.launchUrl, '_blank')
+          }
         }
       } catch (error) {
         console.error('Error launching game:', error)

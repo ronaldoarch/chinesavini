@@ -26,6 +26,7 @@ import EditProfileModal from './components/EditProfileModal'
 import ChangePasswordModal from './components/ChangePasswordModal'
 import VipModal from './components/VipModal'
 import PopupPromoModal from './components/PopupPromoModal'
+import GameFrame from './components/GameFrame'
 import './styles/App.css'
 
 function AppContent() {
@@ -50,6 +51,7 @@ function AppContent() {
   const [pixAmount, setPixAmount] = React.useState(0)
   const [pixTransaction, setPixTransaction] = React.useState(null)
   const [promoPopup, setPromoPopup] = React.useState(null)
+  const [gameLaunchUrl, setGameLaunchUrl] = React.useState(null)
 
   React.useEffect(() => {
     api.getActivePopup()
@@ -90,15 +92,33 @@ function AppContent() {
     if (isAuthenticated) await refreshUser()
   }
 
+  const handleLaunchGame = (url) => {
+    setGameLaunchUrl(url)
+  }
+
+  const handleCloseGame = async () => {
+    setGameLaunchUrl(null)
+    if (isAuthenticated) {
+      try {
+        await api.syncGameBalance()
+      } catch (_) {}
+      refreshUser()
+    }
+  }
+
+  const lastSyncRef = React.useRef(0)
   React.useEffect(() => {
     if (!isAuthenticated) return
+    const MIN_SYNC_INTERVAL_MS = 3000
     const onVisibilityChange = async () => {
-      if (document.visibilityState === 'visible') {
-        try {
-          await api.syncGameBalance()
-        } catch (_) {}
-        refreshUser()
-      }
+      if (document.visibilityState !== 'visible') return
+      const now = Date.now()
+      if (now - lastSyncRef.current < MIN_SYNC_INTERVAL_MS) return
+      lastSyncRef.current = now
+      try {
+        await api.syncGameBalance()
+      } catch (_) {}
+      refreshUser()
     }
     document.addEventListener('visibilitychange', onVisibilityChange)
     return () => document.removeEventListener('visibilitychange', onVisibilityChange)
@@ -206,6 +226,7 @@ function AppContent() {
     setIsEditProfileOpen(false)
     setIsChangePasswordOpen(false)
     setIsVipOpen(false)
+    setGameLaunchUrl(null)
     closePromoPopup()
   }
 
@@ -259,7 +280,7 @@ function AppContent() {
       <NavigationIcons onVipClick={openVip} onPromotionsClick={openPromotions} onInviteClick={openInvite} />
       <BonusBanner />
       <JackpotDisplay />
-      <GamesSection onViewAll={openGames} />
+      <GamesSection onViewAll={openGames} onLaunchGame={handleLaunchGame} />
       <Footer />
       <ScrollToTopButton />
       <BottomNavigation
@@ -324,6 +345,7 @@ function AppContent() {
         onMenuClick={openMenu}
         onDepositClick={openDeposit}
         onRefreshBalance={handleRefreshBalance}
+        onLaunchGame={handleLaunchGame}
         onPromotionsClick={openPromotions}
         onInviteClick={openInvite}
         isMenuOpen={isMenuOpen}
@@ -401,6 +423,7 @@ function AppContent() {
       />
       <InviteModal isOpen={isInviteOpen} onClose={closeInvite} />
       <PopupPromoModal popup={promoPopup} onClose={closePromoPopup} />
+      <GameFrame launchUrl={gameLaunchUrl} onClose={handleCloseGame} />
     </div>
   )
 }

@@ -14,6 +14,7 @@ function GamesModal({
   onMenuClick,
   onDepositClick,
   onRefreshBalance,
+  onLaunchGame,
   onPromotionsClick,
   onInviteClick,
   isMenuOpen,
@@ -150,7 +151,11 @@ function GamesModal({
     try {
       const response = await api.launchGame(game.providerCode, game.gameCode, 'pt')
       if (response.success && response.data?.launchUrl) {
-        window.open(response.data.launchUrl, '_blank')
+        if (onLaunchGame) {
+          onLaunchGame(response.data.launchUrl)
+        } else {
+          window.open(response.data.launchUrl, '_blank')
+        }
       } else {
         alert('Erro ao iniciar jogo. Tente novamente.')
       }

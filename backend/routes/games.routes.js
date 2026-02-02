@@ -248,6 +248,9 @@ router.post('/launch', protect, async (req, res) => {
         user.balance -= amountToDeposit
         user.bonusBalance = Math.min(user.bonusBalance || 0, user.balance)
         await user.save()
+        await new Promise((r) => setTimeout(r, 500))
+      } else {
+        console.warn('Launch: deposit to igamewin failed', depositRes.msg || depositRes)
       }
     }
 
