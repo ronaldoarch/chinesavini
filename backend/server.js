@@ -22,6 +22,8 @@ import bannerRoutes from './routes/banner.routes.js'
 import bonusRoutes from './routes/bonus.routes.js'
 import popupRoutes from './routes/popup.routes.js'
 import jackpotRoutes from './routes/jackpot.routes.js'
+import supportRoutes from './routes/support.routes.js'
+import promotionRoutes from './routes/promotion.routes.js'
 import trackingRoutes from './routes/tracking.routes.js'
 import { errorHandler } from './middleware/errorHandler.js'
 
@@ -86,6 +88,8 @@ app.use('/api/banners', bannerRoutes)
 app.use('/api/bonus', bonusRoutes)
 app.use('/api/popups', popupRoutes)
 app.use('/api/jackpot', jackpotRoutes)
+app.use('/api/support', supportRoutes)
+app.use('/api/promotions', promotionRoutes)
 app.use('/api/admin/tracking', trackingRoutes)
 
 // Health check

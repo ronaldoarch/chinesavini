@@ -1,9 +1,23 @@
 import express from 'express'
 import Transaction from '../models/Transaction.model.js'
 import User from '../models/User.model.js'
+import BonusConfig from '../models/BonusConfig.model.js'
 import WebhookLog from '../models/WebhookLog.model.js'
 import affiliateService from '../services/affiliate.service.js'
 import facebookService from '../services/facebook.service.js'
+
+function calcDepositBonus(amount, isFirstDeposit, bonusConfig) {
+  let percent = 0
+  if (isFirstDeposit && bonusConfig?.firstDepositBonusPercent) {
+    percent = bonusConfig.firstDepositBonusPercent
+  } else if (bonusConfig?.depositTiers?.length) {
+    const tier = [...bonusConfig.depositTiers]
+      .filter((t) => Number(t.amount) <= amount)
+      .sort((a, b) => Number(b.amount) - Number(a.amount))[0]
+    if (tier) percent = Number(tier.bonusPercent) || 0
+  }
+  return Math.round((amount * percent / 100) * 100) / 100
+}
 
 const router = express.Router()
 
@@ -72,8 +86,12 @@ router.post('/pix', async (req, res) => {
       const user = await User.findById(transaction.user)
       if (user) {
         const isFirstDeposit = user.totalDeposits === 0
-        user.balance += transaction.netAmount
-        user.totalDeposits += transaction.netAmount
+        const depositAmount = transaction.netAmount
+        const bonusConfig = await BonusConfig.getConfig().catch(() => null)
+        const bonusAmount = calcDepositBonus(depositAmount, isFirstDeposit, bonusConfig)
+        user.balance += depositAmount + bonusAmount
+        user.bonusBalance = (user.bonusBalance || 0) + bonusAmount
+        user.totalDeposits += depositAmount
         await user.save()
 
         // Update referral qualification and VIP level
@@ -82,7 +100,7 @@ router.post('/pix', async (req, res) => {
 
         // Facebook Conversions API: first deposit = Purchase
         if (isFirstDeposit) {
-          facebookService.sendFirstDeposit(user, transaction.netAmount, 'BRL').catch(() => {})
+          facebookService.sendFirstDeposit(user, depositAmount, 'BRL').catch(() => {})
         }
       }
     }

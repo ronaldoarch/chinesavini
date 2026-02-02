@@ -58,6 +58,11 @@
   padding: 0;
   border: 1px solid #f1f1f140;
   animation: promo-slide-down 0.6s ease;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  font: inherit;
+  appearance: none;
 }
 
 .promotions-card:hover {
@@ -68,6 +73,31 @@
   width: 100%;
   display: block;
   border-radius: 10px;
+}
+
+.promotions-card-title {
+  display: block;
+  padding: 8px 12px;
+  font-size: 0.9rem;
+  color: var(--text-white);
+  font-weight: 500;
+}
+
+.promotions-loading,
+.promotions-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 40px 20px;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.promotions-loading i,
+.promotions-empty i {
+  font-size: 2rem;
+  opacity: 0.7;
 }
 
 .promotions-content::-webkit-scrollbar {

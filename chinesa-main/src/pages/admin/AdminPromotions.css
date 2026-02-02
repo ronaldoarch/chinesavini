@@ -1,0 +1,198 @@
+.admin-promotions .admin-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--spacing-md);
+}
+
+.admin-promotions-desc {
+  color: rgba(255, 255, 255, 0.85);
+  margin-bottom: var(--spacing-lg);
+  font-size: 0.95rem;
+}
+
+.admin-promotions-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: var(--spacing-lg);
+}
+
+.admin-promotions-empty {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: var(--spacing-xl);
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.admin-promo-card {
+  background: linear-gradient(135deg, rgba(106, 46, 132, 0.9) 0%, rgba(63, 20, 83, 0.9) 100%);
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.admin-promo-thumb {
+  aspect-ratio: 16/9;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.admin-promo-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.admin-promo-info {
+  padding: var(--spacing-md);
+}
+
+.admin-promo-info h3 {
+  margin: 0 0 var(--spacing-xs);
+  font-size: 1rem;
+  color: var(--text-white);
+}
+
+.admin-promo-badge {
+  display: inline-block;
+  font-size: 0.8rem;
+  color: var(--gold, #fbbf24);
+  margin-right: var(--spacing-sm);
+}
+
+.admin-promo-status {
+  font-size: 0.75rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.admin-promo-status.active {
+  background: rgba(34, 197, 94, 0.3);
+  color: #86efac;
+}
+
+.admin-promo-status.inactive {
+  background: rgba(239, 68, 68, 0.3);
+  color: #fca5a5;
+}
+
+.admin-promo-actions {
+  display: flex;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.admin-promo-actions .btn-edit {
+  flex: 1;
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-white);
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.admin-promo-actions .btn-edit:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.admin-promo-actions .btn-delete {
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid rgba(239, 68, 68, 0.5);
+  background: rgba(239, 68, 68, 0.2);
+  color: #fca5a5;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.admin-promo-actions .btn-delete:hover {
+  background: rgba(239, 68, 68, 0.3);
+}
+
+.admin-promotions .admin-modal {
+  max-width: 480px;
+}
+
+.admin-promotions .form-group label {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--gold, #fbbf24);
+  font-size: 0.9rem;
+}
+
+.admin-promotions .form-group input[type="text"],
+.admin-promotions .form-group input[type="number"],
+.admin-promotions .form-group textarea,
+.admin-promotions .form-group select {
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(0, 0, 0, 0.2);
+  color: var(--text-white);
+}
+
+.admin-promotions .form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing-md);
+}
+
+.admin-promotions .form-current-img {
+  margin-bottom: 8px;
+}
+
+.admin-promotions .form-current-img img {
+  max-width: 120px;
+  max-height: 80px;
+  object-fit: cover;
+  border-radius: 6px;
+  display: block;
+}
+
+.admin-promotions .form-current-img span {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.admin-promotions .form-check label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.admin-promotions .form-actions {
+  display: flex;
+  gap: var(--spacing-md);
+  justify-content: flex-end;
+  margin-top: var(--spacing-lg);
+}
+
+.admin-promotions .form-actions button {
+  padding: 8px 20px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.admin-promotions .form-actions button[type="button"] {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-white);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.admin-promotions .form-actions button[type="submit"] {
+  background: var(--gradient-primary, linear-gradient(135deg, #8b5cf6, #7c3aed));
+  color: white;
+}
+
+.admin-promotions .form-actions button[type="submit"]:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}

@@ -29,6 +29,11 @@ const userSchema = new mongoose.Schema(
       default: 0,
       min: [0, 'Saldo não pode ser negativo']
     },
+    bonusBalance: {
+      type: Number,
+      default: 0,
+      min: [0, 'Saldo bônus não pode ser negativo']
+    },
     isActive: {
       type: Boolean,
       default: true

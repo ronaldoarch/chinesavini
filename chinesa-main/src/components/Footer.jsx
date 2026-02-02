@@ -1,7 +1,10 @@
 import React from 'react'
+import { useSupport } from '../contexts/SupportContext'
 import './Footer.css'
 
 function Footer() {
+  const { whatsappUrl, telegramUrl, instagramUrl } = useSupport()
+
   return (
     <footer className="footer">
       <div className="footer-container">
@@ -26,8 +29,18 @@ function Footer() {
           <div className="footer-col">
             <h5 className="footer-title">Suporte</h5>
             <ul className="footer-links">
-              <li><a href="https://t.me/grupo777win" target="_blank" rel="noreferrer">Suporte</a></li>
-              <li><a href="https://t.me/grupo777win" target="_blank" rel="noreferrer">Central de Ajuda</a></li>
+              {whatsappUrl && (
+                <li><a href={whatsappUrl} target="_blank" rel="noreferrer">WhatsApp</a></li>
+              )}
+              {telegramUrl && (
+                <>
+                  <li><a href={telegramUrl} target="_blank" rel="noreferrer">Suporte</a></li>
+                  <li><a href={telegramUrl} target="_blank" rel="noreferrer">Central de Ajuda</a></li>
+                </>
+              )}
+              {!whatsappUrl && !telegramUrl && (
+                <li><span style={{ opacity: 0.7 }}>Configure no admin</span></li>
+              )}
             </ul>
           </div>
         </div>
@@ -36,22 +49,26 @@ function Footer() {
           <div className="footer-col-full">
             <h5 className="footer-title">Contacte-nos</h5>
             <div className="social-links">
-              <a
-                href="https://www.instagram.com/grupo.777win?igsh=cTZjaDhtZ244MDc1"
-                className="social-link"
-                target="_blank"
-                rel="noreferrer"
-              >
-                <img src="/iconFooter/icon-ig.png" alt="Instagram" />
-              </a>
-              <a
-                href="https://t.me/grupo777win"
-                className="social-link"
-                target="_blank"
-                rel="noreferrer"
-              >
-                <img src="/iconFooter/icon-telegran.png" alt="Telegram" />
-              </a>
+              {instagramUrl && (
+                <a
+                  href={instagramUrl}
+                  className="social-link"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  <img src="/iconFooter/icon-ig.png" alt="Instagram" />
+                </a>
+              )}
+              {telegramUrl && (
+                <a
+                  href={telegramUrl}
+                  className="social-link"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  <img src="/iconFooter/icon-telegran.png" alt="Telegram" />
+                </a>
+              )}
               <a href="#" className="social-link" aria-label="18+">
                 <img src="/iconFooter/icon-18.png" alt="18+" />
               </a>

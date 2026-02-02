@@ -12,6 +12,8 @@ import AdminBonusConfig from '../pages/admin/AdminBonusConfig'
 import AdminPopups from '../pages/admin/AdminPopups'
 import AdminJackpot from '../pages/admin/AdminJackpot'
 import AdminTracking from '../pages/admin/AdminTracking'
+import AdminSupport from '../pages/admin/AdminSupport'
+import AdminPromotions from '../pages/admin/AdminPromotions'
 import './AdminLayout.css'
 
 function AdminLayout() {
@@ -196,6 +198,10 @@ function AdminLayout() {
         return <AdminJackpot />
       case 'tracking':
         return <AdminTracking />
+      case 'support':
+        return <AdminSupport />
+      case 'promotions':
+        return <AdminPromotions />
       default:
         return <AdminDashboard />
     }
@@ -294,6 +300,15 @@ function AdminLayout() {
           </li>
           <li>
             <button
+              className={activePage === 'promotions' ? 'active' : ''}
+              onClick={() => setActivePage('promotions')}
+            >
+              <i className="fa-solid fa-tags"></i>
+              <span>Promoções</span>
+            </button>
+          </li>
+          <li>
+            <button
               className={activePage === 'popups' ? 'active' : ''}
               onClick={() => setActivePage('popups')}
             >
@@ -317,6 +332,15 @@ function AdminLayout() {
             >
               <i className="fa-solid fa-chart-line"></i>
               <span>Rastreamento</span>
+            </button>
+          </li>
+          <li>
+            <button
+              className={activePage === 'support' ? 'active' : ''}
+              onClick={() => setActivePage('support')}
+            >
+              <i className="fa-solid fa-headset"></i>
+              <span>Suporte</span>
             </button>
           </li>
         </ul>

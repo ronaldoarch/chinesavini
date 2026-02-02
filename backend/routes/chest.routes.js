@@ -119,12 +119,13 @@ router.post('/:id/claim', protect, async (req, res) => {
       })
     }
 
-    // Add reward to user balance
+    // Add reward to user balance (baús = bônus, não sacável)
     const user = await User.findById(req.user._id)
     if (chest.type === 'invite') {
       user.affiliateBalance += chest.rewardAmount
     } else {
       user.balance += chest.rewardAmount
+      user.bonusBalance = (user.bonusBalance || 0) + chest.rewardAmount
     }
     await user.save()
 

@@ -472,6 +472,49 @@ class ApiService {
       body: JSON.stringify({ value })
     })
   }
+
+  // Promotions (public + admin)
+  async getPromotions() {
+    return this.request('/promotions', { method: 'GET' })
+  }
+
+  async getPromotionsAdmin() {
+    return this.request('/promotions/admin/all', { method: 'GET' })
+  }
+
+  async createPromotion(formData) {
+    return this.request('/promotions/admin', {
+      method: 'POST',
+      body: formData,
+      headers: {}
+    })
+  }
+
+  async updatePromotion(id, formData) {
+    return this.request(`/promotions/admin/${id}`, {
+      method: 'PUT',
+      body: formData,
+      headers: {}
+    })
+  }
+
+  async deletePromotion(id) {
+    return this.request(`/promotions/admin/${id}`, {
+      method: 'DELETE'
+    })
+  }
+
+  // Support config (public + admin)
+  async getSupportConfig() {
+    return this.request('/support/config', { method: 'GET' })
+  }
+
+  async updateSupportConfig(data) {
+    return this.request('/support/config', {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    })
+  }
 }
 
 export default new ApiService()

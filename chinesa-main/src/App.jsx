@@ -1,6 +1,7 @@
 import React from 'react'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { ThemeProvider } from './contexts/ThemeContext'
+import { SupportProvider } from './contexts/SupportContext'
 import api from './services/api'
 import Header from './components/Header'
 import NavigationIcons from './components/NavigationIcons'
@@ -38,6 +39,7 @@ function AppContent() {
   const [isPixOpen, setIsPixOpen] = React.useState(false)
   const [isDepositHistoryOpen, setIsDepositHistoryOpen] = React.useState(false)
   const [isGamesOpen, setIsGamesOpen] = React.useState(false)
+  const [gamesInitialTab, setGamesInitialTab] = React.useState('all')
   const [isBetsHistoryOpen, setIsBetsHistoryOpen] = React.useState(false)
   const [isProfileOpen, setIsProfileOpen] = React.useState(false)
   const [isWithdrawOpen, setIsWithdrawOpen] = React.useState(false)
@@ -126,7 +128,10 @@ function AppContent() {
     closeDepositHistory()
     openDeposit()
   }
-  const openGames = () => setIsGamesOpen(true)
+  const openGames = (initialTab = 'all') => {
+    setGamesInitialTab(initialTab || 'all')
+    setIsGamesOpen(true)
+  }
   const closeGames = () => setIsGamesOpen(false)
   const openBetsHistory = () => setIsBetsHistoryOpen(true)
   const closeBetsHistory = () => setIsBetsHistoryOpen(false)
@@ -199,7 +204,22 @@ function AppContent() {
         onClose={closeAuth}
         onAuthSuccess={handleAuthSuccess}
       />
-      <PromotionsModal isOpen={isPromotionsOpen} onClose={closePromotions} />
+      <PromotionsModal
+        isOpen={isPromotionsOpen}
+        onClose={closePromotions}
+        onDepositClick={() => {
+          closePromotions()
+          openDeposit()
+        }}
+        onWithdrawClick={() => {
+          closePromotions()
+          openWithdraw('saque')
+        }}
+        onInviteClick={() => {
+          closePromotions()
+          openInvite()
+        }}
+      />
       <DepositModal
         isOpen={isDepositOpen}
         onClose={closeDeposit}
@@ -224,6 +244,7 @@ function AppContent() {
       <GamesModal
         isOpen={isGamesOpen}
         onClose={closeGames}
+        initialTab={gamesInitialTab}
         onRegisterClick={openRegister}
         onLoginClick={openLogin}
         onMenuClick={openMenu}
@@ -313,7 +334,9 @@ function App() {
   return (
     <ThemeProvider>
       <AuthProvider>
-        <AppContent />
+        <SupportProvider>
+          <AppContent />
+        </SupportProvider>
       </AuthProvider>
     </ThemeProvider>
   )

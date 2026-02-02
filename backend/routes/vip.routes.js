@@ -176,8 +176,9 @@ router.post('/claim/:level', protect, async (req, res) => {
       })
     }
 
-    // Add bonus to balance
+    // Add bonus to balance (bônus VIP não é sacável)
     user.balance += vipLevel.bonus
+    user.bonusBalance = (user.bonusBalance || 0) + vipLevel.bonus
     if (!user.claimedVipBonuses) {
       user.claimedVipBonuses = []
     }
@@ -271,8 +272,9 @@ router.post('/claim-all', protect, async (req, res) => {
     const totalBonus = claimableLevels.reduce((sum, level) => sum + level.bonus, 0)
     const maxLevel = Math.max(...claimableLevels.map(l => l.level))
 
-    // Add bonuses
+    // Add bonuses (bônus VIP não é sacável)
     user.balance += totalBonus
+    user.bonusBalance = (user.bonusBalance || 0) + totalBonus
     if (!user.claimedVipBonuses) {
       user.claimedVipBonuses = []
     }

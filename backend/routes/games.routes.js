@@ -272,8 +272,9 @@ router.post('/deposit', protect, async (req, res) => {
     const response = await igamewinService.depositUserBalance(userCode, amount)
 
     if (response.status === 1) {
-      // Update user balance
+      // Update user balance (cap bonusBalance when balance decreases)
       user.balance -= amount
+      user.bonusBalance = Math.min(user.bonusBalance || 0, user.balance)
       await user.save()
 
       res.json({

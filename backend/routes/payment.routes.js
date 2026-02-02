@@ -176,7 +176,16 @@ router.post(
       const { amount, pixKey, pixKeyType, cpf } = req.body
       const user = req.user
 
-      // Check if user has sufficient balance
+      // Bônus não é sacável - apenas para jogar
+      const withdrawable = Math.max(0, (user.balance || 0) - (user.bonusBalance || 0))
+      if (parseFloat(amount) > withdrawable) {
+        return res.status(400).json({
+          success: false,
+          message: withdrawable <= 0
+            ? 'Seu saldo é de bônus e não pode ser sacado. Use nos jogos!'
+            : `Saldo disponível para saque: R$ ${withdrawable.toFixed(2)}. O restante é bônus para jogar.`
+        })
+      }
       if (user.balance < parseFloat(amount)) {
         return res.status(400).json({
           success: false,
@@ -220,6 +229,7 @@ router.post(
 
       // Deduct balance immediately (will be reversed if withdrawal fails)
       user.balance -= parseFloat(amount)
+      user.bonusBalance = Math.min(user.bonusBalance || 0, user.balance)
       await user.save()
 
       res.json({

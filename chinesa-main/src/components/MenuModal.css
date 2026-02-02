@@ -13,12 +13,36 @@
   animation: menu-slide-in 0.35s ease;
 }
 
+.menu-close-btn {
+  position: absolute;
+  top: var(--spacing-md);
+  right: var(--spacing-md);
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.15);
+  color: var(--text-white);
+  font-size: 1.25rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  transition: background 0.2s;
+}
+
+.menu-close-btn:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
 .menu-modal.is-closing {
   animation: menu-slide-out 0.35s ease forwards;
 }
 
 .menu-content {
   padding: var(--spacing-md);
+  padding-top: 52px;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
@@ -173,6 +197,22 @@
   box-shadow: 0 6px 16px rgba(225, 181, 74, 0.35);
   transform: translateY(-2px);
   filter: brightness(1.08);
+}
+
+.menu-social:is(a) {
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.menu-social-disabled {
+  opacity: 0.6;
+  cursor: default;
+  pointer-events: none;
+}
+
+.menu-list-item-disabled {
+  opacity: 0.6;
+  cursor: default;
 }
 
 @keyframes menu-slide-in {

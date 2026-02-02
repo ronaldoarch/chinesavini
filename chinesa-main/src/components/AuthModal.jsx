@@ -1,9 +1,12 @@
 import React, { useEffect, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
+import { useSupport } from '../contexts/SupportContext'
 import './AuthModal.css'
 
 function AuthModal({ isOpen, initialTab = 'register', onClose, onAuthSuccess }) {
   const { register, login } = useAuth()
+  const { whatsappUrl, telegramUrl } = useSupport()
+  const supportUrl = whatsappUrl || telegramUrl
   const [activeTab, setActiveTab] = useState(initialTab)
   const [showRegisterPassword, setShowRegisterPassword] = useState(false)
   const [showRegisterConfirm, setShowRegisterConfirm] = useState(false)
@@ -360,7 +363,11 @@ function AuthModal({ isOpen, initialTab = 'register', onClose, onAuthSuccess }) 
                 'Registro'
               )}
             </button>
-            <a className="auth-link" href="#">Suporte ao cliente</a>
+            {supportUrl ? (
+              <a className="auth-link" href={supportUrl} target="_blank" rel="noreferrer">Suporte ao cliente</a>
+            ) : (
+              <span className="auth-link auth-link-disabled">Suporte ao cliente</span>
+            )}
           </form>
         )}
 
@@ -437,7 +444,11 @@ function AuthModal({ isOpen, initialTab = 'register', onClose, onAuthSuccess }) 
               )}
             </button>
             <div className="auth-links">
-              <a className="auth-link" href="#">Suporte ao cliente</a>
+              {supportUrl ? (
+                <a className="auth-link" href={supportUrl} target="_blank" rel="noreferrer">Suporte ao cliente</a>
+              ) : (
+                <span className="auth-link auth-link-disabled">Suporte ao cliente</span>
+              )}
               <a className="auth-link" href="#">Esquecer a senha</a>
             </div>
           </form>

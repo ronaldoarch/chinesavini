@@ -7,6 +7,7 @@ import './GamesModal.css'
 function GamesModal({
   isOpen,
   onClose,
+  initialTab = 'all',
   onRegisterClick,
   onLoginClick,
   onMenuClick,
@@ -19,7 +20,13 @@ function GamesModal({
 }) {
   const [isClosing, setIsClosing] = useState(false)
   const [activeProvider, setActiveProvider] = useState('pg')
-  const [activeTab, setActiveTab] = useState('all')
+  const [activeTab, setActiveTab] = useState(initialTab || 'all')
+
+  useEffect(() => {
+    if (isOpen && initialTab) {
+      setActiveTab(initialTab)
+    }
+  }, [isOpen, initialTab])
   const [currentPage, setCurrentPage] = useState(1)
 
   useEffect(() => {

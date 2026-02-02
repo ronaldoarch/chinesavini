@@ -120,16 +120,21 @@ function WithdrawModal({ isOpen, onClose, onBack, initialTab = 'saque' }) {
 
             <div className="withdraw-card">
               <div className="withdraw-balance">
-                <span>Saldo Disponível</span>
+                <span>Saldo para saque</span>
                 <strong>
-                  {user?.balance
+                  {(user?.withdrawableBalance ?? user?.balance ?? 0) >= 0
                     ? new Intl.NumberFormat('pt-BR', {
                         style: 'currency',
                         currency: 'BRL',
                         minimumFractionDigits: 2
-                      }).format(user.balance)
+                      }).format(user?.withdrawableBalance ?? user?.balance ?? 0)
                     : 'R$ 0,00'}
                 </strong>
+                {(user?.bonusBalance ?? 0) > 0 && (
+                  <small className="withdraw-bonus-note">
+                    Bônus ({new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(user.bonusBalance || 0)}) é para jogar, não pode ser sacado.
+                  </small>
+                )}
               </div>
 
               <div className="withdraw-field-withdraw">

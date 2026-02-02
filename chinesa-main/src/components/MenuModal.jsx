@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
+import { useSupport } from '../contexts/SupportContext'
 import './MenuModal.css'
 
 function MenuModal({
@@ -12,6 +13,7 @@ function MenuModal({
   isLoggedIn,
   onLogout
 }) {
+  const { whatsappUrl, telegramUrl, instagramUrl } = useSupport()
   const [isClosing, setIsClosing] = useState(false)
   const closeTimerRef = useRef(null)
 
@@ -53,6 +55,14 @@ function MenuModal({
 
   return (
     <div className={modalClassName}>
+      <button
+        type="button"
+        className="menu-close-btn"
+        onClick={handleClose}
+        aria-label="Fechar menu"
+      >
+        <i className="fa-solid fa-xmark"></i>
+      </button>
       <div className="menu-content">
         <div className="menu-search">
           <input type="text" placeholder="Pesquisar" />
@@ -65,7 +75,7 @@ function MenuModal({
             type="button"
             onClick={() => {
               onClose()
-              if (onOpenGames) onOpenGames()
+              if (onOpenGames) onOpenGames('all')
             }}
           >
             <img src="/iconMenu/roleta.png" alt="Slots" />
@@ -76,7 +86,7 @@ function MenuModal({
             type="button"
             onClick={() => {
               onClose()
-              if (onOpenGames) onOpenGames()
+              if (onOpenGames) onOpenGames('recent')
             }}
           >
             <img src="/iconMenu/clock.png" alt="Recente" />
@@ -87,7 +97,7 @@ function MenuModal({
             type="button"
             onClick={() => {
               onClose()
-              if (onOpenGames) onOpenGames()
+              if (onOpenGames) onOpenGames('favorites')
             }}
           >
             <img src="/iconMenu/stars.png" alt="Favoritos" />
@@ -114,7 +124,7 @@ function MenuModal({
             type="button"
             onClick={() => {
               onClose()
-              if (onOpenGames) onOpenGames()
+              if (onOpenGames) onOpenGames('all')
             }}
           >
             <i className="fa-solid fa-gamepad"></i>
@@ -155,24 +165,57 @@ function MenuModal({
         <div className="menu-divider"></div>
 
         <div className="menu-list">
-          <button className="menu-list-item" type="button">
-            <i className="fa-solid fa-download"></i>
-            <span>Baixar App</span>
-          </button>
-          <button className="menu-list-item" type="button">
-            <i className="fa-regular fa-circle-question"></i>
-            <span>Suporte</span>
-          </button>
+          {whatsappUrl ? (
+            <a
+              className="menu-list-item"
+              href={whatsappUrl}
+              target="_blank"
+              rel="noreferrer"
+              onClick={onClose}
+            >
+              <i className="fa-brands fa-whatsapp"></i>
+              <span>Suporte</span>
+            </a>
+          ) : (
+            <span className="menu-list-item menu-list-item-disabled">
+              <i className="fa-regular fa-circle-question"></i>
+              <span>Suporte</span>
+            </span>
+          )}
         </div>
 
-        <button className="menu-social telegram" type="button">
-          <i className="fa-brands fa-telegram"></i>
-          Telegram
-        </button>
-        <button className="menu-social instagram" type="button">
-          <i className="fa-brands fa-instagram"></i>
-          Instagram
-        </button>
+        {telegramUrl ? (
+          <a
+            className="menu-social telegram"
+            href={telegramUrl}
+            target="_blank"
+            rel="noreferrer"
+          >
+            <i className="fa-brands fa-telegram"></i>
+            Telegram
+          </a>
+        ) : (
+          <span className="menu-social telegram menu-social-disabled">
+            <i className="fa-brands fa-telegram"></i>
+            Telegram
+          </span>
+        )}
+        {instagramUrl ? (
+          <a
+            className="menu-social instagram"
+            href={instagramUrl}
+            target="_blank"
+            rel="noreferrer"
+          >
+            <i className="fa-brands fa-instagram"></i>
+            Instagram
+          </a>
+        ) : (
+          <span className="menu-social instagram menu-social-disabled">
+            <i className="fa-brands fa-instagram"></i>
+            Instagram
+          </span>
+        )}
       </div>
     </div>
   )
