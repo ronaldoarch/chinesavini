@@ -3,8 +3,22 @@ import { protect } from '../middleware/auth.middleware.js'
 import { isAdmin } from '../middleware/admin.middleware.js'
 import igamewinService from '../services/igamewin.service.js'
 import GameConfig from '../models/GameConfig.model.js'
+import User from '../models/User.model.js'
+import GameTxnLog from '../models/GameTxnLog.model.js'
 
 const router = express.Router()
+
+/** Validate iGameWin seamless callback (agent_secret). No JWT - iGameWin calls us. */
+function validateSeamlessAgent(req, res, next) {
+  const agentCode = req.body?.agent_code
+  const agentSecret = req.body?.agent_secret
+  const expectedSecret = process.env.IGAMEWIN_AGENT_SECRET || ''
+  const expectedCode = process.env.IGAMEWIN_AGENT_CODE || 'Midaslabs'
+  if (!agentSecret || agentSecret !== expectedSecret || agentCode !== expectedCode) {
+    return res.status(403).json({ status: 0, msg: 'INVALID_AGENT' })
+  }
+  next()
+}
 
 // @route   GET /api/games/config
 // @desc    Get game configuration
@@ -221,38 +235,41 @@ router.post('/launch', protect, async (req, res) => {
       console.log('User creation:', error.message)
     }
 
-    // Recover any balance stuck in igamewin from previous session (user closed without syncing)
-    try {
-      const moneyInfo = await igamewinService.getMoneyInfo(userCode)
-      if (moneyInfo.status === 1) {
-        const igamewinBalance = Number(
-          moneyInfo.user?.balance ?? moneyInfo.user_balance ?? moneyInfo.balance ?? 0
-        )
-        if (igamewinBalance > 0) {
-          const withdrawRes = await igamewinService.withdrawUserBalance(userCode, igamewinBalance)
-          if (withdrawRes.status === 1) {
-            user.balance = (user.balance || 0) + igamewinBalance
-            await user.save()
+    const isSeamless = (process.env.IGAMEWIN_API_MODE || 'transfer').toLowerCase() === 'seamless'
+
+    if (!isSeamless) {
+      // Transfer mode: recover any balance stuck in igamewin from previous session
+      try {
+        const moneyInfo = await igamewinService.getMoneyInfo(userCode)
+        if (moneyInfo.status === 1) {
+          const igamewinBalanceReais = igamewinService.parseUserBalanceFromMoneyInfo(moneyInfo)
+          if (igamewinBalanceReais > 0) {
+            const withdrawRes = await igamewinService.withdrawUserBalance(userCode, igamewinBalanceReais)
+            if (withdrawRes.status === 1) {
+              user.balance = (user.balance || 0) + igamewinBalanceReais
+              await user.save()
+            }
           }
         }
+      } catch (err) {
+        console.warn('Recover igamewin balance:', err.message)
       }
-    } catch (err) {
-      console.warn('Recover igamewin balance:', err.message)
-    }
 
-    // Deposit user balance to igamewin so it appears in the game
-    const amountToDeposit = Math.max(0, user.balance || 0)
-    if (amountToDeposit > 0) {
-      const depositRes = await igamewinService.depositUserBalance(userCode, amountToDeposit)
-      if (depositRes.status === 1) {
-        user.balance -= amountToDeposit
-        user.bonusBalance = Math.min(user.bonusBalance || 0, user.balance)
-        await user.save()
-        await new Promise((r) => setTimeout(r, 500))
-      } else {
-        console.warn('Launch: deposit to igamewin failed', depositRes.msg || depositRes)
+      // Deposit user balance to igamewin so it appears in the game
+      const amountToDeposit = Math.max(0, user.balance || 0)
+      if (amountToDeposit > 0) {
+        const depositRes = await igamewinService.depositUserBalance(userCode, amountToDeposit)
+        if (depositRes.status === 1) {
+          user.balance -= amountToDeposit
+          user.bonusBalance = Math.min(user.bonusBalance || 0, user.balance)
+          await user.save()
+          await new Promise((r) => setTimeout(r, 500))
+        } else {
+          console.warn('Launch: deposit to igamewin failed', depositRes.msg || depositRes)
+        }
       }
     }
+    // Seamless mode: no deposit - iGameWin calls our /api/games/seamless for balance & transactions
 
     // Launch game
     const response = await igamewinService.launchGame(userCode, providerCode, gameCode, lang)
@@ -315,8 +332,8 @@ router.post('/deposit', protect, async (req, res) => {
         success: true,
         message: 'Depósito realizado com sucesso',
         data: {
-          userBalance: response.user_balance,
-          agentBalance: response.agent_balance
+          userBalance: (response.user_balance ?? 0) / 100,
+          agentBalance: (response.agent_balance ?? 0) / 100
         }
       })
     } else {
@@ -362,8 +379,8 @@ router.post('/withdraw', protect, async (req, res) => {
         success: true,
         message: 'Saque realizado com sucesso',
         data: {
-          userBalance: response.user_balance,
-          agentBalance: response.agent_balance
+          userBalance: (response.user_balance ?? 0) / 100,
+          agentBalance: (response.agent_balance ?? 0) / 100
         }
       })
     } else {
@@ -383,12 +400,20 @@ router.post('/withdraw', protect, async (req, res) => {
 })
 
 // @route   POST /api/games/sync-balance
-// @desc    Withdraw balance from igamewin back to user (call when user returns from game)
+// @desc    Withdraw balance from igamewin back to user (Transfer mode) or no-op (Seamless mode)
 // @access  Private
 router.post('/sync-balance', protect, async (req, res) => {
   try {
     const user = req.user
     const userCode = user._id.toString()
+    const isSeamless = (process.env.IGAMEWIN_API_MODE || 'transfer').toLowerCase() === 'seamless'
+
+    if (isSeamless) {
+      return res.json({
+        success: true,
+        data: { balance: user.balance, synced: true }
+      })
+    }
 
     const moneyInfo = await igamewinService.getMoneyInfo(userCode)
     if (moneyInfo.status !== 1) {
@@ -398,26 +423,24 @@ router.post('/sync-balance', protect, async (req, res) => {
       })
     }
 
-    const igamewinBalance = Number(
-      moneyInfo.user?.balance ?? moneyInfo.user_balance ?? moneyInfo.balance ?? 0
-    )
-    if (igamewinBalance <= 0) {
+    const igamewinBalanceReais = igamewinService.parseUserBalanceFromMoneyInfo(moneyInfo)
+    if (igamewinBalanceReais <= 0) {
       return res.json({
         success: true,
         data: { balance: user.balance, synced: true }
       })
     }
 
-    const withdrawRes = await igamewinService.withdrawUserBalance(userCode, igamewinBalance)
+    const withdrawRes = await igamewinService.withdrawUserBalance(userCode, igamewinBalanceReais)
     if (withdrawRes.status === 1) {
-      user.balance = (user.balance || 0) + igamewinBalance
+      user.balance = (user.balance || 0) + igamewinBalanceReais
       await user.save()
       return res.json({
         success: true,
         data: {
           balance: user.balance,
           synced: true,
-          amountRecovered: igamewinBalance
+          amountRecovered: igamewinBalanceReais
         }
       })
     }
@@ -436,6 +459,90 @@ router.post('/sync-balance', protect, async (req, res) => {
   }
 })
 
+// @route   POST /api/games/seamless
+// @desc    iGameWin Seamless API callback - user_balance & transaction (no auth, validated by agent_secret)
+// @access  Public (iGameWin server)
+router.post('/seamless', validateSeamlessAgent, async (req, res) => {
+  try {
+    const { method, user_code } = req.body
+    if (!method || !user_code) {
+      return res.status(400).json({ status: 0, msg: 'INVALID_PARAMETER' })
+    }
+
+    const user = await User.findById(user_code)
+    if (!user) {
+      return res.status(404).json({ status: 0, msg: 'INVALID_USER', user_balance: 0 })
+    }
+
+    if (method === 'user_balance') {
+      const balanceReais = Math.max(0, user.balance || 0)
+      const balanceCents = Math.round(balanceReais * 100)
+      return res.json({ status: 1, user_balance: balanceCents })
+    }
+
+    if (method === 'transaction') {
+      const { game_type, slot, agent_balance, user_balance: igamewinUserBalance } = req.body
+      const slotData = slot || req.body[game_type] || {}
+      const txnId = slotData.txn_id
+      const txnType = slotData.txn_type || 'debit_credit'
+      const betCents = Number(slotData.bet_money ?? slotData.bet ?? 0)
+      const winCents = Number(slotData.win_money ?? slotData.win ?? 0)
+
+      if (!txnId) {
+        return res.status(400).json({ status: 0, msg: 'INVALID_PARAMETER' })
+      }
+
+      const existing = await GameTxnLog.findOne({ txnId })
+      if (existing) {
+        const balanceCents = Math.round((existing.balanceAfterReais || 0) * 100)
+        return res.json({ status: 1, user_balance: balanceCents })
+      }
+
+      let deltaReais = 0
+      if (txnType === 'debit') {
+        deltaReais = -betCents / 100
+      } else if (txnType === 'credit') {
+        deltaReais = winCents / 100
+      } else {
+        deltaReais = (winCents - betCents) / 100
+      }
+
+      const currentBalance = Math.max(0, user.balance || 0)
+      const newBalance = currentBalance + deltaReais
+
+      if (newBalance < 0) {
+        return res.json({ status: 0, msg: 'INSUFFICIENT_USER_FUNDS', user_balance: Math.round(currentBalance * 100) })
+      }
+
+      user.balance = newBalance
+      user.bonusBalance = Math.min(user.bonusBalance || 0, user.balance)
+      if (deltaReais < 0) {
+        user.totalBets = (user.totalBets || 0) + Math.abs(deltaReais)
+      }
+      await user.save()
+
+      await GameTxnLog.create({
+        txnId,
+        user: user._id,
+        gameType: game_type,
+        providerCode: slotData.provider_code,
+        gameCode: slotData.game_code,
+        txnType,
+        betCents,
+        winCents,
+        balanceAfterReais: newBalance
+      })
+
+      return res.json({ status: 1, user_balance: Math.round(newBalance * 100) })
+    }
+
+    return res.status(400).json({ status: 0, msg: 'INVALID_METHOD' })
+  } catch (error) {
+    console.error('Seamless API error:', error)
+    return res.status(500).json({ status: 0, msg: 'INTERNAL_ERROR' })
+  }
+})
+
 // @route   GET /api/games/balance
 // @desc    Get user game balance
 // @access  Private
@@ -449,8 +556,8 @@ router.get('/balance', protect, async (req, res) => {
       res.json({
         success: true,
         data: {
-          userBalance: response.user?.balance || 0,
-          agentBalance: response.agent?.balance || 0
+          userBalance: (response.user?.balance ?? response.user_balance ?? 0) / 100,
+          agentBalance: (response.agent?.balance ?? response.agent_balance ?? 0) / 100
         }
       })
     } else {

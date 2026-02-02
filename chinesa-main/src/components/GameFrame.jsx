@@ -29,7 +29,7 @@ function GameFrame({ launchUrl, onClose }) {
         src={launchUrl}
         className="game-frame-iframe"
         title="Jogo"
-        allow="fullscreen; autoplay; payment"
+        allow="autoplay; payment"
         allowFullScreen
       />
     </div>

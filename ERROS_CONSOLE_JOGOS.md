@@ -13,8 +13,8 @@
 - **Solução:** Contatar suporte da igamewin – é bug no código deles
 
 ### 3. `Allow attribute will take precedence over 'allowfullscreen'`
-- **Origem:** Aviso do React sobre atributos de iframe
-- **Impacto:** Baixo, não afeta funcionalidade
+- **Origem:** Conflito entre atributos `allow` e `allowFullScreen` do iframe
+- **Correção:** Removido "fullscreen" do `allow` (usar apenas `allowFullScreen`)
 
 ### 4. `The path of the provided scope ('/') is not under the max scope allowed`
 - **Origem:** Service Worker do jogo ou extensão
@@ -22,13 +22,21 @@
 
 ---
 
+### 5. `/favicon.ico` 404
+- **Origem:** Navegador solicita favicon por padrão
+- **Correção:** Adicionado `<link rel="icon">` no index.html apontando para o logo
+
+---
+
 ## Correções aplicadas no nosso código
 
-1. **Loop de sincronização:** O `visibilitychange` disparava várias vezes seguidas. Foi adicionado throttle de 3 segundos para evitar chamadas repetidas ao sync.
+1. **Favicon 404:** Adicionado link para logo como ícone da página
+2. **Aviso allowfullscreen:** Removido "fullscreen" do atributo allow do iframe
+3. **Loop de sincronização:** O `visibilitychange` disparava várias vezes seguidas. Foi adicionado throttle de 3 segundos para evitar chamadas repetidas ao sync.
 
-2. **Delay após depósito:** Pequeno delay (500ms) entre o depósito no igamewin e o launch, para dar tempo do saldo ser processado antes do jogo carregar.
+4. **Delay após depósito:** Pequeno delay (500ms) entre o depósito no igamewin e o launch, para dar tempo do saldo ser processado antes do jogo carregar.
 
-3. **Log de falha:** Se o depósito no igamewin falhar, o backend agora registra um aviso nos logs.
+5. **Log de falha:** Se o depósito no igamewin falhar, o backend agora registra um aviso nos logs.
 
 ---
 

@@ -2,6 +2,10 @@ import axios from 'axios'
 
 const IGAMEWIN_API_URL = 'https://igamewin.com/api/v1'
 
+/** iGameWin API uses amounts in cents (e.g. 10000 = R$ 100.00). Our DB uses reais. */
+const reaisToCents = (reais) => Math.round(Number(reais) * 100)
+const centsToReais = (cents) => (Number(cents) || 0) / 100
+
 class IGameWinService {
   constructor() {
     this.agentCode = process.env.IGAMEWIN_AGENT_CODE || 'Midaslabs'
@@ -41,17 +45,17 @@ class IGameWinService {
     return this.makeRequest('user_create', params)
   }
 
-  async depositUserBalance(userCode, amount) {
+  async depositUserBalance(userCode, amountInReais) {
     return this.makeRequest('user_deposit', {
       user_code: userCode,
-      amount: amount
+      amount: reaisToCents(amountInReais)
     })
   }
 
-  async withdrawUserBalance(userCode, amount) {
+  async withdrawUserBalance(userCode, amountInReais) {
     return this.makeRequest('user_withdraw', {
       user_code: userCode,
-      amount: amount
+      amount: reaisToCents(amountInReais)
     })
   }
 
@@ -71,6 +75,12 @@ class IGameWinService {
       game_code: gameCode,
       lang: lang
     })
+  }
+
+  /** Returns balance in reais (converted from API cents). Use raw response for agent-only or all_users. */
+  parseUserBalanceFromMoneyInfo(moneyInfo) {
+    const raw = moneyInfo.user?.balance ?? moneyInfo.user_balance ?? moneyInfo.balance ?? 0
+    return centsToReais(raw)
   }
 
   async getMoneyInfo(userCode = null, allUsers = false) {
@@ -128,7 +138,7 @@ class IGameWinService {
     return this.makeRequest('control_demo_spin', params)
   }
 
-  // Seamless API Methods (Site API)
+  // Seamless API Methods (Site API - iGameWin calls OUR backend)
   async getUserBalance(userCode) {
     // This should be called from your site API endpoint
     // Not directly from igamewin
