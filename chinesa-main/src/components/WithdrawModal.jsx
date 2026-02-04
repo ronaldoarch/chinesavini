@@ -214,7 +214,7 @@ function WithdrawModal({ isOpen, onClose, onBack, initialTab = 'saque', onWithdr
       return
     }
 
-    // Formatar CPF - sempre usar a chave PIX se for CPF, senão tentar obter do usuário
+    // CPF será usado apenas se disponível, caso contrário o backend usará CPF genérico
     let cpf = null
     
     // Se o tipo de chave for CPF, usar a própria chave como CPF
@@ -225,23 +225,14 @@ function WithdrawModal({ isOpen, onClose, onBack, initialTab = 'saque', onWithdr
       }
     }
     
-    // Se não conseguiu CPF da chave, tentar obter do usuário
+    // Se não conseguiu CPF da chave, tentar obter do usuário (opcional)
     if (!cpf) {
       if (user?.cpf) {
         cpf = user.cpf
       } else if (user?.document) {
         cpf = user.document
-      } else {
-        // Se não tiver CPF, mostrar erro pedindo para cadastrar conta com CPF
-        setWithdrawError('É necessário ter uma conta PIX com chave CPF ou informar seu CPF no perfil para realizar saques')
-        return
       }
-    }
-    
-    // Validar formato do CPF
-    if (!cpf || !cpf.match(/^\d{3}\.\d{3}\.\d{3}-\d{2}$/)) {
-      setWithdrawError('CPF inválido. Por favor, cadastre uma conta PIX com chave CPF')
-      return
+      // Se não tiver CPF, o backend usará o CPF genérico configurado
     }
 
     try {

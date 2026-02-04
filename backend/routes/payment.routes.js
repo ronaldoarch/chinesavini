@@ -245,33 +245,21 @@ router.post(
       })
 
       // Process withdrawal via NXGATE
-      // Validar e formatar CPF para o formato esperado (XXX.XXX.XXX-XX)
-      if (!cpf || cpf === '000.000.000-00') {
-        return res.status(400).json({
-          success: false,
-          message: 'CPF inválido. Por favor, cadastre uma conta PIX com chave CPF ou informe seu CPF no perfil.'
-        })
-      }
+      // Usar CPF genérico configurado se não houver CPF fornecido
+      const gatewayConfig = await GatewayConfig.getConfig()
+      let documentoFormatted = cpf || gatewayConfig?.defaultCpf || '000.000.000-00'
       
-      let documentoFormatted = cpf
-      if (!cpf.includes('.')) {
-        const digits = cpf.replace(/\D/g, '')
+      // Formatar CPF para o formato esperado (XXX.XXX.XXX-XX)
+      if (!documentoFormatted.includes('.')) {
+        const digits = documentoFormatted.replace(/\D/g, '')
         if (digits.length === 11) {
           documentoFormatted = `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`
-        } else {
-          return res.status(400).json({
-            success: false,
-            message: 'CPF inválido. Deve conter 11 dígitos.'
-          })
         }
       }
       
-      // Validar formato final do CPF
+      // Garantir formato válido (mesmo que seja genérico)
       if (!documentoFormatted.match(/^\d{3}\.\d{3}\.\d{3}-\d{2}$/)) {
-        return res.status(400).json({
-          success: false,
-          message: 'CPF inválido. Formato esperado: XXX.XXX.XXX-XX'
-        })
+        documentoFormatted = '000.000.000-00' // Fallback para CPF genérico padrão
       }
 
       const withdrawResult = await nxgateService.withdrawPix({

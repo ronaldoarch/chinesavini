@@ -17,6 +17,7 @@ router.get('/config', protect, isAdmin, async (req, res) => {
         apiKey: config.apiKey,
         webhookBaseUrl: config.webhookBaseUrl,
         apiUrl: config.apiUrl,
+        defaultCpf: config.defaultCpf,
         isActive: config.isActive
       }
     })
@@ -35,7 +36,7 @@ router.get('/config', protect, isAdmin, async (req, res) => {
 // @access  Private/Admin
 router.put('/config', protect, isAdmin, async (req, res) => {
   try {
-    const { apiKey, webhookBaseUrl, apiUrl, isActive } = req.body
+    const { apiKey, webhookBaseUrl, apiUrl, defaultCpf, isActive } = req.body
 
     let config = await GatewayConfig.findOne()
     
@@ -43,13 +44,15 @@ router.put('/config', protect, isAdmin, async (req, res) => {
       config = new GatewayConfig({
         apiKey: apiKey || process.env.NXGATE_API_KEY || '',
         webhookBaseUrl: webhookBaseUrl || process.env.WEBHOOK_BASE_URL || 'http://localhost:5000',
-        apiUrl: apiUrl || 'https://nxgate.com.br/api'
+        apiUrl: apiUrl || 'https://nxgate.com.br/api',
+        defaultCpf: defaultCpf || process.env.NXGATE_DEFAULT_CPF || '000.000.000-00'
       })
     }
 
     if (apiKey !== undefined) config.apiKey = apiKey
     if (webhookBaseUrl !== undefined) config.webhookBaseUrl = webhookBaseUrl
     if (apiUrl !== undefined) config.apiUrl = apiUrl
+    if (defaultCpf !== undefined) config.defaultCpf = defaultCpf
     if (isActive !== undefined) config.isActive = isActive
 
     await config.save()
@@ -61,6 +64,7 @@ router.put('/config', protect, isAdmin, async (req, res) => {
         apiKey: config.apiKey,
         webhookBaseUrl: config.webhookBaseUrl,
         apiUrl: config.apiUrl,
+        defaultCpf: config.defaultCpf,
         isActive: config.isActive
       }
     })
