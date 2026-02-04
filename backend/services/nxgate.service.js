@@ -81,21 +81,40 @@ class NxgateService {
   async withdrawPix(data) {
     try {
       await this.getConfig()
+      
+      // Formatar documento (CPF) se necessário - deve estar no formato XXX.XXX.XXX-XX
+      let documento = data.documento
+      if (documento && !documento.includes('.')) {
+        // Se está apenas com números, formatar
+        const digits = documento.replace(/\D/g, '')
+        if (digits.length === 11) {
+          documento = `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`
+        }
+      }
+      
+      // Formatar valor como string conforme documentação
+      const valor = parseFloat(data.valor).toFixed(2)
+      
       const payload = {
         api_key: this.apiKey,
-        valor: parseFloat(data.valor).toFixed(2),
+        valor: valor, // String conforme documentação
         chave_pix: data.chave_pix,
         tipo_chave: data.tipo_chave,
-        documento: data.documento,
-        ...(data.nome_recebedor && { nome_recebedor: data.nome_recebedor }),
-        webhook: data.webhook || `${this.webhookBaseUrl}/api/webhooks/pix-withdraw`
+        documento: documento,
+        ...(data.webhook && { webhook: data.webhook })
       }
+
+      console.log('NXGATE Withdraw Request:', {
+        url: `${this.baseURL}/pix/sacar`,
+        payload: { ...payload, api_key: '***' }
+      })
 
       const response = await axios.post(`${this.baseURL}/pix/sacar`, payload, {
         headers: {
           'Content-Type': 'application/json',
           'accept': 'application/json'
-        }
+        },
+        timeout: 30000
       })
 
       return {
@@ -103,11 +122,20 @@ class NxgateService {
         data: response.data
       }
     } catch (error) {
-      console.error('NXGATE Withdraw PIX Error:', error.response?.data || error.message)
+      const errorDetails = {
+        message: error.message,
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        url: error.config?.url,
+        method: error.config?.method
+      }
+      console.error('NXGATE Withdraw PIX Error:', JSON.stringify(errorDetails, null, 2))
+
       return {
         success: false,
         error: error.response?.data || error.message,
-        message: error.response?.data?.message || 'Erro ao processar saque'
+        message: error.response?.data?.message || error.response?.data?.error || 'Erro ao processar saque'
       }
     }
   }

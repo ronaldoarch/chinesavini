@@ -245,12 +245,20 @@ router.post(
       })
 
       // Process withdrawal via NXGATE
+      // Formatar CPF para o formato esperado (XXX.XXX.XXX-XX)
+      let documentoFormatted = cpf
+      if (!cpf.includes('.')) {
+        const digits = cpf.replace(/\D/g, '')
+        if (digits.length === 11) {
+          documentoFormatted = `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`
+        }
+      }
+
       const withdrawResult = await nxgateService.withdrawPix({
         valor: amount,
         chave_pix: pixKey,
         tipo_chave: pixKeyType,
-        documento: cpf.replace(/\D/g, ''),
-        nome_recebedor: holderName || user.username || 'Usuário',
+        documento: documentoFormatted,
         webhook: transaction.webhookUrl
       })
 
