@@ -15,14 +15,29 @@ class NxgateService {
   async getConfig() {
     try {
       const config = await GatewayConfig.getConfig()
+      
+      // Correção automática: atualizar URL antiga para nova (mesmo se não estiver ativa)
+      if (config && (config.apiUrl === 'https://api.nxgate.com.br' || config.apiUrl === 'https://api.nxgate.com.br/')) {
+        console.log('⚠️  Corrigindo URL antiga do NXGATE no banco de dados...')
+        config.apiUrl = 'https://nxgate.com.br/api'
+        await config.save()
+        console.log('✅ URL atualizada para:', config.apiUrl)
+      }
+      
       if (config && config.isActive) {
         this.apiKey = config.apiKey || this.apiKey
         this.baseURL = config.apiUrl || this.baseURL
         this.webhookBaseUrl = config.webhookBaseUrl || this.webhookBaseUrl
       }
+      
+      // Garantir que sempre use a URL correta, mesmo se config não estiver ativa
+      if (this.baseURL === 'https://api.nxgate.com.br' || this.baseURL === 'https://api.nxgate.com.br/') {
+        console.log('⚠️  Corrigindo baseURL para URL correta do NXGATE')
+        this.baseURL = 'https://nxgate.com.br/api'
+      }
     } catch (error) {
       console.error('Error loading gateway config:', error)
-      // Use defaults from env
+      // Use defaults from env (já está correto no const)
     }
   }
 
