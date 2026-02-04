@@ -113,6 +113,21 @@ router.post(
       })
 
       if (existingAccount) {
+        // Se a conta existe mas está inativa, reativá-la
+        if (!existingAccount.active) {
+          existingAccount.active = true
+          existingAccount.holderName = holderName.trim()
+          existingAccount.pixKeyType = pixKeyType
+          await existingAccount.save()
+          
+          return res.status(200).json({
+            success: true,
+            message: 'Conta PIX reativada com sucesso',
+            data: existingAccount
+          })
+        }
+        
+        // Se a conta está ativa, retornar erro
         return res.status(400).json({
           success: false,
           message: 'Você já possui uma conta PIX cadastrada com esta chave'
@@ -135,8 +150,28 @@ router.post(
     } catch (error) {
       console.error('Create PIX account error:', error)
       
-      // Erro de chave duplicada
+      // Erro de chave duplicada (índice único)
       if (error.code === 11000) {
+        // Tentar encontrar e reativar conta inativa
+        const inactiveAccount = await PixAccount.findOne({
+          user: req.user._id,
+          pixKey: pixKey.trim(),
+          active: false
+        })
+        
+        if (inactiveAccount) {
+          inactiveAccount.active = true
+          inactiveAccount.holderName = holderName.trim()
+          inactiveAccount.pixKeyType = pixKeyType
+          await inactiveAccount.save()
+          
+          return res.status(200).json({
+            success: true,
+            message: 'Conta PIX reativada com sucesso',
+            data: inactiveAccount
+          })
+        }
+        
         return res.status(400).json({
           success: false,
           message: 'Você já possui uma conta PIX cadastrada com esta chave'
