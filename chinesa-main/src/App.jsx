@@ -2,6 +2,7 @@ import React from 'react'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { ThemeProvider } from './contexts/ThemeContext'
 import { SupportProvider } from './contexts/SupportContext'
+import { useFacebookPixel } from './hooks/useFacebookPixel'
 import api from './services/api'
 import Header from './components/Header'
 import NavigationIcons from './components/NavigationIcons'
@@ -31,6 +32,7 @@ import './styles/App.css'
 
 function AppContent() {
   const { isAuthenticated, user, logout, refreshUser } = useAuth()
+  const { trackEvent } = useFacebookPixel()
   const [isAuthOpen, setIsAuthOpen] = React.useState(false)
   const [authTab, setAuthTab] = React.useState('register')
   const [isPromotionsOpen, setIsPromotionsOpen] = React.useState(false)
@@ -137,6 +139,10 @@ function AppContent() {
   const closeAuth = () => setIsAuthOpen(false)
   const handleAuthSuccess = () => {
     // Auth context will handle the state update
+    // Track CompleteRegistration event when user successfully registers/logs in
+    if (isAuthenticated && user) {
+      trackEvent('CompleteRegistration', { status: true })
+    }
   }
   const openPromotions = () => setIsPromotionsOpen(true)
   const closePromotions = () => setIsPromotionsOpen(false)
@@ -428,11 +434,18 @@ function AppContent() {
   )
 }
 
+// Component to initialize Facebook Pixel
+function FacebookPixelInitializer() {
+  useFacebookPixel() // Just initialize, don't need return value here
+  return null
+}
+
 function App() {
   return (
     <ThemeProvider>
       <AuthProvider>
         <SupportProvider>
+          <FacebookPixelInitializer />
           <AppContent />
         </SupportProvider>
       </AuthProvider>

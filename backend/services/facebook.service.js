@@ -1,9 +1,27 @@
 import crypto from 'crypto'
 import FacebookEventLog from '../models/FacebookEventLog.model.js'
+import TrackingConfig from '../models/TrackingConfig.model.js'
 
-const PIXEL_ID = process.env.FACEBOOK_PIXEL_ID
-const ACCESS_TOKEN = process.env.FACEBOOK_ACCESS_TOKEN
 const API_VERSION = process.env.FACEBOOK_API_VERSION || 'v18.0'
+
+// Get config from database (with fallback to env vars for backward compatibility)
+async function getConfig() {
+  try {
+    const config = await TrackingConfig.getConfig()
+    return {
+      pixelId: config.facebookPixelId || process.env.FACEBOOK_PIXEL_ID || '',
+      accessToken: config.facebookAccessToken || process.env.FACEBOOK_ACCESS_TOKEN || '',
+      activeEvents: Array.isArray(config.activeFacebookEvents) ? config.activeFacebookEvents : []
+    }
+  } catch (error) {
+    console.error('Error loading TrackingConfig:', error)
+    return {
+      pixelId: process.env.FACEBOOK_PIXEL_ID || '',
+      accessToken: process.env.FACEBOOK_ACCESS_TOKEN || '',
+      activeEvents: []
+    }
+  }
+}
 
 function hashSha256(value) {
   if (!value || typeof value !== 'string') return ''
@@ -31,11 +49,28 @@ async function sendEvent(eventName, userData, customData = {}, eventId = null, u
     sentAt: new Date()
   }
 
+  // Get config from database
+  const config = await getConfig()
+  const PIXEL_ID = config.pixelId
+  const ACCESS_TOKEN = config.accessToken
+  const activeEvents = config.activeEvents || []
+
+  // Check if event is active (if activeEvents is empty, allow all events for backward compatibility)
+  if (activeEvents.length > 0 && !activeEvents.includes(eventName)) {
+    await FacebookEventLog.create({
+      ...logEntry,
+      status: 'skipped',
+      errorMessage: `Evento ${eventName} não está ativo na configuração`,
+      response: null
+    })
+    return { success: false, reason: 'event_not_active' }
+  }
+
   if (!PIXEL_ID || !ACCESS_TOKEN) {
     await FacebookEventLog.create({
       ...logEntry,
       status: 'error',
-      errorMessage: 'FACEBOOK_PIXEL_ID ou FACEBOOK_ACCESS_TOKEN não configurados',
+      errorMessage: 'Facebook Pixel ID ou Access Token não configurados',
       response: null
     })
     return { success: false, reason: 'not_configured' }

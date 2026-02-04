@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useSupport } from '../contexts/SupportContext'
+import { useFacebookPixel } from '../hooks/useFacebookPixel'
 import './AuthModal.css'
 
 function AuthModal({ isOpen, initialTab = 'register', onClose, onAuthSuccess }) {
   const { register, login } = useAuth()
   const { whatsappUrl, telegramUrl } = useSupport()
+  const { trackEvent } = useFacebookPixel()
   const supportUrl = whatsappUrl || telegramUrl
   const [activeTab, setActiveTab] = useState(initialTab)
   const [showRegisterPassword, setShowRegisterPassword] = useState(false)
@@ -148,6 +150,8 @@ function AuthModal({ isOpen, initialTab = 'register', onClose, onAuthSuccess }) 
       })
       
       if (result.success) {
+        // Track Lead event (cadastro) - evento do pixel no frontend
+        trackEvent('Lead', { content_name: 'Cadastro' })
         if (onAuthSuccess) {
           onAuthSuccess()
         }

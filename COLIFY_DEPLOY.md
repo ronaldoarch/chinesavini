@@ -50,6 +50,41 @@ cd backend && npm install
 cd backend && npm start
 ```
 
+### 📦 Configuração de Volume Persistente (IMPORTANTE)
+
+Para garantir que **logos e banners não desapareçam** após cada deploy, você **DEVE** configurar um volume persistente:
+
+#### Passo a Passo:
+
+1. **Acesse a configuração do serviço Backend**
+2. **Vá para a aba "Advanced" ou "Volumes"**
+3. **Clique em "Add Volume Mount"**
+4. **Configure o volume:**
+
+   - **Name**: `uploads-storage` (ou qualquer nome descritivo)
+   - **Source Path**: `/root/uploads` (caminho no servidor host - você pode escolher outro)
+   - **Destination Path**: `/app/backend/uploads` ⚠️ **Este é o caminho dentro do container**
+
+5. **Salve a configuração**
+
+#### ⚠️ Importante:
+
+- O **Destination Path** deve ser `/app/backend/uploads` porque o código salva arquivos em `backend/uploads/`
+- O **Source Path** é onde os arquivos ficarão salvos no servidor host (persistente)
+- Após configurar, faça um novo deploy para aplicar as mudanças
+
+#### 🔍 Verificar se está funcionando:
+
+1. Faça upload de uma logo ou banner via admin
+2. Verifique se o arquivo aparece em `/root/uploads` no servidor (via SSH ou terminal)
+3. Faça um novo deploy
+4. Verifique se o arquivo ainda está acessível após o deploy
+
+#### 📝 Nota sobre caminhos:
+
+Se o caminho dentro do container for diferente (ex: `/app/uploads`), ajuste o **Destination Path** conforme necessário. Você pode verificar o caminho correto entrando no container via terminal do Colify.
+```
+
 ---
 
 ## 🎨 Serviço 2: Frontend

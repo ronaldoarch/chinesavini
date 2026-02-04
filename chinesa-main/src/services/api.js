@@ -430,6 +430,10 @@ class ApiService {
     })
   }
 
+  async getTrackingConfigPublic() {
+    return this.request('/admin/tracking/config/public', { method: 'GET' })
+  }
+
   // Bonus config (public for deposit modal)
   async getBonusConfig() {
     return this.request('/bonus/config', {

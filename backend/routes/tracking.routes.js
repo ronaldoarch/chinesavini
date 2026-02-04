@@ -8,6 +8,30 @@ import TrackingConfig from '../models/TrackingConfig.model.js'
 
 const router = express.Router()
 
+// Public route - get pixel ID for frontend
+// @route   GET /api/admin/tracking/config/public
+// @desc    Get public tracking config (only pixel ID for frontend)
+// @access  Public
+router.get('/config/public', async (req, res) => {
+  try {
+    const config = await TrackingConfig.getConfig()
+    res.json({
+      success: true,
+      data: {
+        facebookPixelId: config.facebookPixelId || null
+      }
+    })
+  } catch (error) {
+    console.error('Get public tracking config error:', error)
+    res.status(500).json({
+      success: false,
+      message: 'Erro ao buscar configuração',
+      error: error.message
+    })
+  }
+})
+
+// Admin routes - require authentication
 router.use(protect)
 router.use(isAdmin)
 
