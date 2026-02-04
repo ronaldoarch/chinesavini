@@ -319,10 +319,24 @@ router.post('/pix-withdraw', async (req, res) => {
     }
 
     // Determine status from webhook type
+    // Conforme documentação: PIX_CASHOUT_SUCCESS = sucesso, PIX_CASHOUT_ERROR = falha
+    // Também verificar campo 'worked' e 'status'
     let paymentStatus = 'failed'
-    if (type === 'PIX_CASHOUT_SUCCESS' || status === 'SUCCESS') {
+    const worked = body.worked === true || body.worked === 'true'
+    const statusUpper = (status || '').toString().toUpperCase()
+    const typeUpper = (type || '').toString().toUpperCase()
+    
+    if (
+      typeUpper === 'PIX_CASHOUT_SUCCESS' ||
+      statusUpper === 'SUCCESS' ||
+      (worked && statusUpper !== 'ERROR')
+    ) {
       paymentStatus = 'paid'
-    } else if (type === 'PIX_CASHOUT_ERROR' || status === 'ERROR') {
+    } else if (
+      typeUpper === 'PIX_CASHOUT_ERROR' ||
+      statusUpper === 'ERROR' ||
+      (!worked && statusUpper !== 'SUCCESS')
+    ) {
       paymentStatus = 'failed'
     }
 
@@ -331,43 +345,34 @@ router.post('/pix-withdraw', async (req, res) => {
     transaction.webhookReceived = true
     transaction.webhookData = req.body
 
-    if (fee !== undefined) {
-      transaction.fee = parseFloat(fee)
+    // Atualizar taxa se fornecida
+    if (fee !== undefined && fee !== null) {
+      transaction.fee = parseFloat(fee) || 0
       transaction.netAmount = transaction.amount - transaction.fee
     }
 
     if (paymentStatus === 'paid') {
-      transaction.paidAt = new Date()
+      transaction.paidAt = new Date(body.payment_date ? new Date(body.payment_date) : new Date())
+      
+      // Atualizar total de saques do usuário
+      const user = await User.findById(transaction.user)
+      if (user) {
+        user.totalWithdrawals += transaction.netAmount || transaction.amount
+        await user.save()
+      }
     } else if (paymentStatus === 'failed') {
       transaction.failedAt = new Date()
       
-      // Refund balance if withdrawal failed
+      // Reembolsar saldo se o saque falhou
       const user = await User.findById(transaction.user)
       if (user) {
         user.balance += transaction.amount
         await user.save()
-      }
-    } else {
-      transaction.failedAt = new Date()
-      
-      // Refund balance
-      const user = await User.findById(transaction.user)
-      if (user) {
-        user.balance += transaction.amount
-        await user.save()
+        console.log(`Webhook PIX Withdraw: Saldo reembolsado para usuário ${user._id} - R$ ${transaction.amount}`)
       }
     }
 
     await transaction.save()
-
-    // Update user withdrawal total if successful
-    if (paymentStatus === 'paid') {
-      const user = await User.findById(transaction.user)
-      if (user) {
-        user.totalWithdrawals += transaction.netAmount
-        await user.save()
-      }
-    }
 
     console.log(`Webhook PIX Withdraw: Transação ${idTransaction} atualizada para ${paymentStatus}`)
   } catch (error) {
