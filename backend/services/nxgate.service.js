@@ -1,7 +1,7 @@
 import axios from 'axios'
 import GatewayConfig from '../models/GatewayConfig.model.js'
 
-const NXGATE_API_URL = 'https://api.nxgate.com.br'
+const NXGATE_API_URL = 'https://nxgate.com.br/api'
 const NXGATE_API_KEY = process.env.NXGATE_API_KEY || 'd6fd1a0ed8daf4b33754d9f7d494d697'
 const WEBHOOK_BASE_URL = process.env.WEBHOOK_BASE_URL || 'http://localhost:5000'
 
@@ -104,12 +104,14 @@ class NxgateService {
         ...(data.webhook && { webhook: data.webhook })
       }
 
+      const endpoint = `${this.baseURL}/pix/sacar`
       console.log('NXGATE Withdraw Request:', {
-        url: `${this.baseURL}/pix/sacar`,
+        url: endpoint,
+        baseURL: this.baseURL,
         payload: { ...payload, api_key: '***' }
       })
 
-      const response = await axios.post(`${this.baseURL}/pix/sacar`, payload, {
+      const response = await axios.post(endpoint, payload, {
         headers: {
           'Content-Type': 'application/json',
           'accept': 'application/json'
@@ -132,10 +134,22 @@ class NxgateService {
       }
       console.error('NXGATE Withdraw PIX Error:', JSON.stringify(errorDetails, null, 2))
 
+      // Mensagem de erro mais específica baseada no status
+      let errorMessage = 'Erro ao processar saque'
+      if (error.response?.status === 404) {
+        errorMessage = 'Endpoint de saque não encontrado. Verifique a configuração da API do gateway no admin.'
+      } else if (error.response?.status === 403) {
+        errorMessage = 'Acesso negado. Verifique se a API Key está correta e tem permissão para saques.'
+      } else if (error.response?.status === 400 || error.response?.status === 422) {
+        errorMessage = error.response?.data?.message || error.response?.data?.error || 'Dados inválidos. Verifique os dados da conta PIX.'
+      } else if (error.response?.data) {
+        errorMessage = error.response.data.message || error.response.data.error || errorMessage
+      }
+
       return {
         success: false,
         error: error.response?.data || error.message,
-        message: error.response?.data?.message || error.response?.data?.error || 'Erro ao processar saque'
+        message: errorMessage
       }
     }
   }

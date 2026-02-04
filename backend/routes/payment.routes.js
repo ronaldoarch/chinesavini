@@ -245,13 +245,33 @@ router.post(
       })
 
       // Process withdrawal via NXGATE
-      // Formatar CPF para o formato esperado (XXX.XXX.XXX-XX)
+      // Validar e formatar CPF para o formato esperado (XXX.XXX.XXX-XX)
+      if (!cpf || cpf === '000.000.000-00') {
+        return res.status(400).json({
+          success: false,
+          message: 'CPF inválido. Por favor, cadastre uma conta PIX com chave CPF ou informe seu CPF no perfil.'
+        })
+      }
+      
       let documentoFormatted = cpf
       if (!cpf.includes('.')) {
         const digits = cpf.replace(/\D/g, '')
         if (digits.length === 11) {
           documentoFormatted = `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`
+        } else {
+          return res.status(400).json({
+            success: false,
+            message: 'CPF inválido. Deve conter 11 dígitos.'
+          })
         }
+      }
+      
+      // Validar formato final do CPF
+      if (!documentoFormatted.match(/^\d{3}\.\d{3}\.\d{3}-\d{2}$/)) {
+        return res.status(400).json({
+          success: false,
+          message: 'CPF inválido. Formato esperado: XXX.XXX.XXX-XX'
+        })
       }
 
       const withdrawResult = await nxgateService.withdrawPix({

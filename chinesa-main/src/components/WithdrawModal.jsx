@@ -214,25 +214,34 @@ function WithdrawModal({ isOpen, onClose, onBack, initialTab = 'saque', onWithdr
       return
     }
 
-    // Formatar CPF (assumindo que o usuário tem CPF no sistema ou usar um padrão)
-    // Por enquanto, vamos usar um CPF genérico ou pedir ao usuário
-    // Mas como o backend requer CPF, vou usar o CPF do usuário se disponível
-    // Se não tiver, precisaremos pedir ou usar um padrão
-    let cpf = '000.000.000-00' // Valor padrão temporário
+    // Formatar CPF - sempre usar a chave PIX se for CPF, senão tentar obter do usuário
+    let cpf = null
     
-    // Tentar obter CPF do usuário se disponível
-    if (user?.cpf) {
-      cpf = user.cpf
-    } else if (user?.document) {
-      cpf = user.document
-    }
-
     // Se o tipo de chave for CPF, usar a própria chave como CPF
     if (selectedAccount.pixKeyType === 'CPF') {
       const digits = selectedAccount.pixKey.replace(/\D/g, '')
       if (digits.length === 11) {
         cpf = `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`
       }
+    }
+    
+    // Se não conseguiu CPF da chave, tentar obter do usuário
+    if (!cpf) {
+      if (user?.cpf) {
+        cpf = user.cpf
+      } else if (user?.document) {
+        cpf = user.document
+      } else {
+        // Se não tiver CPF, mostrar erro pedindo para cadastrar conta com CPF
+        setWithdrawError('É necessário ter uma conta PIX com chave CPF ou informar seu CPF no perfil para realizar saques')
+        return
+      }
+    }
+    
+    // Validar formato do CPF
+    if (!cpf || !cpf.match(/^\d{3}\.\d{3}\.\d{3}-\d{2}$/)) {
+      setWithdrawError('CPF inválido. Por favor, cadastre uma conta PIX com chave CPF')
+      return
     }
 
     try {
