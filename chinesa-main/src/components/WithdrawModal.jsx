@@ -61,13 +61,6 @@ function WithdrawModal({ isOpen, onClose, onBack, initialTab = 'saque' }) {
     }
   }, [isOpen, initialTab])
 
-  // Carregar contas PIX quando a aba 'contas' estiver ativa ou quando o modal abrir
-  useEffect(() => {
-    if (isOpen && activeTab === 'contas') {
-      loadPixAccounts()
-    }
-  }, [isOpen, activeTab])
-
   const loadPixAccounts = async () => {
     try {
       setLoadingAccounts(true)
@@ -81,6 +74,14 @@ function WithdrawModal({ isOpen, onClose, onBack, initialTab = 'saque' }) {
       setLoadingAccounts(false)
     }
   }
+
+  // Carregar contas PIX sempre que o modal abrir ou quando mudar de aba
+  useEffect(() => {
+    if (isOpen) {
+      loadPixAccounts()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, activeTab])
 
   const handleSaveAccount = async () => {
     // Validação básica
@@ -244,15 +245,17 @@ function WithdrawModal({ isOpen, onClose, onBack, initialTab = 'saque' }) {
       <div className="withdraw-content">
         {activeTab === 'saque' && !showWithdrawPassword && (
           <>
-            <div className="withdraw-alert">
-              <i className="fa-solid fa-circle-exclamation"></i>
-              <span>
-                Você precisa cadastrar uma conta PIX para receber seus saques.{' '}
-                <button type="button" onClick={() => setActiveTab('contas')}>
-                  Cadastrar agora
-                </button>
-              </span>
-            </div>
+            {pixAccounts.length === 0 && (
+              <div className="withdraw-alert">
+                <i className="fa-solid fa-circle-exclamation"></i>
+                <span>
+                  Você precisa cadastrar uma conta PIX para receber seus saques.{' '}
+                  <button type="button" onClick={() => setActiveTab('contas')}>
+                    Cadastrar agora
+                  </button>
+                </span>
+              </div>
+            )}
 
             <div className="withdraw-card">
               <div className="withdraw-balance">
