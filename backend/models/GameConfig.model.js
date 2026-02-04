@@ -54,6 +54,13 @@ const gameConfigSchema = new mongoose.Schema(
     isActive: {
       type: Boolean,
       default: true
+    },
+    // RTP (Return to Player) do agente - valor entre 0 e 100 (percentual)
+    agentRTP: {
+      type: Number,
+      default: null,
+      min: 0,
+      max: 100
     }
   },
   {

@@ -55,6 +55,47 @@
   box-shadow: 0 0 0 2px rgba(225, 181, 74, 0.2);
 }
 
+.form-group small {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+.rtp-input-group {
+  display: flex;
+  gap: var(--spacing-sm);
+  align-items: center;
+}
+
+.rtp-input-group input {
+  flex: 1;
+}
+
+.apply-rtp-btn {
+  background: var(--gold);
+  color: var(--primary-purple);
+  border: none;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: 8px;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  transition: opacity 0.2s;
+}
+
+.apply-rtp-btn:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.apply-rtp-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .providers-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));

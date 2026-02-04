@@ -161,6 +161,12 @@ class ApiService {
     })
   }
 
+  async applyRTP() {
+    return this.request('/games/apply-rtp', {
+      method: 'POST'
+    })
+  }
+
   async getProviders() {
     return this.request('/games/providers', {
       method: 'GET'

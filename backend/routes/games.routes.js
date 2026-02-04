@@ -45,7 +45,7 @@ router.get('/config', protect, isAdmin, async (req, res) => {
 // @access  Private/Admin
 router.put('/config', protect, isAdmin, async (req, res) => {
   try {
-    const { agentCode, agentToken, agentSecret, selectedProviders, selectedGames } = req.body
+    const { agentCode, agentToken, agentSecret, selectedProviders, selectedGames, agentRTP } = req.body
 
     let config = await GameConfig.findOne()
     
@@ -83,8 +83,30 @@ router.put('/config', protect, isAdmin, async (req, res) => {
       }
       config.selectedGames = selectedGames
     }
+    
+    // Handle RTP configuration
+    if (agentRTP !== undefined) {
+      if (agentRTP !== null && (agentRTP < 0 || agentRTP > 100)) {
+        return res.status(400).json({
+          success: false,
+          message: 'RTP deve estar entre 0 e 100'
+        })
+      }
+      config.agentRTP = agentRTP === '' ? null : agentRTP
+    }
 
     await config.save()
+
+    // Apply RTP if configured
+    if (config.agentRTP !== null && config.agentRTP !== undefined) {
+      try {
+        await igamewinService.controlRTP(config.agentRTP)
+        console.log(`RTP aplicado com sucesso: ${config.agentRTP}%`)
+      } catch (rtpError) {
+        console.error('Erro ao aplicar RTP:', rtpError)
+        // Don't fail the request, just log the error
+      }
+    }
 
     res.json({
       success: true,
@@ -96,6 +118,45 @@ router.put('/config', protect, isAdmin, async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Erro ao atualizar configuração',
+      error: error.message
+    })
+  }
+})
+
+// @route   POST /api/games/apply-rtp
+// @desc    Apply RTP configuration to iGameWin
+// @access  Private/Admin
+router.post('/apply-rtp', protect, isAdmin, async (req, res) => {
+  try {
+    const config = await GameConfig.getConfig()
+    
+    if (config.agentRTP === null || config.agentRTP === undefined) {
+      return res.status(400).json({
+        success: false,
+        message: 'RTP não configurado. Configure o RTP primeiro na página de configuração de jogos.'
+      })
+    }
+
+    const result = await igamewinService.controlRTP(config.agentRTP)
+    
+    if (result.status === 1) {
+      res.json({
+        success: true,
+        message: `RTP de ${config.agentRTP}% aplicado com sucesso`,
+        data: result
+      })
+    } else {
+      res.status(400).json({
+        success: false,
+        message: result.msg || 'Erro ao aplicar RTP',
+        data: result
+      })
+    }
+  } catch (error) {
+    console.error('Apply RTP error:', error)
+    res.status(500).json({
+      success: false,
+      message: 'Erro ao aplicar RTP',
       error: error.message
     })
   }

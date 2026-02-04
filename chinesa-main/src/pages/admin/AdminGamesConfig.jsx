@@ -14,9 +14,11 @@ function AdminGamesConfig() {
     agentCode: '',
     agentToken: '',
     agentSecret: '',
+    agentRTP: null,
     selectedProviders: [],
     selectedGames: []
   })
+  const [applyingRTP, setApplyingRTP] = useState(false)
   
   const [providers, setProviders] = useState([])
   const [gamesByProvider, setGamesByProvider] = useState({})
@@ -43,6 +45,7 @@ function AdminGamesConfig() {
           agentCode: response.data.agentCode || '',
           agentToken: response.data.agentToken || '',
           agentSecret: response.data.agentSecret || '',
+          agentRTP: response.data.agentRTP !== undefined ? response.data.agentRTP : null,
           selectedProviders: response.data.selectedProviders || [],
           selectedGames: response.data.selectedGames || []
         })
@@ -182,6 +185,33 @@ function AdminGamesConfig() {
     }
   }
 
+  const handleApplyRTP = async () => {
+    if (config.agentRTP === null || config.agentRTP === undefined || config.agentRTP === '') {
+      setError('Configure um valor de RTP antes de aplicar')
+      setTimeout(() => setError(null), 3000)
+      return
+    }
+
+    try {
+      setApplyingRTP(true)
+      setError(null)
+      setSuccess(null)
+      
+      const response = await api.applyRTP()
+      
+      if (response.success) {
+        setSuccess(`RTP de ${config.agentRTP}% aplicado com sucesso!`)
+        setTimeout(() => setSuccess(null), 3000)
+      } else {
+        setError(response.message || 'Erro ao aplicar RTP')
+      }
+    } catch (err) {
+      setError(err.message || 'Erro ao aplicar RTP')
+    } finally {
+      setApplyingRTP(false)
+    }
+  }
+
   if (!isAdmin) {
     return (
       <div className="admin-container">
@@ -260,6 +290,37 @@ function AdminGamesConfig() {
               onChange={(e) => setConfig(prev => ({ ...prev, agentSecret: e.target.value }))}
               placeholder="Secret do agente"
             />
+          </div>
+          <div className="form-group">
+            <label>RTP do Agente (%)</label>
+            <div className="rtp-input-group">
+              <input
+                type="number"
+                min="0"
+                max="100"
+                step="0.01"
+                value={config.agentRTP === null ? '' : config.agentRTP}
+                onChange={(e) => {
+                  const value = e.target.value === '' ? null : parseFloat(e.target.value)
+                  setConfig(prev => ({ ...prev, agentRTP: value }))
+                }}
+                placeholder="Ex: 95.5"
+              />
+              <button
+                type="button"
+                className="apply-rtp-btn"
+                onClick={handleApplyRTP}
+                disabled={applyingRTP || config.agentRTP === null || config.agentRTP === undefined || config.agentRTP === ''}
+                title="Aplicar RTP imediatamente"
+              >
+                {applyingRTP ? (
+                  <><i className="fa-solid fa-spinner fa-spin"></i> Aplicando...</>
+                ) : (
+                  <><i className="fa-solid fa-play"></i> Aplicar RTP</>
+                )}
+              </button>
+            </div>
+            <small>Valor entre 0 e 100. O RTP será aplicado automaticamente ao salvar, ou clique em "Aplicar RTP" para aplicar imediatamente.</small>
           </div>
         </div>
       </div>
