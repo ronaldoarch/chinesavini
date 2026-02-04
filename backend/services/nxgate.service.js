@@ -156,7 +156,18 @@ class NxgateService {
       } else if (error.response?.status === 403) {
         errorMessage = 'Acesso negado. Verifique se a API Key está correta e tem permissão para saques.'
       } else if (error.response?.status === 400 || error.response?.status === 422) {
-        errorMessage = error.response?.data?.message || error.response?.data?.error || 'Dados inválidos. Verifique os dados da conta PIX.'
+        const apiMessage = error.response?.data?.message || error.response?.data?.error || ''
+        // Se a mensagem menciona documento/CPF mas a chave não é CPF, adaptar mensagem
+        if (apiMessage.toLowerCase().includes('documento') || apiMessage.toLowerCase().includes('cpf')) {
+          const tipoChave = data.tipo_chave
+          if (tipoChave !== 'CPF' && tipoChave !== 'CNPJ') {
+            errorMessage = 'Dados inválidos. Verifique se a chave PIX está correta.'
+          } else {
+            errorMessage = apiMessage || 'Dados inválidos. Verifique os dados da conta PIX.'
+          }
+        } else {
+          errorMessage = apiMessage || 'Dados inválidos. Verifique os dados da conta PIX.'
+        }
       } else if (error.response?.data) {
         errorMessage = error.response.data.message || error.response.data.error || errorMessage
       }

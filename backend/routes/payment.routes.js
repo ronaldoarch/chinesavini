@@ -182,9 +182,18 @@ router.post(
     body('pixKeyType')
       .isIn(['CPF', 'CNPJ', 'PHONE', 'EMAIL', 'RANDOM'])
       .withMessage('Tipo de chave PIX inválido'),
+    // CPF é opcional - só validar se fornecido e se a chave não for CPF
     body('cpf')
-      .matches(/^\d{3}\.\d{3}\.\d{3}-\d{2}$/)
-      .withMessage('CPF inválido')
+      .optional()
+      .custom((value, { req }) => {
+        // Se não fornecido, OK (backend usará CPF genérico)
+        if (!value) return true
+        // Se fornecido, validar formato
+        if (!value.match(/^\d{3}\.\d{3}\.\d{3}-\d{2}$/)) {
+          throw new Error('CPF inválido')
+        }
+        return true
+      })
   ],
   async (req, res) => {
     try {
@@ -247,10 +256,21 @@ router.post(
       // Process withdrawal via NXGATE
       // Usar CPF genérico configurado se não houver CPF fornecido
       const gatewayConfig = await GatewayConfig.getConfig()
-      let documentoFormatted = cpf || gatewayConfig?.defaultCpf || '000.000.000-00'
+      let documentoFormatted = null
+      
+      // Só usar documento se fornecido ou se a chave for CPF/CNPJ
+      if (cpf) {
+        documentoFormatted = cpf
+      } else if (pixKeyType === 'CPF' || pixKeyType === 'CNPJ') {
+        // Para chaves CPF/CNPJ, usar genérico se não tiver CPF
+        documentoFormatted = gatewayConfig?.defaultCpf || '000.000.000-00'
+      } else {
+        // Para telefone, email ou aleatória, usar genérico também
+        documentoFormatted = gatewayConfig?.defaultCpf || '000.000.000-00'
+      }
       
       // Formatar CPF para o formato esperado (XXX.XXX.XXX-XX)
-      if (!documentoFormatted.includes('.')) {
+      if (documentoFormatted && !documentoFormatted.includes('.')) {
         const digits = documentoFormatted.replace(/\D/g, '')
         if (digits.length === 11) {
           documentoFormatted = `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`
@@ -258,8 +278,8 @@ router.post(
       }
       
       // Garantir formato válido (mesmo que seja genérico)
-      if (!documentoFormatted.match(/^\d{3}\.\d{3}\.\d{3}-\d{2}$/)) {
-        documentoFormatted = '000.000.000-00' // Fallback para CPF genérico padrão
+      if (documentoFormatted && !documentoFormatted.match(/^\d{3}\.\d{3}\.\d{3}-\d{2}$/)) {
+        documentoFormatted = gatewayConfig?.defaultCpf || '000.000.000-00' // Fallback para CPF genérico padrão
       }
 
       const withdrawResult = await nxgateService.withdrawPix({
