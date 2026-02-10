@@ -66,6 +66,36 @@ function AdminUsers() {
       minimumFractionDigits: 2
     }).format(value || 0)
 
+  const handleExportPDF = async () => {
+    try {
+      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
+      const token = localStorage.getItem('token')
+      
+      const response = await fetch(`${API_BASE_URL}/admin/users/export-pdf`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+
+      if (!response.ok) {
+        throw new Error('Erro ao exportar PDF')
+      }
+
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `usuarios_${new Date().toISOString().split('T')[0]}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+    } catch (err) {
+      alert('Erro ao exportar PDF: ' + err.message)
+    }
+  }
+
   if (!isAdmin) {
     return (
       <div className="admin-container">
@@ -84,17 +114,28 @@ function AdminUsers() {
           <i className="fa-solid fa-users"></i>
           Gerenciar Usuários
         </h1>
-        <div className="admin-search">
-          <input
-            type="text"
-            placeholder="Buscar usuário..."
-            value={search}
-            onChange={(e) => {
-              setSearch(e.target.value)
-              setPage(1)
-            }}
-          />
-          <i className="fa-solid fa-magnifying-glass"></i>
+        <div className="admin-header-actions">
+          <div className="admin-search">
+            <input
+              type="text"
+              placeholder="Buscar usuário..."
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value)
+                setPage(1)
+              }}
+            />
+            <i className="fa-solid fa-magnifying-glass"></i>
+          </div>
+          <button
+            className="btn-export-pdf"
+            onClick={handleExportPDF}
+            disabled={loading}
+            title="Exportar usuários em PDF"
+          >
+            <i className="fa-solid fa-file-pdf"></i>
+            Exportar PDF
+          </button>
         </div>
       </div>
 

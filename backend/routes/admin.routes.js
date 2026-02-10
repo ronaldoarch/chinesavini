@@ -4,6 +4,7 @@ import { protect } from '../middleware/auth.middleware.js'
 import { isAdmin, isSuperAdmin } from '../middleware/admin.middleware.js'
 import User from '../models/User.model.js'
 import Transaction from '../models/Transaction.model.js'
+import PDFDocument from 'pdfkit'
 
 const router = express.Router()
 
@@ -231,6 +232,111 @@ router.get(
     }
   }
 )
+
+// @route   GET /api/admin/users/export-pdf
+// @desc    Export all users to PDF
+// @access  Private/Admin
+router.get('/users/export-pdf', async (req, res) => {
+  try {
+    // Buscar todos os usuários (sem paginação)
+    const users = await User.find({ role: 'user' })
+      .select('-password')
+      .sort({ createdAt: -1 })
+
+    // Criar documento PDF
+    const doc = new PDFDocument({ margin: 50 })
+    
+    // Configurar headers da resposta
+    res.setHeader('Content-Type', 'application/pdf')
+    res.setHeader('Content-Disposition', `attachment; filename=usuarios_${new Date().toISOString().split('T')[0]}.pdf`)
+    
+    // Pipe do PDF para a resposta
+    doc.pipe(res)
+
+    // Cabeçalho do documento
+    doc.fontSize(20).text('Relatório de Usuários', { align: 'center' })
+    doc.moveDown()
+    doc.fontSize(12).text(`Data de exportação: ${new Date().toLocaleString('pt-BR')}`, { align: 'center' })
+    doc.fontSize(12).text(`Total de usuários: ${users.length}`, { align: 'center' })
+    doc.moveDown(2)
+
+    // Formatar telefone
+    const formatPhone = (phone) => {
+      if (!phone) return 'N/A'
+      const digits = phone.replace(/\D/g, '')
+      if (digits.length === 13) {
+        const ddd = digits.slice(2, 4)
+        const firstPart = digits.slice(4, 9)
+        const secondPart = digits.slice(9)
+        return `(${ddd}) ${firstPart}-${secondPart}`
+      }
+      return phone
+    }
+
+    // Formatar moeda
+    const formatCurrency = (value) => {
+      return new Intl.NumberFormat('pt-BR', {
+        style: 'currency',
+        currency: 'BRL',
+        minimumFractionDigits: 2
+      }).format(value || 0)
+    }
+
+    // Adicionar dados dos usuários
+    let yPosition = doc.y
+    const startY = yPosition
+    const pageHeight = doc.page.height
+    const margin = 50
+    const rowHeight = 60
+
+    users.forEach((user, index) => {
+      // Verificar se precisa de nova página
+      if (yPosition + rowHeight > pageHeight - margin) {
+        doc.addPage()
+        yPosition = margin
+      }
+
+      // Dados do usuário
+      doc.fontSize(10)
+      doc.text(`Usuário ${index + 1}:`, { continued: false })
+      doc.moveDown(0.3)
+      
+      doc.fontSize(9)
+      doc.text(`Username: ${user.username || 'N/A'}`, { indent: 20 })
+      doc.text(`Telefone: ${formatPhone(user.phone)}`, { indent: 20 })
+      doc.text(`Saldo: ${formatCurrency(user.balance)}`, { indent: 20 })
+      doc.text(`Saldo Bônus: ${formatCurrency(user.bonusBalance)}`, { indent: 20 })
+      doc.text(`VIP Level: ${user.vipLevel || 0}`, { indent: 20 })
+      doc.text(`Status: ${user.isActive ? 'Ativo' : 'Inativo'}`, { indent: 20 })
+      doc.text(`Verificado: ${user.isVerified ? 'Sim' : 'Não'}`, { indent: 20 })
+      doc.text(`Total Depósitos: ${formatCurrency(user.totalDeposits || 0)}`, { indent: 20 })
+      doc.text(`Total Saques: ${formatCurrency(user.totalWithdrawals || 0)}`, { indent: 20 })
+      doc.text(`Total Apostas: ${formatCurrency(user.totalBets || 0)}`, { indent: 20 })
+      doc.text(`Código de Referência: ${user.referralCode || 'N/A'}`, { indent: 20 })
+      doc.text(`Total de Indicações: ${user.totalReferrals || 0}`, { indent: 20 })
+      doc.text(`Data de Cadastro: ${new Date(user.createdAt).toLocaleString('pt-BR')}`, { indent: 20 })
+      if (user.lastLogin) {
+        doc.text(`Último Login: ${new Date(user.lastLogin).toLocaleString('pt-BR')}`, { indent: 20 })
+      }
+      
+      doc.moveDown(0.5)
+      doc.moveTo(margin, doc.y).lineTo(550 - margin, doc.y).stroke()
+      doc.moveDown(0.5)
+      
+      yPosition = doc.y
+    })
+
+    // Finalizar PDF
+    doc.end()
+  } catch (error) {
+    console.error('Export PDF error:', error)
+    res.status(500).json({
+      success: false,
+      message: 'Erro ao exportar PDF',
+      error: error.message
+    })
+  }
+})
 
 // @route   GET /api/admin/users/:id
 // @desc    Get single user details
