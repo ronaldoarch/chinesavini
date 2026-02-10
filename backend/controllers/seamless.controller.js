@@ -2,6 +2,12 @@ import User from '../models/User.model.js'
 import GameTxnLog from '../models/GameTxnLog.model.js'
 import igamewinService from '../services/igamewin.service.js'
 
+/** Formato do saldo: reais (12) ou centavos (1200) conforme IGAMEWIN_BALANCE_IN_REAIS */
+function balanceForGame(reais) {
+  const inReais = (process.env.IGAMEWIN_BALANCE_IN_REAIS || 'true').toLowerCase() === 'true'
+  return inReais ? Math.round(reais * 100) / 100 : Math.round(reais * 100)
+}
+
 /** API Link Guide: Seamless Site API - user_balance & transaction */
 export async function handleSeamlessRequest(req, res) {
   try {
@@ -19,8 +25,7 @@ export async function handleSeamlessRequest(req, res) {
 
     if (method === 'user_balance') {
       const balanceReais = Math.max(0, user.balance || 0)
-      const balanceCents = Math.round(balanceReais * 100)
-      return res.json({ status: 1, user_balance: balanceCents })
+      return res.json({ status: 1, user_balance: balanceForGame(balanceReais) })
     }
 
     if (method === 'transaction') {
@@ -38,12 +43,10 @@ export async function handleSeamlessRequest(req, res) {
 
       const existing = await GameTxnLog.findOne({ txnId })
       if (existing) {
-        const balanceCents = Math.round((existing.balanceAfterReais || 0) * 100)
-        return res.json({ status: 1, user_balance: balanceCents })
+        return res.json({ status: 1, user_balance: balanceForGame(existing.balanceAfterReais || 0) })
       }
 
       if (isSamples) {
-        const balanceCents = Math.round((user.balance || 0) * 100)
         await GameTxnLog.create({
           txnId,
           user: user._id,
@@ -55,7 +58,7 @@ export async function handleSeamlessRequest(req, res) {
           winCents,
           balanceAfterReais: user.balance || 0
         })
-        return res.json({ status: 1, user_balance: balanceCents })
+        return res.json({ status: 1, user_balance: balanceForGame(user.balance || 0) })
       }
 
       let deltaReais = 0
@@ -93,7 +96,7 @@ export async function handleSeamlessRequest(req, res) {
         balanceAfterReais: newBalance
       })
 
-      return res.json({ status: 1, user_balance: Math.round(newBalance * 100) })
+      return res.json({ status: 1, user_balance: balanceForGame(newBalance) })
     }
 
     return res.status(400).json({ status: 0, msg: 'INVALID_METHOD' })
