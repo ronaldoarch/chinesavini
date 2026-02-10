@@ -24,6 +24,7 @@ function WithdrawModal({ isOpen, onClose, onBack, initialTab = 'saque', onWithdr
   const [withdrawAmount, setWithdrawAmount] = useState('')
   const [pixAccounts, setPixAccounts] = useState([])
   const [holderName, setHolderName] = useState('')
+  const [holderCpf, setHolderCpf] = useState('')
   const [pixKey, setPixKey] = useState('')
   const [loadingAccounts, setLoadingAccounts] = useState(false)
   const [savingAccount, setSavingAccount] = useState(false)
@@ -54,6 +55,7 @@ function WithdrawModal({ isOpen, onClose, onBack, initialTab = 'saque', onWithdr
       setPixKeyType('CPF')
       setWithdrawAmount('')
       setHolderName('')
+      setHolderCpf('')
       setPixKey('')
       setAccountError('')
       setAccountSuccess('')
@@ -141,20 +143,34 @@ function WithdrawModal({ isOpen, onClose, onBack, initialTab = 'saque', onWithdr
       }
     }
 
+    // Para chave telefone, e-mail ou aleatória, CPF do titular é obrigatório (Gatebox valida no saque)
+    if (pixKeyType === 'PHONE' || pixKeyType === 'EMAIL' || pixKeyType === 'RANDOM') {
+      const cpfDigits = (holderCpf || '').replace(/\D/g, '')
+      if (cpfDigits.length !== 11) {
+        setAccountError('Informe o CPF do titular da chave (11 dígitos)')
+        return
+      }
+    }
+
     try {
       setSavingAccount(true)
       setAccountError('')
       setAccountSuccess('')
 
-      const response = await api.createPixAccount({
+      const payload = {
         holderName: holderName.trim(),
         pixKeyType,
         pixKey: pixKey.trim()
-      })
+      }
+      if (pixKeyType === 'PHONE' || pixKeyType === 'EMAIL' || pixKeyType === 'RANDOM') {
+        payload.holderCpf = (holderCpf || '').replace(/\D/g, '')
+      }
+      const response = await api.createPixAccount(payload)
 
       if (response.success) {
         setAccountSuccess('Conta PIX cadastrada com sucesso!')
         setHolderName('')
+        setHolderCpf('')
         setPixKey('')
         setPixKeyType('CPF')
         // Recarregar contas
@@ -214,25 +230,22 @@ function WithdrawModal({ isOpen, onClose, onBack, initialTab = 'saque', onWithdr
       return
     }
 
-    // CPF será usado apenas se disponível, caso contrário o backend usará CPF genérico
+    // CPF do recebedor (titular da chave) — obrigatório para o saque na Gatebox
     let cpf = null
-    
-    // Se o tipo de chave for CPF, usar a própria chave como CPF
     if (selectedAccount.pixKeyType === 'CPF') {
       const digits = selectedAccount.pixKey.replace(/\D/g, '')
       if (digits.length === 11) {
         cpf = `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`
       }
-    }
-    
-    // Se não conseguiu CPF da chave, tentar obter do usuário (opcional)
-    if (!cpf) {
-      if (user?.cpf) {
-        cpf = user.cpf
-      } else if (user?.document) {
-        cpf = user.document
+    } else if (selectedAccount.holderCpf) {
+      const digits = String(selectedAccount.holderCpf).replace(/\D/g, '')
+      if (digits.length === 11) {
+        cpf = `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`
       }
-      // Se não tiver CPF, o backend usará o CPF genérico configurado
+    }
+    if (!cpf) {
+      setWithdrawError('Esta conta PIX precisa do CPF do titular. Edite o cadastro da chave e informe o CPF.')
+      return
     }
 
     try {
@@ -600,6 +613,23 @@ function WithdrawModal({ isOpen, onClose, onBack, initialTab = 'saque', onWithdr
                   </small>
                 </div>
 
+                {(pixKeyType === 'PHONE' || pixKeyType === 'EMAIL' || pixKeyType === 'RANDOM') && (
+                  <div className="withdraw-field">
+                    <label>CPF do titular <span className="required">*</span></label>
+                    <div className="withdraw-input">
+                      <i className="fa-solid fa-id-card"></i>
+                      <input 
+                        type="text" 
+                        placeholder="000.000.000-00" 
+                        value={holderCpf}
+                        onChange={(e) => setHolderCpf(e.target.value)}
+                        maxLength={14}
+                      />
+                    </div>
+                    <small>Obrigatório para chave telefone, e-mail ou aleatória. Deve ser o CPF do dono da chave (usado no saque).</small>
+                  </div>
+                )}
+
                 <div className="withdraw-form-actions">
                   <button 
                     type="button" 
@@ -607,6 +637,7 @@ function WithdrawModal({ isOpen, onClose, onBack, initialTab = 'saque', onWithdr
                     onClick={() => {
                       setShowAccountForm(false)
                       setHolderName('')
+                      setHolderCpf('')
                       setPixKey('')
                       setPixKeyType('CPF')
                       setAccountError('')

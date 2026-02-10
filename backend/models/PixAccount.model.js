@@ -27,6 +27,12 @@ const pixAccountSchema = new mongoose.Schema(
       required: [true, 'Chave PIX é obrigatória'],
       trim: true
     },
+    /** CPF do titular (11 dígitos). Obrigatório quando a chave não é CPF/CNPJ — Gatebox valida correspondência no saque. */
+    holderCpf: {
+      type: String,
+      trim: true,
+      default: null
+    },
     active: {
       type: Boolean,
       default: true

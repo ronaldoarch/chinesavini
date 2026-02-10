@@ -49,7 +49,17 @@ router.post(
     body('pixKey')
       .trim()
       .notEmpty()
-      .withMessage('Chave PIX é obrigatória')
+      .withMessage('Chave PIX é obrigatória'),
+    body('holderCpf')
+      .optional()
+      .custom((value, { req }) => {
+        const type = req.body?.pixKeyType
+        if (type === 'PHONE' || type === 'EMAIL' || type === 'RANDOM') {
+          const digits = (value || '').replace(/\D/g, '')
+          if (digits.length !== 11) throw new Error('CPF do titular é obrigatório (11 dígitos) quando a chave não é CPF/CNPJ')
+        }
+        return true
+      })
   ],
   async (req, res) => {
     try {
@@ -62,7 +72,18 @@ router.post(
         })
       }
 
-      const { holderName, pixKeyType, pixKey } = req.body
+      const { holderName, pixKeyType, pixKey, holderCpf } = req.body
+
+      // Quando a chave não é CPF/CNPJ, exige CPF do titular (Gatebox valida no saque)
+      if (pixKeyType === 'PHONE' || pixKeyType === 'EMAIL' || pixKeyType === 'RANDOM') {
+        const cpfDigits = (holderCpf || '').replace(/\D/g, '')
+        if (cpfDigits.length !== 11) {
+          return res.status(400).json({
+            success: false,
+            message: 'CPF do titular é obrigatório para chave telefone, e-mail ou aleatória'
+          })
+        }
+      }
 
       // Validação adicional baseada no tipo de chave
       if (pixKeyType === 'CPF') {
@@ -118,6 +139,11 @@ router.post(
           existingAccount.active = true
           existingAccount.holderName = holderName.trim()
           existingAccount.pixKeyType = pixKeyType
+          if (pixKeyType === 'PHONE' || pixKeyType === 'EMAIL' || pixKeyType === 'RANDOM') {
+            existingAccount.holderCpf = (holderCpf || '').replace(/\D/g, '')
+          } else {
+            existingAccount.holderCpf = null
+          }
           await existingAccount.save()
           
           return res.status(200).json({
@@ -134,13 +160,17 @@ router.post(
         })
       }
 
-      const pixAccount = await PixAccount.create({
+      const createData = {
         user: req.user._id,
         holderName: holderName.trim(),
         pixKeyType,
         pixKey: pixKey.trim(),
         active: true
-      })
+      }
+      if (pixKeyType === 'PHONE' || pixKeyType === 'EMAIL' || pixKeyType === 'RANDOM') {
+        createData.holderCpf = (holderCpf || '').replace(/\D/g, '')
+      }
+      const pixAccount = await PixAccount.create(createData)
 
       res.status(201).json({
         success: true,
@@ -163,6 +193,11 @@ router.post(
           inactiveAccount.active = true
           inactiveAccount.holderName = holderName.trim()
           inactiveAccount.pixKeyType = pixKeyType
+          if (pixKeyType === 'PHONE' || pixKeyType === 'EMAIL' || pixKeyType === 'RANDOM') {
+            inactiveAccount.holderCpf = (holderCpf || '').replace(/\D/g, '')
+          } else {
+            inactiveAccount.holderCpf = null
+          }
           await inactiveAccount.save()
           
           return res.status(200).json({
