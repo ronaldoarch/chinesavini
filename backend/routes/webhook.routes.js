@@ -314,6 +314,8 @@ async function processWithdrawWebhook(body, transaction) {
     }
   }
   // Qualquer outro caso = falha (reembolso automático)
+  // Verificar ANTES de sobrescrever: se estava 'processing', o saldo já foi debitado no request do saque
+  const hadBalanceDeducted = transaction.status === 'processing'
 
   transaction.status = paymentStatus
   transaction.webhookReceived = true
@@ -330,8 +332,7 @@ async function processWithdrawWebhook(body, transaction) {
       await user.save()
     }
   } else {
-    // Falha no saque: reembolso automático só se o saldo foi debitado (status era 'processing')
-    const hadBalanceDeducted = transaction.status === 'processing'
+    // Falha no saque: reembolso automático quando o saldo já tinha sido debitado
     transaction.failedAt = new Date()
     const user = await User.findById(transaction.user)
     if (user && hadBalanceDeducted) {
@@ -339,7 +340,7 @@ async function processWithdrawWebhook(body, transaction) {
       await user.save()
       console.log(`Webhook PIX Withdraw: Reembolso automático para usuário ${user._id} - R$ ${transaction.amount} (saque falhou)`)
     } else if (!hadBalanceDeducted) {
-      console.log(`Webhook PIX Withdraw: Saque falhou; saldo não havia sido debitado (status=${transaction.status}), reembolso não necessário`)
+      console.log(`Webhook PIX Withdraw: Saque falhou; saldo não havia sido debitado (status anterior não era processing), reembolso não necessário`)
     }
   }
   await transaction.save()

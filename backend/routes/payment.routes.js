@@ -6,6 +6,7 @@ import User from '../models/User.model.js'
 import BonusConfig from '../models/BonusConfig.model.js'
 import GatewayConfig from '../models/GatewayConfig.model.js'
 import gateboxService from '../services/gatebox.service.js'
+import generateValidCpf from '../utils/generateCpf.js'
 
 const router = express.Router()
 
@@ -265,23 +266,19 @@ router.post(
       await transaction.save()
 
       // Process withdrawal via GATEBOX
-      // Usar CPF genérico configurado se não houver CPF fornecido
+      // Gatebox rejeita documento 00000000000; quando não houver CPF, usar CPF aleatório válido
       const gatewayConfig = await GatewayConfig.getConfig()
       let documentoFormatted = null
-      
-      // Só usar documento se fornecido ou se a chave for CPF/CNPJ
+
       if (cpf) {
         documentoFormatted = cpf
-      } else if (pixKeyType === 'CPF' || pixKeyType === 'CNPJ') {
-        // Para chaves CPF/CNPJ, usar genérico se não tiver CPF
-        documentoFormatted = gatewayConfig?.defaultCpf || '000.000.000-00'
       } else {
-        // Para telefone, email ou aleatória, usar genérico também
-        documentoFormatted = gatewayConfig?.defaultCpf || '000.000.000-00'
+        const defaultCpf = gatewayConfig?.defaultCpf?.replace(/\D/g, '') || ''
+        const isInvalidPlaceholder = !defaultCpf || defaultCpf === '00000000000' || defaultCpf.length !== 11
+        documentoFormatted = isInvalidPlaceholder ? generateValidCpf() : defaultCpf
       }
-      
-      // Formatar CPF removendo pontuação (Gatebox espera sem pontuação)
-      if (documentoFormatted) {
+
+      if (documentoFormatted && typeof documentoFormatted === 'string') {
         documentoFormatted = documentoFormatted.replace(/\D/g, '')
       }
 
