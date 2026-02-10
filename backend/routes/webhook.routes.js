@@ -197,6 +197,120 @@ function logWebhook(source, req, extra = {}) {
 router.use(express.json())
 router.use(express.urlencoded({ extended: true }))
 
+function getIdTransaction(body) {
+  return (
+    body.externalId || body.idTransaction || body.transactionId || body.transaction_id || body.tx_id || body.id ||
+    body?.data?.externalId || body?.data?.idTransaction || body?.data?.transactionId || body?.data?.id || body?.data?.tx_id
+  )
+}
+
+// @route   POST /api/webhooks/gatebox
+// @desc    Webhook único para todos os eventos Gatebox (depósito e saque)
+// @access  Public
+router.post('/gatebox', async (req, res) => {
+  logWebhook('gatebox', req)
+  try {
+    const body = req.body || {}
+    res.status(200).json({ status: 'received' })
+
+    const idTransaction = getIdTransaction(body)
+    if (!idTransaction) {
+      console.error('Webhook Gatebox: idTransaction não fornecido. Body:', JSON.stringify(body).slice(0, 300))
+      return
+    }
+    const transaction = await Transaction.findOne({ idTransaction })
+    if (!transaction) {
+      console.error(`Webhook Gatebox: Transação não encontrada: ${idTransaction}`)
+      return
+    }
+    if (transaction.type === 'withdraw') {
+      await processWithdrawWebhook(body, transaction)
+    } else {
+      await processDepositWebhook(body, transaction)
+    }
+  } catch (error) {
+    console.error('Webhook Gatebox Error:', error)
+  }
+})
+
+async function processDepositWebhook(body, transaction) {
+  const { status, type, data } = body
+  const rawStatus = (status ?? body.status ?? data?.status ?? '').toString().toUpperCase()
+  const rawType = (type ?? body.type ?? data?.type ?? '').toString().toUpperCase()
+  let paymentStatus = 'pending'
+  const webhookData = data || body
+  if (
+    rawType.includes('PAID') || rawType === 'QR_CODE_COPY_AND_PASTE_PAID' ||
+    rawStatus === 'PAID' || rawStatus === 'PAYED' || rawStatus === 'CONFIRMED' ||
+    rawStatus === 'PAYMENT_CONFIRMED' || rawStatus === 'SUCCESS' || rawStatus === 'COMPLETED' || rawStatus === 'APPROVED'
+  ) {
+    paymentStatus = 'paid'
+  } else if (rawStatus === 'FAILED' || rawStatus === 'ERROR' || rawStatus === 'REJECTED' || rawStatus === 'REFUSED') {
+    paymentStatus = 'failed'
+  }
+  await transaction.updateStatus(paymentStatus, webhookData)
+  if (paymentStatus === 'paid' && transaction.type === 'deposit') {
+    const user = await User.findById(transaction.user)
+    if (user) {
+      const isFirstDeposit = user.totalDeposits === 0
+      const depositAmount = transaction.netAmount
+      const bonusConfig = await BonusConfig.getConfig().catch(() => null)
+      const bonusAmount = calcDepositBonus(depositAmount, isFirstDeposit, bonusConfig)
+      user.balance += depositAmount + bonusAmount
+      user.bonusBalance = (user.bonusBalance || 0) + bonusAmount
+      user.totalDeposits += depositAmount
+      await user.save()
+      await affiliateService.updateReferralQualification(user._id)
+      await affiliateService.updateVipLevel(user._id)
+      if (user.referredBy) await processAffiliateCommissions(user, transaction, depositAmount, isFirstDeposit)
+      if (isFirstDeposit) facebookService.sendFirstDeposit(user, depositAmount, 'BRL').catch(() => {})
+    }
+  }
+  console.log(`Webhook PIX (depósito): Transação ${transaction.idTransaction} atualizada para ${paymentStatus}`)
+}
+
+async function processWithdrawWebhook(body, transaction) {
+  const { type, status, fee } = body
+  let paymentStatus = 'failed'
+  const worked = body.worked === true || body.worked === 'true'
+  const statusUpper = (status || '').toString().toUpperCase()
+  const typeUpper = (type || '').toString().toUpperCase()
+  if (
+    typeUpper === 'PIX_CASHOUT_SUCCESS' || statusUpper === 'SUCCESS' || (worked && statusUpper !== 'ERROR')
+  ) {
+    paymentStatus = 'paid'
+  } else if (
+    typeUpper === 'PIX_CASHOUT_ERROR' || statusUpper === 'ERROR' || (!worked && statusUpper !== 'SUCCESS')
+  ) {
+    paymentStatus = 'failed'
+  }
+  transaction.status = paymentStatus
+  transaction.webhookReceived = true
+  transaction.webhookData = body
+  if (fee !== undefined && fee !== null) {
+    transaction.fee = parseFloat(fee) || 0
+    transaction.netAmount = transaction.amount - transaction.fee
+  }
+  if (paymentStatus === 'paid') {
+    transaction.paidAt = new Date(body.payment_date ? new Date(body.payment_date) : new Date())
+    const user = await User.findById(transaction.user)
+    if (user) {
+      user.totalWithdrawals += transaction.netAmount || transaction.amount
+      await user.save()
+    }
+  } else if (paymentStatus === 'failed') {
+    transaction.failedAt = new Date()
+    const user = await User.findById(transaction.user)
+    if (user) {
+      user.balance += transaction.amount
+      await user.save()
+      console.log(`Webhook PIX Withdraw: Saldo reembolsado para usuário ${user._id} - R$ ${transaction.amount}`)
+    }
+  }
+  await transaction.save()
+  console.log(`Webhook PIX Withdraw: Transação ${transaction.idTransaction} atualizada para ${paymentStatus}`)
+}
+
 // @route   POST /api/webhooks/pix
 // @desc    Webhook for PIX payment confirmation (deposit)
 // @access  Public (but should be validated in production)
@@ -204,87 +318,18 @@ router.post('/pix', async (req, res) => {
   logWebhook('pix', req)
   try {
     const body = req.body || {}
-    const { status, type, data } = body
-    // Gatebox and others may send idTransaction in various formats
-    // Gatebox may send externalId (which we use as our transaction ID)
-    const idTransaction =
-      body.externalId ||       body.externalId || body.idTransaction || body.transactionId || body.transaction_id || body.tx_id || body.id ||
-      body?.data?.externalId || body?.data?.idTransaction || body?.data?.transactionId || body?.data?.id || body?.data?.tx_id ||
-      body?.data?.transaction_id
-
-    // Respond immediately to avoid timeout
+    const idTransaction = getIdTransaction(body)
     res.status(200).json({ status: 'received' })
-
     if (!idTransaction) {
       console.error('Webhook PIX: idTransaction não fornecido. Body:', JSON.stringify(body))
       return
     }
-
-    // Find transaction by idTransaction
     const transaction = await Transaction.findOne({ idTransaction })
-
     if (!transaction) {
       console.error(`Webhook PIX: Transação não encontrada: ${idTransaction}`)
       return
     }
-
-    // Handle different webhook formats (Gatebox, NXGATE, XGate, etc.)
-    const rawStatus = (status ?? body.status ?? data?.status ?? '').toString().toUpperCase()
-    const rawType = (type ?? body.type ?? data?.type ?? '').toString().toUpperCase()
-    let paymentStatus = 'pending'
-    let webhookData = data || req.body
-
-    if (
-      rawType.includes('PAID') ||
-      rawType === 'QR_CODE_COPY_AND_PASTE_PAID' ||
-      rawStatus === 'PAID' ||
-      rawStatus === 'PAYED' ||
-      rawStatus === 'CONFIRMED' ||
-      rawStatus === 'PAYMENT_CONFIRMED' ||
-      rawStatus === 'SUCCESS' ||
-      rawStatus === 'COMPLETED' ||
-      rawStatus === 'APPROVED'
-    ) {
-      paymentStatus = 'paid'
-    } else if (rawStatus === 'FAILED' || rawStatus === 'ERROR' || rawStatus === 'REJECTED' || rawStatus === 'REFUSED') {
-      paymentStatus = 'failed'
-    } else if (rawStatus || rawType) {
-      console.warn(`Webhook PIX: status/type não reconhecido. status="${rawStatus}" type="${rawType}". Body:`, JSON.stringify(body).slice(0, 500))
-    }
-
-    // Update transaction status
-    await transaction.updateStatus(paymentStatus, webhookData)
-
-    // If payment is confirmed, update user balance
-    if (paymentStatus === 'paid' && transaction.type === 'deposit') {
-      const user = await User.findById(transaction.user)
-      if (user) {
-        const isFirstDeposit = user.totalDeposits === 0
-        const depositAmount = transaction.netAmount
-        const bonusConfig = await BonusConfig.getConfig().catch(() => null)
-        const bonusAmount = calcDepositBonus(depositAmount, isFirstDeposit, bonusConfig)
-        user.balance += depositAmount + bonusAmount
-        user.bonusBalance = (user.bonusBalance || 0) + bonusAmount
-        user.totalDeposits += depositAmount
-        await user.save()
-
-        // Update referral qualification and VIP level
-        await affiliateService.updateReferralQualification(user._id)
-        await affiliateService.updateVipLevel(user._id)
-
-        // Process affiliate commissions (CPA and RevShare)
-        if (user.referredBy) {
-          await processAffiliateCommissions(user, transaction, depositAmount, isFirstDeposit)
-        }
-
-        // Facebook Conversions API: first deposit = Purchase
-        if (isFirstDeposit) {
-          facebookService.sendFirstDeposit(user, depositAmount, 'BRL').catch(() => {})
-        }
-      }
-    }
-
-    console.log(`Webhook PIX: Transação ${idTransaction} atualizada para ${paymentStatus}`)
+    await processDepositWebhook(body, transaction)
   } catch (error) {
     console.error('Webhook PIX Error:', error)
     if (!res.headersSent) res.status(200).json({ status: 'received', error: error.message })
@@ -298,84 +343,18 @@ router.post('/pix-withdraw', async (req, res) => {
   logWebhook('pix-withdraw', req)
   try {
     const body = req.body || {}
-    const { type, status, amount, fee } = body
-    const idTransaction =
-      body.externalId || body.idTransaction || body.transactionId || body.transaction_id || body.tx_id || body.id ||
-      body?.data?.externalId || body?.data?.idTransaction || body?.data?.transactionId || body?.data?.id || body?.data?.tx_id
-
-    // Respond immediately to avoid timeout
+    const idTransaction = getIdTransaction(body)
     res.status(200).json({ status: 'received' })
-
     if (!idTransaction) {
       console.error('Webhook PIX Withdraw: idTransaction não fornecido. Body:', JSON.stringify(body))
       return
     }
-
-    // Find transaction by idTransaction
     const transaction = await Transaction.findOne({ idTransaction })
-
     if (!transaction) {
       console.error(`Webhook PIX Withdraw: Transação não encontrada: ${idTransaction}`)
       return
     }
-
-    // Determine status from webhook type
-    // Conforme documentação: PIX_CASHOUT_SUCCESS = sucesso, PIX_CASHOUT_ERROR = falha
-    // Também verificar campo 'worked' e 'status'
-    let paymentStatus = 'failed'
-    const worked = body.worked === true || body.worked === 'true'
-    const statusUpper = (status || '').toString().toUpperCase()
-    const typeUpper = (type || '').toString().toUpperCase()
-    
-    if (
-      typeUpper === 'PIX_CASHOUT_SUCCESS' ||
-      statusUpper === 'SUCCESS' ||
-      (worked && statusUpper !== 'ERROR')
-    ) {
-      paymentStatus = 'paid'
-    } else if (
-      typeUpper === 'PIX_CASHOUT_ERROR' ||
-      statusUpper === 'ERROR' ||
-      (!worked && statusUpper !== 'SUCCESS')
-    ) {
-      paymentStatus = 'failed'
-    }
-
-    // Update transaction
-    transaction.status = paymentStatus
-    transaction.webhookReceived = true
-    transaction.webhookData = req.body
-
-    // Atualizar taxa se fornecida
-    if (fee !== undefined && fee !== null) {
-      transaction.fee = parseFloat(fee) || 0
-      transaction.netAmount = transaction.amount - transaction.fee
-    }
-
-    if (paymentStatus === 'paid') {
-      transaction.paidAt = new Date(body.payment_date ? new Date(body.payment_date) : new Date())
-      
-      // Atualizar total de saques do usuário
-      const user = await User.findById(transaction.user)
-      if (user) {
-        user.totalWithdrawals += transaction.netAmount || transaction.amount
-        await user.save()
-      }
-    } else if (paymentStatus === 'failed') {
-      transaction.failedAt = new Date()
-      
-      // Reembolsar saldo se o saque falhou
-      const user = await User.findById(transaction.user)
-      if (user) {
-        user.balance += transaction.amount
-        await user.save()
-        console.log(`Webhook PIX Withdraw: Saldo reembolsado para usuário ${user._id} - R$ ${transaction.amount}`)
-      }
-    }
-
-    await transaction.save()
-
-    console.log(`Webhook PIX Withdraw: Transação ${idTransaction} atualizada para ${paymentStatus}`)
+    await processWithdrawWebhook(body, transaction)
   } catch (error) {
     console.error('Webhook PIX Withdraw Error:', error)
     if (!res.headersSent) res.status(200).json({ status: 'received', error: error.message })
