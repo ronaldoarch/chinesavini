@@ -11,7 +11,8 @@ const router = express.Router()
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
-const uploadsDir = path.join(__dirname, '../uploads')
+// Use UPLOADS_PATH if set (para volume persistente no Colify)
+const uploadsDir = process.env.UPLOADS_PATH || path.join(__dirname, '../uploads')
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true })
 }

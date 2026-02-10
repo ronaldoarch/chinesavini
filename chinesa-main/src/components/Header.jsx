@@ -25,20 +25,27 @@ function Header({
 }) {
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [logoUrl, setLogoUrl] = useState('/logo_plataforma.png')
+  const [logoError, setLogoError] = useState(false)
 
   useEffect(() => {
     loadLogo()
   }, [])
 
+  const handleLogoError = () => {
+    setLogoError(true)
+    setLogoUrl('/logo_plataforma.png')
+  }
+
   const loadLogo = async () => {
     try {
+      setLogoError(false)
       const response = await api.getLogo()
       if (response.success && response.data.logo) {
         setLogoUrl(response.data.logo.imageUrl)
       }
     } catch (error) {
       console.error('Error loading logo:', error)
-      // Keep default logo on error
+      setLogoUrl('/logo_plataforma.png')
     }
   }
 
@@ -74,7 +81,13 @@ function Header({
           </g>
         </svg>
         <a href="#" className="logo-link">
-          <img src={getImageUrl(logoUrl)} alt="Logo" className="logo-img" loading="lazy" />
+          <img
+            src={getImageUrl(logoError ? '/logo_plataforma.png' : logoUrl)}
+            alt="Logo"
+            className="logo-img"
+            loading="lazy"
+            onError={handleLogoError}
+          />
         </a>
       </div>
       <div className={`header-right${isLoggedIn ? ' is-logged-in' : ''}`}>

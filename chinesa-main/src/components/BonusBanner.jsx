@@ -13,9 +13,16 @@ const getImageUrl = (imagePath) => {
   return imagePath
 }
 
+const FALLBACK_BANNER = '/banner/banner-01.png'
+
 function BonusBanner() {
   const [banners, setBanners] = useState([])
   const [loading, setLoading] = useState(true)
+  const [brokenImageIds, setBrokenImageIds] = useState(new Set())
+
+  const handleImageError = (id) => {
+    setBrokenImageIds((prev) => new Set(prev).add(id))
+  }
 
   useEffect(() => {
     loadBanners()
@@ -193,10 +200,22 @@ function BonusBanner() {
             >
               {slide.linkUrl ? (
                 <a href={slide.linkUrl} target="_blank" rel="noopener noreferrer">
-                  <img src={getImageUrl(slide.src)} alt={slide.alt} className="banner-img-full" loading="lazy" />
+                  <img
+                    src={getImageUrl(brokenImageIds.has(slide.id) ? FALLBACK_BANNER : slide.src)}
+                    alt={slide.alt}
+                    className="banner-img-full"
+                    loading="lazy"
+                    onError={() => handleImageError(slide.id)}
+                  />
                 </a>
               ) : (
-                <img src={getImageUrl(slide.src)} alt={slide.alt} className="banner-img-full" loading="lazy" />
+                <img
+                  src={getImageUrl(brokenImageIds.has(slide.id) ? FALLBACK_BANNER : slide.src)}
+                  alt={slide.alt}
+                  className="banner-img-full"
+                  loading="lazy"
+                  onError={() => handleImageError(slide.id)}
+                />
               )}
             </div>
           ))}

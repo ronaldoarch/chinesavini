@@ -38,6 +38,14 @@ Se você está usando Colify para deploy, siga estes passos:
 - O **Destination Path** `/app/backend/uploads` é o caminho dentro do container onde o código salva os arquivos
 - O **Source Path** `/root/uploads` é onde os arquivos ficarão salvos no servidor host (persistente entre deploys)
 - Você pode escolher outro Source Path se preferir (ex: `/var/data/uploads`)
+- **O volume deve estar no serviço BACKEND**, não no Frontend
+
+### Se os arquivos ainda sumirem
+
+1. Confira os logs do backend após o deploy – ele exibe: `📁 Servindo uploads em: /caminho/...`
+2. Use esse caminho como **Destination Path** no volume
+3. Opcional: adicione a variável `UPLOADS_PATH=/app/backend/uploads` nas env vars do Backend
+4. Veja [TROUBLESHOOTING_STORAGE.md](TROUBLESHOOTING_STORAGE.md) para mais detalhes
 
 ## 🔧 Configuração de Volume Docker
 

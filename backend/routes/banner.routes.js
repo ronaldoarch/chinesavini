@@ -12,10 +12,11 @@ const router = express.Router()
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
-// Uploads inside backend folder so deploy works when only backend is deployed
-const uploadsDir = path.join(__dirname, '../uploads')
+// Uploads - use UPLOADS_PATH if set (para volume persistente no Colify)
+const uploadsDir = process.env.UPLOADS_PATH || path.join(__dirname, '../uploads')
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true })
+  console.log('📁 [Banners] Criado diretório uploads:', uploadsDir)
 }
 
 // Configure multer for file uploads

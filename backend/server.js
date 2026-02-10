@@ -3,6 +3,7 @@ import cors from 'cors'
 import helmet from 'helmet'
 import dotenv from 'dotenv'
 import path from 'path'
+import fs from 'fs'
 import { fileURLToPath } from 'url'
 import connectDB from './config/database.js'
 
@@ -55,10 +56,15 @@ app.use(cors({
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
 
-// Serve uploaded images from backend/uploads (works in production when only backend is deployed)
-const uploadsPath = path.join(__dirname, 'uploads')
+// Serve uploaded images - use UPLOADS_PATH if set (for persistent storage volume mount)
+const uploadsPath = process.env.UPLOADS_PATH || path.join(__dirname, 'uploads')
+if (!fs.existsSync(uploadsPath)) {
+  fs.mkdirSync(uploadsPath, { recursive: true })
+  console.log('📁 Criado diretório uploads:', uploadsPath)
+}
+console.log('📁 Servindo uploads em:', uploadsPath)
 app.use('/uploads', express.static(uploadsPath, {
-  setHeaders: (res, path) => {
+  setHeaders: (res, filePath) => {
     res.set('Cross-Origin-Resource-Policy', 'cross-origin')
     res.set('Access-Control-Allow-Origin', '*')
   }
