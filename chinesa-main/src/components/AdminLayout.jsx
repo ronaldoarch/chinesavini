@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
+import api from '../services/api'
 import AdminDashboard from '../pages/admin/AdminDashboard'
 import AdminUsers from '../pages/admin/AdminUsers'
 import AdminTransactions from '../pages/admin/AdminTransactions'
 import AdminGamesConfig from '../pages/admin/AdminGamesConfig'
 import AdminGatewayConfig from '../pages/admin/AdminGatewayConfig'
 import AdminTheme from '../pages/admin/AdminTheme'
+import AdminSiteConfig from '../pages/admin/AdminSiteConfig'
 import AdminAffiliates from '../pages/admin/AdminAffiliates'
 import AdminBanners from '../pages/admin/AdminBanners'
 import AdminBonusConfig from '../pages/admin/AdminBonusConfig'
@@ -29,6 +31,17 @@ function AdminLayout() {
     return () => {
       document.body.classList.remove('admin-page')
     }
+  }, [])
+
+  // Título da aba: Admin - Nome do site
+  useEffect(() => {
+    api.getSiteConfig()
+      .then((res) => {
+        if (res.success && res.data?.siteName) {
+          document.title = `Admin - ${res.data.siteName}`
+        }
+      })
+      .catch(() => {})
   }, [])
   
   // Reset refresh flag when user changes
@@ -187,6 +200,8 @@ function AdminLayout() {
         return <AdminGatewayConfig />
       case 'theme':
         return <AdminTheme />
+      case 'site':
+        return <AdminSiteConfig />
       case 'affiliates':
         return <AdminAffiliates />
       case 'banners':
@@ -272,6 +287,15 @@ function AdminLayout() {
             >
               <i className="fa-solid fa-palette"></i>
               <span>Temas</span>
+            </button>
+          </li>
+          <li>
+            <button
+              className={activePage === 'site' ? 'active' : ''}
+              onClick={() => setActivePage('site')}
+            >
+              <i className="fa-solid fa-window-maximize"></i>
+              <span>Nome do site</span>
             </button>
           </li>
           <li>

@@ -1,0 +1,73 @@
+.admin-site-config-desc {
+  color: rgba(255, 255, 255, 0.85);
+  margin-bottom: 1.5rem;
+  font-size: 0.95rem;
+}
+
+.admin-site-config-form {
+  max-width: 420px;
+}
+
+.admin-site-config-field {
+  margin-bottom: 1.25rem;
+}
+
+.admin-site-config-field label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #fff;
+  font-weight: 500;
+  margin-bottom: 8px;
+}
+
+.admin-site-config-field label i {
+  color: var(--gold, #c59728);
+}
+
+.admin-site-config-field input {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.3);
+  color: #fff;
+  font-size: 1rem;
+}
+
+.admin-site-config-field input:focus {
+  outline: none;
+  border-color: var(--gold, #c59728);
+}
+
+.admin-site-config-error {
+  color: #ef4444;
+  margin-bottom: 1rem;
+}
+
+.admin-site-config-success {
+  color: #22c55e;
+  margin-bottom: 1rem;
+}
+
+.admin-site-config-submit {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  background: linear-gradient(135deg, var(--light-purple) 0%, var(--primary-purple) 100%);
+  border: 1px solid var(--gold, rgba(197, 151, 40, 0.4));
+  border-radius: 8px;
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.admin-site-config-submit:hover:not(:disabled) {
+  filter: brightness(1.1);
+}
+
+.admin-site-config-submit:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}

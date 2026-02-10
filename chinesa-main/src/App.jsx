@@ -60,6 +60,14 @@ function AppContent() {
   const [notification, setNotification] = React.useState({ message: '', type: 'success', isOpen: false })
 
   React.useEffect(() => {
+    api.getSiteConfig().then((res) => {
+      if (res.success && res.data?.siteName) {
+        document.title = res.data.siteName
+      }
+    }).catch(() => {})
+  }, [])
+
+  React.useEffect(() => {
     api.getActivePopup()
       .then((res) => {
         if (!res.success || !res.data) return

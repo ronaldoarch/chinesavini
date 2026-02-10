@@ -239,6 +239,18 @@ class ApiService {
     })
   }
 
+  // Site config (nome do site / título da página)
+  async getSiteConfig() {
+    return this.request('/site-config', { method: 'GET' })
+  }
+
+  async updateSiteConfig(data) {
+    return this.request('/site-config', {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    })
+  }
+
   // Theme endpoints
   async getActiveTheme() {
     return this.request('/theme/active', {
