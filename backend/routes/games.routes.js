@@ -287,50 +287,49 @@ router.post('/launch', protect, async (req, res) => {
     }
 
     const userCode = user._id.toString()
+    const isSamples = igamewinService.isSamplesMode()
 
-    // Create user in igamewin if not exists
+    // Create user in igamewin if not exists (samples mode = is_demo true, doc iGameWin)
     try {
-      await igamewinService.createUser(userCode)
+      await igamewinService.createUser(userCode, isSamples)
     } catch (error) {
-      // User might already exist, continue
       console.log('User creation:', error.message)
     }
 
-    const isSeamless = (process.env.IGAMEWIN_API_MODE || 'transfer').toLowerCase() === 'seamless'
-
-    if (!isSeamless) {
-      // Transfer mode: recover any balance stuck in igamewin from previous session
-      try {
-        const moneyInfo = await igamewinService.getMoneyInfo(userCode)
-        if (moneyInfo.status === 1) {
-          const igamewinBalanceReais = igamewinService.parseUserBalanceFromMoneyInfo(moneyInfo)
-          if (igamewinBalanceReais > 0) {
-            const withdrawRes = await igamewinService.withdrawUserBalance(userCode, igamewinBalanceReais)
-            if (withdrawRes.status === 1) {
-              user.balance = (user.balance || 0) + igamewinBalanceReais
-              await user.save()
+    if (isSamples) {
+      // Samples mode: agente em demo — não transferir saldo real; só lançar o jogo
+    } else {
+      const isSeamless = (process.env.IGAMEWIN_API_MODE || 'transfer').toLowerCase() === 'seamless'
+      if (!isSeamless) {
+        try {
+          const moneyInfo = await igamewinService.getMoneyInfo(userCode)
+          if (moneyInfo.status === 1) {
+            const igamewinBalanceReais = igamewinService.parseUserBalanceFromMoneyInfo(moneyInfo)
+            if (igamewinBalanceReais > 0) {
+              const withdrawRes = await igamewinService.withdrawUserBalance(userCode, igamewinBalanceReais)
+              if (withdrawRes.status === 1) {
+                user.balance = (user.balance || 0) + igamewinBalanceReais
+                await user.save()
+              }
             }
           }
+        } catch (err) {
+          console.warn('Recover igamewin balance:', err.message)
         }
-      } catch (err) {
-        console.warn('Recover igamewin balance:', err.message)
-      }
-
-      // Deposit user balance to igamewin so it appears in the game
-      const amountToDeposit = Math.max(0, user.balance || 0)
-      if (amountToDeposit > 0) {
-        const depositRes = await igamewinService.depositUserBalance(userCode, amountToDeposit)
-        if (depositRes.status === 1) {
-          user.balance -= amountToDeposit
-          user.bonusBalance = Math.min(user.bonusBalance || 0, user.balance)
-          await user.save()
-          await new Promise((r) => setTimeout(r, 500))
-        } else {
-          console.warn('Launch: deposit to igamewin failed', depositRes.msg || depositRes)
+        const amountToDeposit = Math.max(0, user.balance || 0)
+        if (amountToDeposit > 0) {
+          const depositRes = await igamewinService.depositUserBalance(userCode, amountToDeposit)
+          if (depositRes.status === 1) {
+            user.balance -= amountToDeposit
+            user.bonusBalance = Math.min(user.bonusBalance || 0, user.balance)
+            await user.save()
+            await new Promise((r) => setTimeout(r, 500))
+          } else {
+            console.warn('Launch: deposit to igamewin failed', depositRes.msg || depositRes)
+          }
         }
       }
     }
-    // Seamless mode: no deposit - iGameWin calls our /api/games/seamless for balance & transactions
 
     // Launch game
     const response = await igamewinService.launchGame(userCode, providerCode, gameCode, lang)
@@ -370,6 +369,14 @@ router.post('/deposit', protect, async (req, res) => {
       return res.status(400).json({
         success: false,
         message: 'Valor inválido'
+      })
+    }
+
+    if (igamewinService.isSamplesMode()) {
+      return res.json({
+        success: true,
+        message: 'Samples mode: depósito não enviado ao agente',
+        data: { userBalance: user.balance, agentBalance: 0 }
       })
     }
 
@@ -428,6 +435,14 @@ router.post('/withdraw', protect, async (req, res) => {
       })
     }
 
+    if (igamewinService.isSamplesMode()) {
+      return res.json({
+        success: true,
+        message: 'Samples mode: saque não enviado ao agente',
+        data: { userBalance: user.balance, agentBalance: 0 }
+      })
+    }
+
     const userCode = user._id.toString()
     const response = await igamewinService.withdrawUserBalance(userCode, amount)
 
@@ -461,15 +476,16 @@ router.post('/withdraw', protect, async (req, res) => {
 })
 
 // @route   POST /api/games/sync-balance
-// @desc    Withdraw balance from igamewin back to user (Transfer mode) or no-op (Seamless mode)
+// @desc    Withdraw balance from igamewin back to user (Transfer mode) or no-op (Seamless/Samples mode)
 // @access  Private
 router.post('/sync-balance', protect, async (req, res) => {
   try {
     const user = req.user
     const userCode = user._id.toString()
     const isSeamless = (process.env.IGAMEWIN_API_MODE || 'transfer').toLowerCase() === 'seamless'
+    const isSamples = igamewinService.isSamplesMode()
 
-    if (isSeamless) {
+    if (isSamples || isSeamless) {
       return res.json({
         success: true,
         data: { balance: user.balance, synced: true }
@@ -542,6 +558,7 @@ router.post('/seamless', validateSeamlessAgent, async (req, res) => {
     }
 
     if (method === 'transaction') {
+      const isSamples = igamewinService.isSamplesMode()
       const { game_type, slot, agent_balance, user_balance: igamewinUserBalance } = req.body
       const slotData = slot || req.body[game_type] || {}
       const txnId = slotData.txn_id
@@ -556,6 +573,23 @@ router.post('/seamless', validateSeamlessAgent, async (req, res) => {
       const existing = await GameTxnLog.findOne({ txnId })
       if (existing) {
         const balanceCents = Math.round((existing.balanceAfterReais || 0) * 100)
+        return res.json({ status: 1, user_balance: balanceCents })
+      }
+
+      // Samples mode: agente em demo — não alterar saldo real do jogador; só retornar sucesso (doc iGameWin)
+      if (isSamples) {
+        const balanceCents = Math.round((user.balance || 0) * 100)
+        await GameTxnLog.create({
+          txnId,
+          user: user._id,
+          gameType: game_type,
+          providerCode: slotData.provider_code,
+          gameCode: slotData.game_code,
+          txnType: slotData.txn_type || 'debit_credit',
+          betCents,
+          winCents,
+          balanceAfterReais: user.balance || 0
+        })
         return res.json({ status: 1, user_balance: balanceCents })
       }
 

@@ -6,11 +6,21 @@ const IGAMEWIN_API_URL = 'https://igamewin.com/api/v1'
 const reaisToCents = (reais) => Math.round(Number(reais) * 100)
 const centsToReais = (cents) => (Number(cents) || 0) / 100
 
+/** Quando o agente iGameWin está em samples/demo mode: usuários são criados com is_demo, não movimentamos saldo real. */
+function isSamplesMode() {
+  const v = (process.env.IGAMEWIN_SAMPLES_MODE || '').toString().toLowerCase()
+  return v === 'true' || v === '1' || v === 'yes'
+}
+
 class IGameWinService {
   constructor() {
     this.agentCode = process.env.IGAMEWIN_AGENT_CODE || 'Midaslabs'
     this.agentToken = process.env.IGAMEWIN_AGENT_TOKEN || '092b6406e28211f0b8f1bc2411881493'
     this.agentSecret = process.env.IGAMEWIN_AGENT_SECRET || '19e4c979a7a5a4f70ffc30b510312317'
+  }
+
+  isSamplesMode() {
+    return isSamplesMode()
   }
 
   async makeRequest(method, params = {}) {
@@ -36,10 +46,11 @@ class IGameWinService {
     }
   }
 
-  // Transfer API Methods
-  async createUser(userCode, isDemo = false) {
+  // Transfer API Methods — em samples mode criamos sempre como is_demo (doc iGameWin)
+  async createUser(userCode, isDemo = null) {
     const params = { user_code: userCode }
-    if (isDemo) {
+    const useDemo = isDemo !== null ? isDemo : isSamplesMode()
+    if (useDemo) {
       params.is_demo = true
     }
     return this.makeRequest('user_create', params)
