@@ -6,7 +6,6 @@ import User from '../models/User.model.js'
 import BonusConfig from '../models/BonusConfig.model.js'
 import GatewayConfig from '../models/GatewayConfig.model.js'
 import gateboxService from '../services/gatebox.service.js'
-import generateValidCpf from '../utils/generateCpf.js'
 
 const router = express.Router()
 
@@ -191,16 +190,13 @@ router.post(
     body('pixKeyType')
       .isIn(['CPF', 'CNPJ', 'PHONE', 'EMAIL', 'RANDOM'])
       .withMessage('Tipo de chave PIX inválido'),
-    // CPF é opcional - só validar se fornecido e se a chave não for CPF
+    // CPF do recebedor (titular da chave PIX) é obrigatório: Gatebox valida correspondência com a chave
     body('cpf')
-      .optional()
-      .custom((value, { req }) => {
-        // Se não fornecido, OK (backend usará CPF genérico)
-        if (!value) return true
-        // Se fornecido, validar formato
-        if (!value.match(/^\d{3}\.\d{3}\.\d{3}-\d{2}$/)) {
-          throw new Error('CPF inválido')
-        }
+      .notEmpty()
+      .withMessage('CPF do titular da chave PIX é obrigatório para saque')
+      .custom((value) => {
+        const digits = (value || '').replace(/\D/g, '')
+        if (digits.length !== 11) throw new Error('CPF inválido')
         return true
       })
   ],
@@ -265,22 +261,8 @@ router.post(
       transaction.idTransaction = transaction._id.toString()
       await transaction.save()
 
-      // Process withdrawal via GATEBOX
-      // Gatebox rejeita documento 00000000000; quando não houver CPF, usar CPF aleatório válido
-      const gatewayConfig = await GatewayConfig.getConfig()
-      let documentoFormatted = null
-
-      if (cpf) {
-        documentoFormatted = cpf
-      } else {
-        const defaultCpf = gatewayConfig?.defaultCpf?.replace(/\D/g, '') || ''
-        const isInvalidPlaceholder = !defaultCpf || defaultCpf === '00000000000' || defaultCpf.length !== 11
-        documentoFormatted = isInvalidPlaceholder ? generateValidCpf() : defaultCpf
-      }
-
-      if (documentoFormatted && typeof documentoFormatted === 'string') {
-        documentoFormatted = documentoFormatted.replace(/\D/g, '')
-      }
+      // Process withdrawal via GATEBOX — documentNumber = CPF do recebedor (titular da chave). Gatebox valida correspondência.
+      const documentoFormatted = String(cpf).replace(/\D/g, '')
 
       const withdrawResult = await gateboxService.withdrawPix({
         valor: amount,
