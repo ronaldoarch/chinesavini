@@ -205,8 +205,12 @@ function getIdTransaction(body) {
   )
 }
 
+// Tipos Gatebox: PIX_PAY_IN = depósito, PIX_PAY_OUT = saque, PIX_REVERSAL / PIX_REFUND = estorno (reembolso)
+const GATEBOX_TYPE_DEPOSIT = ['PIX_PAY_IN']
+const GATEBOX_TYPE_WITHDRAW = ['PIX_PAY_OUT', 'PIX_REVERSAL', 'PIX_REVERSAL_OUT', 'PIX_REFUND']
+
 // @route   POST /api/webhooks/gatebox
-// @desc    Webhook único para todos os eventos Gatebox (depósito e saque)
+// @desc    Webhook único para todos os eventos Gatebox (depósito, saque, estorno)
 // @access  Public
 router.post('/gatebox', async (req, res) => {
   logWebhook('gatebox', req)
@@ -224,7 +228,20 @@ router.post('/gatebox', async (req, res) => {
       console.error(`Webhook Gatebox: Transação não encontrada: ${idTransaction}`)
       return
     }
-    if (transaction.type === 'withdraw') {
+
+    const webhookType = (body.type ?? body.invoice?.type ?? body.event ?? '').toString().toUpperCase()
+    const isDepositType = GATEBOX_TYPE_DEPOSIT.includes(webhookType)
+    const isWithdrawType = GATEBOX_TYPE_WITHDRAW.includes(webhookType)
+
+    if (isDepositType) {
+      await processDepositWebhook(body, transaction)
+    } else if (isWithdrawType) {
+      // PIX_REVERSAL / PIX_REFUND = estorno: forçar falha e reembolso automático
+      if (['PIX_REVERSAL', 'PIX_REVERSAL_OUT', 'PIX_REFUND'].includes(webhookType)) {
+        body._gateboxReversal = true
+      }
+      await processWithdrawWebhook(body, transaction)
+    } else if (transaction.type === 'withdraw') {
       await processWithdrawWebhook(body, transaction)
     } else {
       await processDepositWebhook(body, transaction)
@@ -273,19 +290,27 @@ async function processDepositWebhook(body, transaction) {
 
 async function processWithdrawWebhook(body, transaction) {
   const { type, status, fee } = body
+  // Reembolso automático: só consideramos "pago" com evidência explícita de sucesso; caso contrário = falha e reembolsar
   let paymentStatus = 'failed'
-  const worked = body.worked === true || body.worked === 'true'
-  const statusUpper = (status || '').toString().toUpperCase()
-  const typeUpper = (type || '').toString().toUpperCase()
-  if (
-    typeUpper === 'PIX_CASHOUT_SUCCESS' || statusUpper === 'SUCCESS' || (worked && statusUpper !== 'ERROR')
-  ) {
-    paymentStatus = 'paid'
-  } else if (
-    typeUpper === 'PIX_CASHOUT_ERROR' || statusUpper === 'ERROR' || (!worked && statusUpper !== 'SUCCESS')
-  ) {
+  if (body._gateboxReversal) {
+    // PIX_REVERSAL / PIX_REFUND = estorno Gatebox -> falha e reembolso automático
     paymentStatus = 'failed'
+  } else {
+    const worked = body.worked === true || body.worked === 'true'
+    const statusUpper = (status ?? body.invoice?.status ?? body.status ?? '').toString().toUpperCase()
+    const typeUpper = (type ?? body.invoice?.type ?? body.type ?? '').toString().toUpperCase()
+    const errorMsg = body.error || body.invoice?.error || body.motivo || body.message || body.reason || ''
+    const errorStr = typeof errorMsg === 'string' ? errorMsg : (errorMsg?.message || JSON.stringify(errorMsg))
+    const hasError = !!errorStr || statusUpper === 'FAILED' || typeUpper === 'PIX_CASHOUT_ERROR' || /invalid|falha|error|invalid/i.test(errorStr)
+
+    if (typeUpper === 'PIX_CASHOUT_SUCCESS' || statusUpper === 'SUCCESS') {
+      paymentStatus = 'paid'
+    } else if (worked && statusUpper !== 'ERROR' && statusUpper !== 'FAILED' && !hasError) {
+      paymentStatus = 'paid'
+    }
   }
+  // Qualquer outro caso = falha (reembolso automático)
+
   transaction.status = paymentStatus
   transaction.webhookReceived = true
   transaction.webhookData = body
@@ -300,13 +325,14 @@ async function processWithdrawWebhook(body, transaction) {
       user.totalWithdrawals += transaction.netAmount || transaction.amount
       await user.save()
     }
-  } else if (paymentStatus === 'failed') {
+  } else {
+    // Falha no saque: reembolso automático do valor debitado
     transaction.failedAt = new Date()
     const user = await User.findById(transaction.user)
     if (user) {
       user.balance += transaction.amount
       await user.save()
-      console.log(`Webhook PIX Withdraw: Saldo reembolsado para usuário ${user._id} - R$ ${transaction.amount}`)
+      console.log(`Webhook PIX Withdraw: Reembolso automático para usuário ${user._id} - R$ ${transaction.amount} (saque falhou)`)
     }
   }
   await transaction.save()

@@ -574,9 +574,13 @@ router.put(
       // Update transaction status
       await transaction.updateStatus(newStatus)
 
+      const user = await User.findById(transaction.user._id)
+      if (!user) {
+        return res.status(404).json({ success: false, message: 'Usuário não encontrado' })
+      }
+
       // Handle balance updates
       if (oldStatus !== 'paid' && newStatus === 'paid') {
-        const user = await User.findById(transaction.user._id)
         if (transaction.type === 'deposit') {
           user.balance += transaction.netAmount
           user.totalDeposits += transaction.netAmount
@@ -586,15 +590,19 @@ router.put(
         await user.save()
       } else if (oldStatus === 'paid' && newStatus !== 'paid') {
         // Revert balance if status changed from paid
-        const user = await User.findById(transaction.user._id)
         if (transaction.type === 'deposit') {
           user.balance -= transaction.netAmount
           user.totalDeposits -= transaction.netAmount
         } else if (transaction.type === 'withdraw') {
-          user.balance += transaction.amount // Refund
+          user.balance += transaction.amount
           user.totalWithdrawals -= transaction.netAmount
         }
         await user.save()
+      } else if (transaction.type === 'withdraw' && newStatus === 'failed' && (oldStatus === 'processing' || oldStatus === 'pending')) {
+        // Saque falhou (ex.: Gatebox) mas o saldo já foi debitado: reembolsar
+        user.balance += transaction.amount
+        await user.save()
+        console.log(`Admin: Saldo reembolsado para usuário ${user._id} - saque falhou, transação ${transaction._id}`)
       }
 
       const updatedTransaction = await Transaction.findById(req.params.id).populate(

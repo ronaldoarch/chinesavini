@@ -205,6 +205,18 @@ class GateboxService {
         timeout: 30000
       })
 
+      const data = response.data?.data ?? response.data
+      const status = (data?.status ?? response.data?.status ?? '').toString().toUpperCase()
+      const errorMsg = data?.error ?? response.data?.error ?? data?.message ?? response.data?.message
+      if (errorMsg || status === 'FAILED') {
+        console.error('GATEBOX Withdraw PIX: API retornou falha no body:', { status, error: errorMsg })
+        return {
+          success: false,
+          error: response.data,
+          message: (typeof errorMsg === 'string' ? errorMsg : errorMsg?.message) || 'Falha ao processar saque na Gatebox'
+        }
+      }
+
       return {
         success: true,
         data: response.data
