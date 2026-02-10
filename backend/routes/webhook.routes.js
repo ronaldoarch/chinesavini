@@ -338,6 +338,8 @@ async function processWithdrawWebhook(body, transaction) {
       user.balance += transaction.amount
       await user.save()
       console.log(`Webhook PIX Withdraw: Reembolso automático para usuário ${user._id} - R$ ${transaction.amount} (saque falhou)`)
+    } else if (!hadBalanceDeducted) {
+      console.log(`Webhook PIX Withdraw: Saque falhou; saldo não havia sido debitado (status=${transaction.status}), reembolso não necessário`)
     }
   }
   await transaction.save()

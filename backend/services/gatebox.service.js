@@ -4,6 +4,35 @@ import GatewayConfig from '../models/GatewayConfig.model.js'
 const GATEBOX_API_URL = 'https://api.gatebox.com.br'
 const WEBHOOK_BASE_URL = process.env.WEBHOOK_BASE_URL || 'http://localhost:5000'
 
+/**
+ * Normaliza chave PIX e documento para o formato aceito pela Gatebox.
+ * - PHONE: só dígitos, com código do país 55 (ex: 5594992961626)
+ * - CPF/CNPJ: só dígitos, sem pontuação
+ * - EMAIL: trim, minúsculo
+ * - RANDOM: trim
+ */
+function normalizePixKeyForGatebox(key, keyType) {
+  if (!key || typeof key !== 'string') return key
+  const trimmed = key.trim()
+  const type = (keyType || '').toUpperCase()
+  if (type === 'PHONE') {
+    const digits = trimmed.replace(/\D/g, '')
+    if (digits.length === 11) return `55${digits}` // DDD + 9 + número
+    if (digits.length === 13 && digits.startsWith('55')) return digits
+    if (digits.length === 12 && digits.startsWith('55')) return digits // 55 + 10 dígitos (antigo)
+    return digits.length >= 10 ? `55${digits.slice(-11)}` : trimmed
+  }
+  if (type === 'CPF' || type === 'CNPJ') return trimmed.replace(/\D/g, '')
+  if (type === 'EMAIL') return trimmed.toLowerCase()
+  if (type === 'RANDOM') return trimmed
+  return trimmed.replace(/\D/g, '') // fallback: só dígitos
+}
+
+function normalizeDocumentForGatebox(document) {
+  if (!document || typeof document !== 'string') return document
+  return document.replace(/\D/g, '')
+}
+
 class GateboxService {
   constructor() {
     this.username = null
@@ -111,19 +140,18 @@ class GateboxService {
       await this.getConfig()
       const token = await this.getAuthToken()
 
-      // Formatar documento (remover pontuação)
-      let documento = data.documento_pagador || ''
-      documento = documento.replace(/\D/g, '')
+      // Documento do pagador: só dígitos (Gatebox aceita sem pontuação)
+      const document = normalizeDocumentForGatebox(data.documento_pagador)
 
       const payload = {
         externalId: data.externalId || data.idTransaction || `deposit_${Date.now()}`,
         amount: parseFloat(data.valor),
-        document: documento,
-        name: data.nome_pagador,
-        expire: 3600 // 1 hora em segundos
+        name: (data.nome_pagador || 'Pagador').trim(),
+        expire: 3600 // 1 hora em segundos (conforme Postman)
       }
+      if (document && document.length >= 11) payload.document = document
 
-      // Campos opcionais
+      // Campos opcionais (Postman: email, phone ex: +5514987654321, identification, description)
       if (data.email) payload.email = data.email
       if (data.phone) payload.phone = data.phone
       if (data.identification) payload.identification = data.identification
@@ -175,17 +203,17 @@ class GateboxService {
       await this.getConfig()
       const token = await this.getAuthToken()
 
-      // Formatar documento (remover pontuação)
-      let documento = data.documento || ''
-      documento = documento.replace(/\D/g, '')
+      const tipoChave = (data.tipo_chave || '').toUpperCase()
+      const key = normalizePixKeyForGatebox(data.chave_pix, tipoChave)
+      const documentNumber = normalizeDocumentForGatebox(data.documento || '')
 
       const payload = {
         externalId: data.externalId || data.idTransaction || `withdraw_${Date.now()}`,
-        key: data.chave_pix,
-        name: data.nome_recebedor || 'Recebedor',
-        amount: parseFloat(data.valor),
-        documentNumber: documento
+        key,
+        name: (data.nome_recebedor || 'Recebedor').trim(),
+        amount: parseFloat(data.valor)
       }
+      if (documentNumber && documentNumber.length >= 11) payload.documentNumber = documentNumber
 
       // Campos opcionais
       if (data.description) payload.description = data.description
