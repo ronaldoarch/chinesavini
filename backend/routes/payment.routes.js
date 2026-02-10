@@ -102,8 +102,9 @@ router.post(
       // Gatebox returns transactionId, but we use externalId (our transaction ID) for webhook matching
       transaction.idTransaction = pixData?.transactionId || pixData?.idTransaction || pixData?.externalId || pixData?.tx_id || raw?.transactionId || raw?.idTransaction || raw?.externalId || raw?.tx_id || transaction._id.toString()
 
-      // GATEBOX returns qrCode and qrCodeImage at top level
+      // GATEBOX retorna o código PIX em data.key; outros gateways usam qrCode, pixCopyPaste, etc.
       const copyPaste =
+        raw?.key || pixData?.key ||
         pixData?.qrCode || pixData?.pixCopyPaste || pixData?.copyPaste ||
         raw?.qrCode || raw?.pixCopyPaste || raw?.copyPaste ||
         raw?.pix_copy_and_paste || raw?.pixCopyPaste || raw?.copy_paste || raw?.qr_code || raw?.qrcode ||
@@ -114,7 +115,10 @@ router.post(
         raw?.qrCodeImage || raw?.qrCodeBase64 ||
         raw?.base_64_image_url || raw?.base_64_image || raw?.qr_code_image ||
         raw?.imagem_qr || raw?.qrcode_base64 || pixData?.paymentCodeBase64 || raw?.paymentCodeBase64
-      const expDate = pixData?.expiresAt || raw?.expiration_date || raw?.expiresAt || raw?.expires_at || raw?.expiracao
+      // Gatebox envia timeout/expire em segundos
+      const expireSeconds = raw?.expire ?? raw?.timeout ?? pixData?.expire ?? pixData?.timeout
+      const expDate = pixData?.expiresAt || raw?.expiration_date || raw?.expiresAt || raw?.expires_at || raw?.expiracao ||
+        (expireSeconds ? new Date(Date.now() + Number(expireSeconds) * 1000) : null)
 
       if (copyPaste) {
         transaction.pixCopyPaste = typeof copyPaste === 'string' ? copyPaste : (copyPaste?.valor || copyPaste?.code || String(copyPaste))
