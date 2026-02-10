@@ -88,7 +88,7 @@ class IGameWinService {
     })
   }
 
-  /** Returns balance in reais (converted from API cents). Use raw response for agent-only or all_users. */
+  /** Returns user balance in reais (converted from API cents). Used by admin/game history. */
   parseUserBalanceFromMoneyInfo(moneyInfo) {
     const raw = moneyInfo.user?.balance ?? moneyInfo.user_balance ?? moneyInfo.balance ?? 0
     return centsToReais(raw)

@@ -296,40 +296,8 @@ router.post('/launch', protect, async (req, res) => {
       console.log('User creation:', error.message)
     }
 
-    if (isSamples) {
-      // Samples mode: agente em demo — não transferir saldo real; só lançar o jogo
-    } else {
-      const isSeamless = (process.env.IGAMEWIN_API_MODE || 'transfer').toLowerCase() === 'seamless'
-      if (!isSeamless) {
-        try {
-          const moneyInfo = await igamewinService.getMoneyInfo(userCode)
-          if (moneyInfo.status === 1) {
-            const igamewinBalanceReais = igamewinService.parseUserBalanceFromMoneyInfo(moneyInfo)
-            if (igamewinBalanceReais > 0) {
-              const withdrawRes = await igamewinService.withdrawUserBalance(userCode, igamewinBalanceReais)
-              if (withdrawRes.status === 1) {
-                user.balance = (user.balance || 0) + igamewinBalanceReais
-                await user.save()
-              }
-            }
-          }
-        } catch (err) {
-          console.warn('Recover igamewin balance:', err.message)
-        }
-        const amountToDeposit = Math.max(0, user.balance || 0)
-        if (amountToDeposit > 0) {
-          const depositRes = await igamewinService.depositUserBalance(userCode, amountToDeposit)
-          if (depositRes.status === 1) {
-            user.balance -= amountToDeposit
-            user.bonusBalance = Math.min(user.bonusBalance || 0, user.balance)
-            await user.save()
-            await new Promise((r) => setTimeout(r, 500))
-          } else {
-            console.warn('Launch: deposit to igamewin failed', depositRes.msg || depositRes)
-          }
-        }
-      }
-    }
+    // Seamless: saldo fica no nosso DB; iGameWin chama /api/games/seamless para user_balance e transaction
+    // Samples: agente em demo — não movimentamos saldo real
 
     // Launch game
     const response = await igamewinService.launchGame(userCode, providerCode, gameCode, lang)
@@ -358,58 +326,23 @@ router.post('/launch', protect, async (req, res) => {
 })
 
 // @route   POST /api/games/deposit
-// @desc    Deposit to user game balance
+// @desc    Seamless: no-op (saldo no nosso DB; iGameWin chama /seamless)
 // @access  Private
 router.post('/deposit', protect, async (req, res) => {
   try {
-    const { amount } = req.body
     const user = req.user
-
-    if (!amount || amount <= 0) {
-      return res.status(400).json({
-        success: false,
-        message: 'Valor inválido'
-      })
-    }
-
     if (igamewinService.isSamplesMode()) {
       return res.json({
         success: true,
-        message: 'Samples mode: depósito não enviado ao agente',
+        message: 'Samples mode: depósito não enviado',
         data: { userBalance: user.balance, agentBalance: 0 }
       })
     }
-
-    if (user.balance < amount) {
-      return res.status(400).json({
-        success: false,
-        message: 'Saldo insuficiente'
-      })
-    }
-
-    const userCode = user._id.toString()
-    const response = await igamewinService.depositUserBalance(userCode, amount)
-
-    if (response.status === 1) {
-      // Update user balance (cap bonusBalance when balance decreases)
-      user.balance -= amount
-      user.bonusBalance = Math.min(user.bonusBalance || 0, user.balance)
-      await user.save()
-
-      res.json({
-        success: true,
-        message: 'Depósito realizado com sucesso',
-        data: {
-          userBalance: (response.user_balance ?? 0) / 100,
-          agentBalance: (response.agent_balance ?? 0) / 100
-        }
-      })
-    } else {
-      res.status(400).json({
-        success: false,
-        message: response.msg || 'Erro ao realizar depósito'
-      })
-    }
+    return res.json({
+      success: true,
+      message: 'Seamless: saldo gerenciado via callback',
+      data: { userBalance: user.balance, agentBalance: 0 }
+    })
   } catch (error) {
     console.error('Deposit error:', error)
     res.status(500).json({
@@ -421,50 +354,23 @@ router.post('/deposit', protect, async (req, res) => {
 })
 
 // @route   POST /api/games/withdraw
-// @desc    Withdraw from user game balance
+// @desc    Seamless: no-op (saldo no nosso DB; iGameWin chama /seamless)
 // @access  Private
 router.post('/withdraw', protect, async (req, res) => {
   try {
-    const { amount } = req.body
     const user = req.user
-
-    if (!amount || amount <= 0) {
-      return res.status(400).json({
-        success: false,
-        message: 'Valor inválido'
-      })
-    }
-
     if (igamewinService.isSamplesMode()) {
       return res.json({
         success: true,
-        message: 'Samples mode: saque não enviado ao agente',
+        message: 'Samples mode: saque não enviado',
         data: { userBalance: user.balance, agentBalance: 0 }
       })
     }
-
-    const userCode = user._id.toString()
-    const response = await igamewinService.withdrawUserBalance(userCode, amount)
-
-    if (response.status === 1) {
-      // Update user balance
-      user.balance += amount
-      await user.save()
-
-      res.json({
-        success: true,
-        message: 'Saque realizado com sucesso',
-        data: {
-          userBalance: (response.user_balance ?? 0) / 100,
-          agentBalance: (response.agent_balance ?? 0) / 100
-        }
-      })
-    } else {
-      res.status(400).json({
-        success: false,
-        message: response.msg || 'Erro ao realizar saque'
-      })
-    }
+    return res.json({
+      success: true,
+      message: 'Seamless: saldo gerenciado via callback',
+      data: { userBalance: user.balance, agentBalance: 0 }
+    })
   } catch (error) {
     console.error('Withdraw error:', error)
     res.status(500).json({
@@ -476,55 +382,14 @@ router.post('/withdraw', protect, async (req, res) => {
 })
 
 // @route   POST /api/games/sync-balance
-// @desc    Withdraw balance from igamewin back to user (Transfer mode) or no-op (Seamless/Samples mode)
+// @desc    Seamless: no-op (saldo no nosso DB; retorna balance atual)
 // @access  Private
 router.post('/sync-balance', protect, async (req, res) => {
   try {
     const user = req.user
-    const userCode = user._id.toString()
-    const isSeamless = (process.env.IGAMEWIN_API_MODE || 'transfer').toLowerCase() === 'seamless'
-    const isSamples = igamewinService.isSamplesMode()
-
-    if (isSamples || isSeamless) {
-      return res.json({
-        success: true,
-        data: { balance: user.balance, synced: true }
-      })
-    }
-
-    const moneyInfo = await igamewinService.getMoneyInfo(userCode)
-    if (moneyInfo.status !== 1) {
-      return res.json({
-        success: true,
-        data: { balance: user.balance, synced: false }
-      })
-    }
-
-    const igamewinBalanceReais = igamewinService.parseUserBalanceFromMoneyInfo(moneyInfo)
-    if (igamewinBalanceReais <= 0) {
-      return res.json({
-        success: true,
-        data: { balance: user.balance, synced: true }
-      })
-    }
-
-    const withdrawRes = await igamewinService.withdrawUserBalance(userCode, igamewinBalanceReais)
-    if (withdrawRes.status === 1) {
-      user.balance = (user.balance || 0) + igamewinBalanceReais
-      await user.save()
-      return res.json({
-        success: true,
-        data: {
-          balance: user.balance,
-          synced: true,
-          amountRecovered: igamewinBalanceReais
-        }
-      })
-    }
-
-    res.json({
+    return res.json({
       success: true,
-      data: { balance: user.balance, synced: false }
+      data: { balance: user.balance, synced: true }
     })
   } catch (error) {
     console.error('Sync balance error:', error)
@@ -639,28 +504,18 @@ router.post('/seamless', validateSeamlessAgent, async (req, res) => {
 })
 
 // @route   GET /api/games/balance
-// @desc    Get user game balance
+// @desc    Seamless: retorna saldo do usuário (nosso DB)
 // @access  Private
 router.get('/balance', protect, async (req, res) => {
   try {
     const user = req.user
-    const userCode = user._id.toString()
-    const response = await igamewinService.getMoneyInfo(userCode)
-
-    if (response.status === 1) {
-      res.json({
-        success: true,
-        data: {
-          userBalance: (response.user?.balance ?? response.user_balance ?? 0) / 100,
-          agentBalance: (response.agent?.balance ?? response.agent_balance ?? 0) / 100
-        }
-      })
-    } else {
-      res.status(400).json({
-        success: false,
-        message: response.msg || 'Erro ao buscar saldo'
-      })
-    }
+    res.json({
+      success: true,
+      data: {
+        userBalance: user.balance || 0,
+        agentBalance: 0
+      }
+    })
   } catch (error) {
     console.error('Get balance error:', error)
     res.status(500).json({

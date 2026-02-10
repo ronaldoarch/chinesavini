@@ -1,71 +1,160 @@
-# iGameWin API – Referência e conformidade
+# iGameWin API – Referência (API Link Guide)
 
-Base: **API Link Guide** (endpoint `https://igamewin.com/api/v1`).
+**Endpoint:** `https://igamewin.com/api/v1`  
+**Valores:** Todos os valores monetários na API são em **centavos** (ex: 10000 = R$ 100,00).
 
-## Transfer API (implementado)
+---
 
-| Método iGameWin   | Nosso serviço              | Uso |
-|-------------------|----------------------------|-----|
-| `user_create`     | `createUser(userCode, isDemo)` | Launch / criar usuário |
-| `user_deposit`    | `depositUserBalance(userCode, reais)` | Launch (transfer mode), sync |
-| `user_withdraw`   | `withdrawUserBalance(userCode, reais)` | Sync, seamless callback |
-| `user_withdraw_reset` | `resetUserBalance(userCode, allUsers)` | — |
-| `set_demo`        | `setDemo(userCode)`        | — |
-| `game_launch`     | `launchGame(userCode, providerCode, gameCode, lang)` | Launch jogo |
-| `money_info`      | `getMoneyInfo(userCode?, allUsers?)` | Saldo agente/usuário |
-| `provider_list`   | `getProviderList()`        | Admin – listar provedores |
-| `game_list`       | `getGameList(providerCode)`| Admin – listar jogos |
-| `get_game_log`    | `getGameHistory(userCode, gameType, start, end, page, perPage)` | Histórico (slot) |
+## Transfer API
 
-Valores monetários: **centavos** na API; internamente usamos **reais** e convertemos com `reaisToCents` / `centsToReais`.
+Fluxo: saldo sai da carteira do agente (na iGameWin) e vai para o saldo do jogador no jogo. O agente precisa ter saldo na carteira para `user_deposit` funcionar.
 
-## Seamless API (Site API – nós implementamos)
+### 1. user_create
 
-iGameWin chama **nosso** backend em modo Seamless:
+```json
+{
+  "method": "user_create",
+  "agent_code": "Midaslabs",
+  "agent_token": "...",
+  "user_code": "test",
+  "is_demo": true  // opcional
+}
+```
 
-- **POST** `IGAMEWIN_SEAMLESS_URL` (ex.: `https://seu-dominio.com/api/games/seamless`)
-- Body: `method`, `agent_code`, `agent_secret`, `user_code`, etc.
-- Métodos que tratamos:
-  - `user_balance` → retornamos saldo do usuário (reais → centavos).
-  - `transaction` → debitamos/creditamos saldo conforme `slot.bet_money` / `win_money` e `txn_type` (debit, credit, debit_credit).
+**Resposta sucesso:** `{ "status": 1, "msg": "SUCCESS", "user_code": "test", "user_balance": 0 }`  
+**Erros:** `DUPLICATED_USER`, `MAX_DEMO_USER`
 
-Validação: `agent_secret` e `agent_code` devem bater com `IGAMEWIN_AGENT_SECRET` e `IGAMEWIN_AGENT_CODE`.
+### 2. user_deposit
 
-## Call API (Slot)
+Transfere saldo da carteira do agente para o jogador.
 
-| Método iGameWin   | Nosso serviço              |
-|-------------------|----------------------------|
-| `control_rtp`     | `controlRTP(rtp, userCode?, userCodes?)` |
-| `control_demo_spin` | `controlDemoSpin(demoSpinStart, demoSpinEnd, userCode?, userCodes?)` |
+```json
+{
+  "method": "user_deposit",
+  "agent_code": "Midaslabs",
+  "agent_token": "...",
+  "user_code": "test",
+  "amount": 10000
+}
+```
 
-RTP: 0–95 (doc). Demo spin: start/end entre 1 e 15, start ≤ end.
+**Resposta sucesso:** `{ "status": 1, "msg": "SUCCESS", "agent_balance": 990000, "user_balance": 10000 }`  
+**Erro:** `INSUFFICIENT_AGENT_FUNDS` — saldo do agente insuficiente.
 
-## Provedores (códigos no doc)
+### 3. user_withdraw
 
-`PRAGMATIC`, `REELKINGDOM`, `HABANERO`, `BOOONGO`, `PLAYSON`, `CQ9`, `DREAMTECH`, `EVOPLAY`, `TOPTREND`, `PGSOFT`, `GENESIS`, `EVOLUTION`, `EZUGI`.
+Retira saldo do jogador e devolve para a carteira do agente.
 
-## Samples mode (agente em demo)
+```json
+{
+  "method": "user_withdraw",
+  "agent_code": "Midaslabs",
+  "agent_token": "...",
+  "user_code": "test",
+  "amount": 10000
+}
+```
 
-Quando o **agente** está em samples/demo mode na iGameWin, use a variável:
+**Erro:** `INSUFFICIENT_USER_FUNDS` — saldo do jogador insuficiente.
 
-- **`IGAMEWIN_SAMPLES_MODE`** = `true` (ou `1`, `yes`)
+### 4. user_withdraw_reset
 
-Comportamento do backend:
+Zera o saldo do jogador no jogo e devolve à carteira do agente.
 
-1. **user_create** – Usuários são criados com **`is_demo: true`** (doc iGameWin).
-2. **Launch** – Não transfere saldo real para/da iGameWin (não faz deposit/withdraw); apenas cria usuário demo e retorna `launch_url`.
-3. **Sync-balance** – Não chama a API (no-op), retorna saldo local.
-4. **Seamless `transaction`** – Responde `status: 1` com saldo atual **sem alterar** o saldo real do jogador (apenas registra em GameTxnLog para auditoria).
-5. **POST /games/deposit** e **/games/withdraw** – Não chamam a API; retornam sucesso sem movimentar saldo no agente.
+```json
+{ "method": "user_withdraw_reset", "agent_code": "...", "agent_token": "...", "user_code": "test" }
+// ou
+{ "method": "user_withdraw_reset", "agent_code": "...", "agent_token": "...", "all_users": true }
+```
 
-Assim o saldo do jogador no nosso sistema não é alterado pelo jogo em samples mode; o agente iGameWin gerencia apenas o saldo demo no lado deles.
+**Resposta:** `agent.balance`, `user.balance` (ou `user_list`), `withdraw_amount`.
 
-## Variáveis de ambiente
+### 5. set_demo
 
-- `IGAMEWIN_AGENT_CODE` (ex.: Midaslabs)
-- `IGAMEWIN_AGENT_TOKEN`
-- `IGAMEWIN_AGENT_SECRET` (obrigatório para Seamless)
-- `IGAMEWIN_API_MODE` = `transfer` ou `seamless`
-- `IGAMEWIN_SAMPLES_MODE` = `true` quando o agente está em samples/demo mode
+Marca usuário como demo.
 
-Em Seamless, a iGameWin precisa da URL do nosso endpoint (ex.: configurada no painel deles).
+### 6. game_launch
+
+Retorna URL para abrir o jogo.
+
+---
+
+## 7. money_info (Get Balance of Agent and User)
+
+**Sem `user_code`** — retorna apenas saldo do agente:
+
+```json
+{
+  "method": "money_info",
+  "agent_code": "Midaslabs",
+  "agent_token": "..."
+}
+```
+
+**Resposta:**
+```json
+{
+  "status": 1,
+  "msg": "SUCCESS",
+  "agent": {
+    "agent_code": "Midaslabs",
+    "balance": 1000000
+  }
+}
+```
+
+**Com `user_code`** — retorna agente + usuário:
+
+```json
+{
+  "method": "money_info",
+  "agent_code": "Midaslabs",
+  "agent_token": "...",
+  "user_code": "test"
+}
+```
+
+**Resposta:** `agent` + `user` (ambos com `balance` em centavos).
+
+**Com `all_users`** — retorna agente + lista de usuários.
+
+---
+
+## Seamless API (Site API) – Modo único
+
+O backend usa **apenas Seamless**. O iGameWin chama **nosso** backend:
+
+- **user_balance** — retornamos saldo do usuário (em centavos).
+- **transaction** — debitamos/creditamos conforme `slot.bet_money`, `win_money`, `txn_type`.
+
+Assim não há `INSUFFICIENT_AGENT_FUNDS` em Seamless — o saldo fica no nosso sistema.
+
+---
+
+## Error Code (API Link Guide)
+
+| Código | Descrição |
+|--------|-----------|
+| INVALID_METHOD | Método inválido |
+| INVALID_PARAMETER | Parâmetro inválido |
+| INVALID_AGENT | Agente inválido |
+| INVALID_AGENT_ROLE | Role do agente inválido |
+| BLOCKED_AGENT | Agente bloqueado |
+| INVALID_USER | Usuário inválido |
+| MAX_DEMO_USER | Máximo de usuários demo (500) |
+| **INSUFFICIENT_AGENT_FUNDS** | **Saldo do agente insuficiente** |
+| INSUFFICIENT_USER_FUNDS | Saldo do usuário insuficiente |
+| DUPLICATED_USER | Usuário duplicado |
+| INVALID_PROVIDER | Provedor inválido |
+| INTERNAL_ERROR | Erro interno |
+| AGENT_SEAMLESS | Erro Seamless do agente |
+
+---
+
+## Nosso mapeamento (Seamless)
+
+| Método iGameWin | Serviço | Uso |
+|-----------------|---------|-----|
+| user_create | createUser(userCode, isDemo) | Launch |
+| game_launch | launchGame(...) | Launch jogo |
+| Site API (user_balance, transaction) | POST /api/games/seamless | iGameWin chama nós |
