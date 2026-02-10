@@ -32,10 +32,17 @@ export async function handleSeamlessRequest(req, res) {
       const isSamples = igamewinService.isSamplesMode()
       const { game_type, slot } = req.body
       const slotData = slot || req.body[game_type] || {}
+      if (Object.keys(slotData).length === 0) {
+        console.warn('[Seamless] transaction - slotData vazio, body:', JSON.stringify(req.body).slice(0, 500))
+      }
       const txnId = slotData.txn_id
       const txnType = slotData.txn_type || 'debit_credit'
-      const betCents = Number(slotData.bet_money ?? slotData.bet ?? 0)
-      const winCents = Number(slotData.win_money ?? slotData.win ?? 0)
+      const betRaw = Number(slotData.bet_money ?? slotData.bet ?? 0)
+      const winRaw = Number(slotData.win_money ?? slotData.win ?? 0)
+      const betWinInReais = (process.env.IGAMEWIN_BET_WIN_IN_REAIS ?? process.env.IGAMEWIN_BALANCE_IN_REAIS ?? 'true').toLowerCase() === 'true'
+      const betReais = betWinInReais ? betRaw : betRaw / 100
+      const winReais = betWinInReais ? winRaw : winRaw / 100
+      console.log('[Seamless] transaction', txnId, 'txn_type:', txnType, 'bet_raw:', betRaw, 'win_raw:', winRaw, 'unit:', betWinInReais ? 'reais' : 'centavos', 'debit:', betReais.toFixed(2), 'credit:', winReais.toFixed(2), 'delta:', (winReais - betReais).toFixed(2))
 
       if (!txnId) {
         return res.status(400).json({ status: 0, msg: 'INVALID_PARAMETER' })
@@ -54,8 +61,8 @@ export async function handleSeamlessRequest(req, res) {
           providerCode: slotData.provider_code,
           gameCode: slotData.game_code,
           txnType: slotData.txn_type || 'debit_credit',
-          betCents,
-          winCents,
+          betCents: betRaw,
+          winCents: winRaw,
           balanceAfterReais: user.balance || 0
         })
         return res.json({ status: 1, user_balance: balanceForGame(user.balance || 0) })
@@ -63,11 +70,11 @@ export async function handleSeamlessRequest(req, res) {
 
       let deltaReais = 0
       if (txnType === 'debit') {
-        deltaReais = -betCents / 100
+        deltaReais = -betReais
       } else if (txnType === 'credit') {
-        deltaReais = winCents / 100
+        deltaReais = winReais
       } else {
-        deltaReais = (winCents - betCents) / 100
+        deltaReais = winReais - betReais
       }
 
       const currentBalance = Math.max(0, user.balance || 0)
@@ -91,8 +98,8 @@ export async function handleSeamlessRequest(req, res) {
         providerCode: slotData.provider_code,
         gameCode: slotData.game_code,
         txnType,
-        betCents,
-        winCents,
+        betCents: betRaw,
+        winCents: winRaw,
         balanceAfterReais: newBalance
       })
 
