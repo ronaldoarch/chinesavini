@@ -260,6 +260,9 @@ router.post(
         pixKeyType: pixKeyType,
         webhookUrl
       })
+      // Garantir idTransaction para o webhook encontrar pelo externalId (mesmo se a API falhar)
+      transaction.idTransaction = transaction._id.toString()
+      await transaction.save()
 
       // Process withdrawal via GATEBOX
       // Usar CPF genérico configurado se não houver CPF fornecido

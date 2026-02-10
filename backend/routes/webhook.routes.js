@@ -224,7 +224,10 @@ router.post('/gatebox', async (req, res) => {
       console.error('Webhook Gatebox: idTransaction não fornecido. Body:', JSON.stringify(body).slice(0, 300))
       return
     }
-    const transaction = await Transaction.findOne({ idTransaction })
+    let transaction = await Transaction.findOne({ idTransaction })
+    if (!transaction && /^[a-fA-F0-9]{24}$/.test(idTransaction)) {
+      transaction = await Transaction.findById(idTransaction)
+    }
     if (!transaction) {
       console.error(`Webhook Gatebox: Transação não encontrada: ${idTransaction}`)
       return
@@ -327,10 +330,11 @@ async function processWithdrawWebhook(body, transaction) {
       await user.save()
     }
   } else {
-    // Falha no saque: reembolso automático do valor debitado
+    // Falha no saque: reembolso automático só se o saldo foi debitado (status era 'processing')
+    const hadBalanceDeducted = transaction.status === 'processing'
     transaction.failedAt = new Date()
     const user = await User.findById(transaction.user)
-    if (user) {
+    if (user && hadBalanceDeducted) {
       user.balance += transaction.amount
       await user.save()
       console.log(`Webhook PIX Withdraw: Reembolso automático para usuário ${user._id} - R$ ${transaction.amount} (saque falhou)`)
