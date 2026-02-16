@@ -92,10 +92,10 @@ const userSchema = new mongoose.Schema(
       type: Number,
       default: 0
     },
-    // Configuração de afiliado: bônus % sobre depósito (substitui CPA/RevShare)
+    // Configuração de afiliado: bônus % sobre depósito (padrão 20%, admin pode mudar para 50% etc)
     affiliateDepositBonusPercent: {
       type: Number,
-      default: 0,
+      default: 20,
       min: 0,
       max: 100
     },

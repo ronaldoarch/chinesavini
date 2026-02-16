@@ -1,4 +1,5 @@
 import mongoose from 'mongoose'
+import User from '../models/User.model.js'
 
 const connectDB = async () => {
   try {
@@ -17,6 +18,15 @@ const connectDB = async () => {
     const conn = await mongoose.connect(dbUri)
 
     console.log(`✅ Database Connected: ${conn.connection.host || 'Connected'}`)
+
+    // Migração: usuários já cadastrados sem o campo recebem 20% (admin altera para 50% os afiliados escolhidos)
+    const result = await User.updateMany(
+      { affiliateDepositBonusPercent: { $exists: false } },
+      { $set: { affiliateDepositBonusPercent: 20 } }
+    )
+    if (result.modifiedCount > 0) {
+      console.log(`📋 Migração: ${result.modifiedCount} usuário(s) atualizado(s) com bônus padrão 20%`)
+    }
   } catch (error) {
     console.error(`❌ Database connection error: ${error.message}`)
     process.exit(1)
