@@ -326,14 +326,6 @@ function InviteModal({ isOpen, onClose }) {
                       }).format(user.affiliateBalance)
                     : 'R$ 0,00'}
                 </span>
-                <button 
-                  type="button" 
-                  className="btn btn-warning btn-sm invite-balance-action"
-                  onClick={handleWithdrawAffiliate}
-                  disabled={loading || !affiliateStats || affiliateStats.affiliateBalance <= 0}
-                >
-                  {loading ? 'Transferindo...' : 'Transferir'}
-                </button>
               </div>
             </div>
 
@@ -592,14 +584,7 @@ function InviteModal({ isOpen, onClose }) {
               <div className="comissao-card highlight">
                 <span>Saldo Afiliado</span>
                 <strong>{formatCurrency(affiliateStats?.affiliateBalance ?? user?.affiliateBalance)}</strong>
-                <button
-                  type="button"
-                  className="btn-comissao"
-                  onClick={handleWithdrawAffiliate}
-                  disabled={loading || !affiliateStats || (affiliateStats?.affiliateBalance ?? 0) <= 0}
-                >
-                  Transferir para saldo
-                </button>
+                <small>Recompensas de baús (qualificados)</small>
               </div>
               <div className="comissao-card">
                 <span>Total de recompensas recebidas</span>
@@ -611,8 +596,8 @@ function InviteModal({ isOpen, onClose }) {
               </div>
             </div>
             <p className="comissao-info">
-              Suas recompensas por referidos qualificados ficam disponíveis no Saldo Afiliado. 
-              A comissão sobre depósitos vai direto para seu saldo principal.
+              A comissão sobre depósitos vai direto para seu saldo principal. 
+              Recompensas de baús ficam no Saldo Afiliado.
             </p>
           </div>
         )}
