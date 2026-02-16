@@ -50,6 +50,66 @@ function getDateRange(period) {
   return { start, end }
 }
 
+/**
+ * Sincroniza comissões de depósitos que não foram processadas (ex: depósito antes da config)
+ * Cria AffiliateDeposit e credita no balance para depósitos sem registro
+ */
+async function syncMissingAffiliateDeposits(affiliateId) {
+  const affiliate = await User.findById(affiliateId)
+  if (!affiliate || (affiliate.affiliateDepositBonusPercent || 0) <= 0) return 0
+
+  const referrals = await Referral.find({ referrer: affiliateId })
+  const referredUserIds = referrals.map(r => r.referred).filter(Boolean)
+  if (referredUserIds.length === 0) return 0
+
+  const deposits = await Transaction.find({
+    user: { $in: referredUserIds },
+    type: 'deposit',
+    status: 'paid'
+  }).sort({ paidAt: 1 })
+
+  let totalCredited = 0
+  for (const tx of deposits) {
+    const existing = await AffiliateDeposit.findOne({ transaction: tx._id })
+    if (existing) continue
+
+    const referredUser = await User.findById(tx.user)
+    if (!referredUser || referredUser.referredBy?.toString() !== affiliateId.toString()) continue
+
+    // Verificar se é primeiro depósito (antes deste, o usuário não tinha depósitos)
+    const prevDeposits = await Transaction.countDocuments({
+      user: tx.user,
+      type: 'deposit',
+      status: 'paid',
+      paidAt: { $lt: tx.paidAt || tx.createdAt }
+    })
+    const isFirstDeposit = prevDeposits === 0
+
+    if (!affiliate.affiliateAllDeposits && !isFirstDeposit) continue
+
+    const depositAmount = tx.netAmount ?? tx.amount ?? 0
+    const bonusPercent = affiliate.affiliateDepositBonusPercent || 0
+    const bonusAmount = Math.round((depositAmount * bonusPercent / 100) * 100) / 100
+    if (bonusAmount <= 0) continue
+
+    await AffiliateDeposit.create({
+      affiliate: affiliateId,
+      referredUser: tx.user,
+      transaction: tx._id,
+      depositAmount,
+      isFirstDeposit,
+      depositBonusPercent: bonusPercent,
+      depositBonusAmount: bonusAmount
+    })
+
+    affiliate.balance = (affiliate.balance || 0) + bonusAmount
+    totalCredited += bonusAmount
+  }
+
+  if (totalCredited > 0) await affiliate.save()
+  return totalCredited
+}
+
 // @route   GET /api/affiliate/stats
 // @desc    Get affiliate statistics for current user (optional ?period=all|this_week|last_week|this_month|last_month)
 // @access  Private
@@ -128,11 +188,21 @@ router.get('/stats', protect, async (req, res) => {
     const directWL = totalRewards
 
     // Comissão de depósitos (vai para balance, registrada em AffiliateDeposit)
-    const depositCommissions = await AffiliateDeposit.aggregate([
+    let depositCommissions = await AffiliateDeposit.aggregate([
       { $match: { affiliate: userId } },
       { $group: { _id: null, total: { $sum: '$depositBonusAmount' } } }
     ])
-    const totalDepositCommission = depositCommissions[0]?.total ?? 0
+    let totalDepositCommission = depositCommissions[0]?.total ?? 0
+
+    // Sincroniza comissões faltantes (depósitos processados antes da config)
+    if (totalDepositCommission === 0 && totalDeposits > 0) {
+      await syncMissingAffiliateDeposits(userId)
+      depositCommissions = await AffiliateDeposit.aggregate([
+        { $match: { affiliate: userId } },
+        { $group: { _id: null, total: { $sum: '$depositBonusAmount' } } }
+      ])
+      totalDepositCommission = depositCommissions[0]?.total ?? 0
+    }
 
     res.json({
       success: true,
