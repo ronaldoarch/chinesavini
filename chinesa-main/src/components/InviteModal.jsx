@@ -487,11 +487,12 @@ function InviteModal({ isOpen, onClose }) {
               </div>
               <div className="performance-card">
                 <span>Depositantes</span>
-                <strong>{affiliateStats?.qualifiedReferrals ?? 0}</strong>
+                <strong>{affiliateStats?.depositorsCount ?? 0}</strong>
               </div>
-              <div className="performance-card">
+              <div className="performance-card" title="Referidos com R$ 10+ em depósitos e R$ 100+ em apostas">
                 <span>Qualificados</span>
                 <strong>{affiliateStats?.qualifiedReferrals ?? 0}</strong>
+                <small>R$ 10+ depósitos e R$ 100+ apostas</small>
               </div>
             </div>
             {affiliateStats?.referrals && affiliateStats.referrals.length > 0 ? (

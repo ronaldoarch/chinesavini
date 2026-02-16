@@ -649,6 +649,12 @@
   gap: 6px;
 }
 
+.performance-card small {
+  font-size: 10px;
+  opacity: 0.8;
+  color: rgba(255, 255, 255, 0.7);
+}
+
 .performance-empty {
   display: flex;
   align-items: center;

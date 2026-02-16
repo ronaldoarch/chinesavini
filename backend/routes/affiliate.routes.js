@@ -174,6 +174,7 @@ router.get('/stats', protect, async (req, res) => {
     const totalBets = referralsAll.reduce((sum, r) => sum + (r.totalBets || 0), 0)
     const totalRewards = referralsAll.reduce((sum, r) => sum + (r.rewardAmount || 0), 0)
     const totalReferrals = referralsAll.length
+    const depositorsCount = referralsAll.filter(r => (r.totalDeposits || 0) > 0).length
     const qualifiedReferrals = referralsAll.filter(r => r.status === 'qualified').length
     const rewardedReferrals = referralsAll.filter(r => r.status === 'rewarded').length
 
@@ -225,6 +226,7 @@ router.get('/stats', protect, async (req, res) => {
         directWL,
         directIncome: 0,
         totalReferrals,
+        depositorsCount,
         qualifiedReferrals,
         rewardedReferrals,
         totalDeposits,
