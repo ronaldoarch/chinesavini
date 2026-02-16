@@ -440,7 +440,7 @@ router.put(
 )
 
 // @route   GET /api/admin/transactions
-// @desc    Get all transactions with filters
+// @desc    Get all transactions with filters (retorna de TODOS os usuários quando não há filtro de userId/username)
 // @access  Private/Admin
 router.get(
   '/transactions',
@@ -449,7 +449,8 @@ router.get(
     query('limit').optional().isInt({ min: 1, max: 100 }),
     query('type').optional().isIn(['deposit', 'withdraw']),
     query('status').optional().isIn(['pending', 'paid', 'failed', 'cancelled', 'processing']),
-    query('userId').optional().isMongoId()
+    query('userId').optional().isMongoId(),
+    query('username').optional().trim()
   ],
   async (req, res) => {
     try {
@@ -476,8 +477,14 @@ router.get(
         query.status = req.query.status
       }
 
+      // Filtro por usuário: userId tem prioridade; se username for passado, busca o user
       if (req.query.userId) {
         query.user = req.query.userId
+      } else if (req.query.username && req.query.username.trim()) {
+        const userByUsername = await User.findOne({ username: req.query.username.trim().toLowerCase() }).select('_id')
+        if (userByUsername) {
+          query.user = userByUsername._id
+        }
       }
 
       const transactions = await Transaction.find(query)

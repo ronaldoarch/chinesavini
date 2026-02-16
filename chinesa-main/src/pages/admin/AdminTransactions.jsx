@@ -12,7 +12,8 @@ function AdminTransactions() {
   const [totalPages, setTotalPages] = useState(1)
   const [filters, setFilters] = useState({
     type: '',
-    status: ''
+    status: '',
+    username: ''
   })
   const [selectedTransaction, setSelectedTransaction] = useState(null)
 
@@ -29,7 +30,8 @@ function AdminTransactions() {
         page,
         limit: 50,
         ...(filters.type && { type: filters.type }),
-        ...(filters.status && { status: filters.status })
+        ...(filters.status && { status: filters.status }),
+        ...(filters.username?.trim() && { username: filters.username.trim() })
       }
       const response = await api.getAdminTransactions(params)
       if (response.success) {
@@ -91,6 +93,16 @@ function AdminTransactions() {
           Gerenciar Transações
         </h1>
         <div className="filters">
+          <input
+            type="text"
+            placeholder="Filtrar por usuário (username)"
+            value={filters.username}
+            onChange={(e) => {
+              setFilters({ ...filters, username: e.target.value })
+              setPage(1)
+            }}
+            className="filter-username"
+          />
           <select
             value={filters.type}
             onChange={(e) => {

@@ -1,6 +1,21 @@
 .filters {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--spacing-md);
+  align-items: center;
+}
+
+.filters .filter-username {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  padding: var(--spacing-sm) var(--spacing-md);
+  color: var(--text-white);
+  min-width: 200px;
+}
+
+.filters .filter-username::placeholder {
+  color: rgba(255, 255, 255, 0.5);
 }
 
 .filters select {
