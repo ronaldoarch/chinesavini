@@ -13,10 +13,15 @@ const router = express.Router()
 // Rate limiting for auth routes
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // 5 requests per windowMs
-  message: 'Muitas tentativas. Tente novamente em 15 minutos.',
+  max: 30, // 30 requests per 15 min (evita bloqueio por tentativas normais)
   standardHeaders: true,
   legacyHeaders: false,
+  handler: (req, res) => {
+    res.status(429).json({
+      success: false,
+      message: 'Muitas tentativas. Tente novamente em 15 minutos.'
+    })
+  }
 })
 
 // @route   POST /api/auth/register
