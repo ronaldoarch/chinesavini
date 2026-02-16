@@ -455,27 +455,8 @@ function InviteModal({ isOpen, onClose }) {
                 <strong>{affiliateStats?.withdrawalsCount ?? 0}</strong>
               </div>
               <div className="kpi-item kpi-underline">
-                <span>Receber recompensas</span>
-                <strong>{formatCurrency(affiliateStats?.totalRewards)}</strong>
-              </div>
-              <div className="kpi-item kpi-underline">
                 <span>Apostas Válidas</span>
                 <strong>{formatCurrency(affiliateStats?.validBets ?? affiliateStats?.totalBets)}</strong>
-              </div>
-              <div className="kpi-item kpi-red">
-                <span>V/D diretas</span>
-                <strong>{formatCurrency(affiliateStats?.directWL)}</strong>
-              </div>
-              <div className="kpi-item">
-                <span>Direto</span>
-                <strong>{formatCurrency(affiliateStats?.directIncome ?? 0)}</strong>
-              </div>
-            </div>
-            <h4 className="subsection-title">De renda direta</h4>
-            <div className="kpi-grid kpi-small">
-              <div className="kpi-item">
-                <span>Renda direta no período</span>
-                <strong>{formatCurrency(affiliateStats?.totalRewards)}</strong>
               </div>
             </div>
           </div>
@@ -585,10 +566,6 @@ function InviteModal({ isOpen, onClose }) {
                 <span>Saldo Afiliado</span>
                 <strong>{formatCurrency(affiliateStats?.affiliateBalance ?? user?.affiliateBalance)}</strong>
                 <small>Recompensas de baús (qualificados)</small>
-              </div>
-              <div className="comissao-card">
-                <span>Total de recompensas recebidas</span>
-                <strong>{formatCurrency(affiliateStats?.totalRewards)}</strong>
               </div>
               <div className="comissao-card">
                 <span>Referidos qualificados</span>
