@@ -23,7 +23,8 @@ function calcDepositBonus(amount, isFirstDeposit, bonusConfig) {
 /**
  * Process affiliate commissions: % sobre depósito (vai direto para saldo real sacável)
  * - Afiliados com % definido: ganham sobre depósitos (todos ou só primeiro, conforme config)
- * - Bônus vai para balance (saldo real sacável), não para affiliateBalance
+ * - Bônus vai para balance (saldo real sacável)
+ * - Comissões ficam registradas em AffiliateDeposit para exibição no painel
  */
 async function processAffiliateCommissions(referredUser, transaction, depositAmount, isFirstDeposit) {
   try {

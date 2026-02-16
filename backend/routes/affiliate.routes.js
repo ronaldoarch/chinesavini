@@ -4,6 +4,7 @@ import { isAdmin } from '../middleware/admin.middleware.js'
 import User from '../models/User.model.js'
 import Referral from '../models/Referral.model.js'
 import Transaction from '../models/Transaction.model.js'
+import AffiliateDeposit from '../models/AffiliateDeposit.model.js'
 import affiliateService from '../services/affiliate.service.js'
 
 const router = express.Router()
@@ -286,11 +287,18 @@ router.get('/admin/all', protect, isAdmin, async (req, res) => {
         const totalBets = referrals.reduce((sum, r) => sum + (r.totalBets || 0), 0)
         const totalRewards = referrals.reduce((sum, r) => sum + (r.rewardAmount || 0), 0)
 
+        const depositCommissions = await AffiliateDeposit.aggregate([
+          { $match: { affiliate: user._id } },
+          { $group: { _id: null, total: { $sum: '$depositBonusAmount' } } }
+        ])
+        const totalDepositCommission = depositCommissions[0]?.total ?? 0
+
         return {
           id: user._id,
           username: user.username,
           referralCode: user.referralCode,
           affiliateBalance: user.affiliateBalance || 0,
+          totalDepositCommission,
           totalReferrals: referrals.length,
           qualifiedReferrals: qualified,
           totalDeposits,
@@ -340,13 +348,20 @@ router.get('/admin/:userId', protect, isAdmin, async (req, res) => {
       .populate('referred', 'username phone balance totalDeposits totalBets createdAt')
       .sort({ createdAt: -1 })
 
+    const depositCommissions = await AffiliateDeposit.aggregate([
+      { $match: { affiliate: user._id } },
+      { $group: { _id: null, total: { $sum: '$depositBonusAmount' } } }
+    ])
+    const totalDepositCommission = depositCommissions[0]?.total ?? 0
+
     const stats = {
       totalReferrals: referrals.length,
       qualifiedReferrals: referrals.filter(r => r.status === 'qualified').length,
       rewardedReferrals: referrals.filter(r => r.status === 'rewarded').length,
       totalDeposits: referrals.reduce((sum, r) => sum + (r.totalDeposits || 0), 0),
       totalBets: referrals.reduce((sum, r) => sum + (r.totalBets || 0), 0),
-      totalRewards: referrals.reduce((sum, r) => sum + (r.rewardAmount || 0), 0)
+      totalRewards: referrals.reduce((sum, r) => sum + (r.rewardAmount || 0), 0),
+      totalDepositCommission
     }
 
     res.json({
@@ -356,6 +371,7 @@ router.get('/admin/:userId', protect, isAdmin, async (req, res) => {
           id: user._id,
           username: user.username,
           referralCode: user.referralCode,
+          balance: user.balance ?? 0,
           affiliateBalance: user.affiliateBalance || 0,
           affiliateDepositBonusPercent: user.affiliateDepositBonusPercent ?? 0,
           affiliateAllDeposits: user.affiliateAllDeposits ?? false,

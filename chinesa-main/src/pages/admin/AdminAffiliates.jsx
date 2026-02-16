@@ -151,7 +151,7 @@ function AdminAffiliates() {
                   <tr>
                     <th>Username</th>
                     <th>Código</th>
-                    <th>Saldo Afiliado</th>
+                    <th>Comissão</th>
                     <th>Total Referidos</th>
                     <th>Qualificados</th>
                     <th>Total Depósitos</th>
@@ -162,7 +162,7 @@ function AdminAffiliates() {
                 <tbody>
                   {affiliates.length === 0 ? (
                     <tr>
-                      <td colSpan="8" className="empty-state">
+                      <td colSpan="9" className="empty-state">
                         Nenhum afiliado encontrado
                       </td>
                     </tr>
@@ -173,7 +173,7 @@ function AdminAffiliates() {
                         <td>
                           <code className="referral-code">{affiliate.referralCode}</code>
                         </td>
-                        <td className="amount-cell">{formatCurrency(affiliate.affiliateBalance)}</td>
+                        <td className="amount-cell">{formatCurrency(affiliate.totalDepositCommission)}</td>
                         <td>{affiliate.totalReferrals}</td>
                         <td>{affiliate.qualifiedReferrals}</td>
                         <td className="amount-cell">{formatCurrency(affiliate.totalDeposits)}</td>
@@ -237,7 +237,15 @@ function AdminAffiliates() {
                       <code>{selectedAffiliate.user?.referralCode}</code>
                     </div>
                     <div>
-                      <label>Saldo Afiliado:</label>
+                      <label>Saldo Real:</label>
+                      <span className="amount">{formatCurrency(selectedAffiliate.user?.balance)}</span>
+                    </div>
+                    <div>
+                      <label>Comissão de Depósitos:</label>
+                      <span className="amount">{formatCurrency(selectedAffiliate.stats?.totalDepositCommission)}</span>
+                    </div>
+                    <div>
+                      <label>Saldo Afiliado (recompensas):</label>
                       <span className="amount">{formatCurrency(selectedAffiliate.user?.affiliateBalance)}</span>
                     </div>
                     <div>
