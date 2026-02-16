@@ -59,6 +59,17 @@ function AppContent() {
   const [gameLaunchUrl, setGameLaunchUrl] = React.useState(null)
   const [notification, setNotification] = React.useState({ message: '', type: 'success', isOpen: false })
 
+  // Salvar ref da URL (link de afiliado) para usar no registro
+  React.useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const ref = params.get('ref')
+    if (ref && ref.trim()) {
+      try {
+        sessionStorage.setItem('referral_code', ref.trim())
+      } catch (_) {}
+    }
+  }, [])
+
   React.useEffect(() => {
     api.getSiteConfig().then((res) => {
       if (res.success && res.data?.siteName) {

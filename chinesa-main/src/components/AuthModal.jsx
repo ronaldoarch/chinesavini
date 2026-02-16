@@ -141,16 +141,23 @@ function AuthModal({ isOpen, initialTab = 'register', onClose, onAuthSuccess }) 
     
     try {
       const phoneDigits = registerData.phone.replace(/\D/g, '')
+      let referralCode = ''
+      try {
+        referralCode = sessionStorage.getItem('referral_code') || ''
+      } catch (_) {}
       const result = await register({
         username: registerData.username.trim(),
         phone: registerData.phone,
         password: registerData.password,
         confirmPassword: registerData.confirmPassword,
-        termsAccepted: registerData.termsAccepted.toString()
+        termsAccepted: registerData.termsAccepted.toString(),
+        ...(referralCode && { referralCode })
       })
       
       if (result.success) {
-        // Track Lead event (cadastro) - evento do pixel no frontend
+        try {
+          sessionStorage.removeItem('referral_code')
+        } catch (_) {}
         trackEvent('Lead', { content_name: 'Cadastro' })
         if (onAuthSuccess) {
           onAuthSuccess()
