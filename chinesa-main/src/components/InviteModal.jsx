@@ -584,6 +584,11 @@ function InviteModal({ isOpen, onClose }) {
           <div className="invite-performance invite-comissao">
             <h3 className="section-title">Comissão e Recompensas</h3>
             <div className="comissao-cards">
+              <div className="comissao-card">
+                <span>Comissão de Depósitos</span>
+                <strong>{formatCurrency(affiliateStats?.totalDepositCommission)}</strong>
+                <small>% sobre depósitos dos indicados (vai direto para seu saldo)</small>
+              </div>
               <div className="comissao-card highlight">
                 <span>Saldo Afiliado</span>
                 <strong>{formatCurrency(affiliateStats?.affiliateBalance ?? user?.affiliateBalance)}</strong>
@@ -607,7 +612,7 @@ function InviteModal({ isOpen, onClose }) {
             </div>
             <p className="comissao-info">
               Suas recompensas por referidos qualificados ficam disponíveis no Saldo Afiliado. 
-              Você pode transferir para o saldo principal a qualquer momento.
+              A comissão sobre depósitos vai direto para seu saldo principal.
             </p>
           </div>
         )}

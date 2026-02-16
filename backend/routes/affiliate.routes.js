@@ -60,20 +60,18 @@ router.get('/stats', protect, async (req, res) => {
     const period = req.query.period || 'all'
     const { start, end } = getDateRange(period)
 
-    // Get referrals (all or filtered by createdAt)
-    const referralQuery = { referrer: userId }
-    if (period !== 'all' && start) {
-      referralQuery.createdAt = { $gte: start }
-      if (end) referralQuery.createdAt.$lte = end
-    }
-
-    const referrals = await Referral.find(referralQuery)
+    // Sempre buscar TODOS os referidos para métricas de transação (depósitos/saques)
+    // O período filtra quando a transação ocorreu (paidAt), não quando o referido foi cadastrado
+    const referralsAll = await Referral.find({ referrer: userId })
       .populate('referred', 'username phone createdAt totalDeposits totalBets totalWithdrawals')
       .sort({ createdAt: -1 })
 
-    const referredUserIds = referrals.map(r => r.referred?._id).filter(Boolean)
+    const referredUserIds = referralsAll.map(r => r.referred?._id).filter(Boolean)
 
-    // New subordinates in period
+    // Novos subordinados: só os cadastrados no período (quando período != all)
+    const referrals = (period !== 'all' && start && end)
+      ? referralsAll.filter(r => r.createdAt && r.createdAt >= start && r.createdAt <= end)
+      : referralsAll
     const newSubordinates = referrals.length
 
     // From Transaction: deposits, first deposits, withdrawals in period for referred users
@@ -111,29 +109,37 @@ router.get('/stats', protect, async (req, res) => {
       usersWithFirstDeposit = inPeriod.length
     }
 
-    // Totals (all time) from referrals
-    const totalDeposits = referrals.reduce((sum, r) => sum + (r.totalDeposits || 0), 0)
-    const totalBets = referrals.reduce((sum, r) => sum + (r.totalBets || 0), 0)
-    const totalRewards = referrals.reduce((sum, r) => sum + (r.rewardAmount || 0), 0)
-    const totalReferrals = await Referral.countDocuments({ referrer: userId })
-    const qualifiedReferrals = referrals.filter(r => r.status === 'qualified').length
-    const rewardedReferrals = referrals.filter(r => r.status === 'rewarded').length
+    // Totals (all time) - sempre usar todos os referidos
+    const totalDeposits = referralsAll.reduce((sum, r) => sum + (r.totalDeposits || 0), 0)
+    const totalBets = referralsAll.reduce((sum, r) => sum + (r.totalBets || 0), 0)
+    const totalRewards = referralsAll.reduce((sum, r) => sum + (r.rewardAmount || 0), 0)
+    const totalReferrals = referralsAll.length
+    const qualifiedReferrals = referralsAll.filter(r => r.status === 'qualified').length
+    const rewardedReferrals = referralsAll.filter(r => r.status === 'rewarded').length
 
     const depositsCount = depositsInPeriod[0]?.count || 0
     const depositsTotalInPeriod = depositsInPeriod[0]?.total || 0
     const withdrawalsCount = withdrawalsInPeriod[0]?.count || 0
     const withdrawalsTotalInPeriod = withdrawalsInPeriod[0]?.total || 0
 
-    // Valid bets = totalBets from referrals (in period we don't have per-transaction bets easily, use all from refs)
-    const validBets = period === 'all' ? totalBets : referrals.reduce((s, r) => s + (r.totalBets || 0), 0)
+    // Valid bets = totalBets from all referrals
+    const validBets = totalBets
     // Direct W/L: simplified as (total rewards - something) or 0
     const directWL = totalRewards
+
+    // Comissão de depósitos (vai para balance, registrada em AffiliateDeposit)
+    const depositCommissions = await AffiliateDeposit.aggregate([
+      { $match: { affiliate: userId } },
+      { $group: { _id: null, total: { $sum: '$depositBonusAmount' } } }
+    ])
+    const totalDepositCommission = depositCommissions[0]?.total ?? 0
 
     res.json({
       success: true,
       data: {
         referralCode: user.referralCode,
         affiliateBalance: user.affiliateBalance || 0,
+        totalDepositCommission,
         period,
         newSubordinates,
         depositsCount,
@@ -153,7 +159,7 @@ router.get('/stats', protect, async (req, res) => {
         rewardedReferrals,
         totalDeposits,
         totalBets,
-        referrals: referrals.map(r => ({
+        referrals: referralsAll.map(r => ({
           id: r._id,
           referred: {
             username: r.referred?.username,
