@@ -18,9 +18,9 @@ class AffiliateService {
         return
       }
 
-      // Calculate totals from transactions
+      // Calcular totais: depósitos da Transaction, apostas do User (GameTxnLog não grava em Transaction)
       const Transaction = (await import('../models/Transaction.model.js')).default
-      
+
       const deposits = await Transaction.aggregate([
         {
           $match: {
@@ -37,24 +37,9 @@ class AffiliateService {
         }
       ])
 
-      const bets = await Transaction.aggregate([
-        {
-          $match: {
-            user: userId,
-            type: 'bet',
-            status: 'paid'
-          }
-        },
-        {
-          $group: {
-            _id: null,
-            total: { $sum: '$amount' }
-          }
-        }
-      ])
-
       const totalDeposits = deposits[0]?.total || 0
-      const totalBets = bets[0]?.total || 0
+      // Apostas ficam em User.totalBets (atualizado pelo seamless), não em Transaction
+      const totalBets = user.totalBets || 0
 
       // Update referral totals
       referral.totalDeposits = totalDeposits

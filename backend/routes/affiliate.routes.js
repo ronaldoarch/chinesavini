@@ -4,6 +4,7 @@ import { isAdmin } from '../middleware/admin.middleware.js'
 import User from '../models/User.model.js'
 import Referral from '../models/Referral.model.js'
 import Transaction from '../models/Transaction.model.js'
+import affiliateService from '../services/affiliate.service.js'
 
 const router = express.Router()
 
@@ -219,6 +220,32 @@ router.post('/withdraw', protect, async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Erro ao realizar transferência',
+      error: error.message
+    })
+  }
+})
+
+// @route   POST /api/affiliate/admin/sync-metrics
+// @desc    Sincroniza métricas (totalDeposits, totalBets) de todos os referidos
+// @access  Private/Admin
+router.post('/admin/sync-metrics', protect, isAdmin, async (req, res) => {
+  try {
+    const referrals = await Referral.find({})
+    let updated = 0
+    for (const ref of referrals) {
+      await affiliateService.updateReferralQualification(ref.referred)
+      updated++
+    }
+    res.json({
+      success: true,
+      message: `Métricas sincronizadas para ${updated} referidos`,
+      data: { updated }
+    })
+  } catch (error) {
+    console.error('Sync affiliate metrics error:', error)
+    res.status(500).json({
+      success: false,
+      message: 'Erro ao sincronizar métricas',
       error: error.message
     })
   }

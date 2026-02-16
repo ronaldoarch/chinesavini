@@ -1,6 +1,7 @@
 import User from '../models/User.model.js'
 import GameTxnLog from '../models/GameTxnLog.model.js'
 import igamewinService from '../services/igamewin.service.js'
+import affiliateService from '../services/affiliate.service.js'
 
 /** Formato do saldo: reais (12) ou centavos (1200) conforme IGAMEWIN_BALANCE_IN_REAIS */
 function balanceForGame(reais) {
@@ -90,6 +91,13 @@ export async function handleSeamlessRequest(req, res) {
         user.totalBets = (user.totalBets || 0) + Math.abs(deltaReais)
       }
       await user.save()
+
+      // Atualiza métricas do afiliado (totalBets do referido)
+      if (deltaReais < 0) {
+        affiliateService.updateReferralQualification(user._id).catch((err) =>
+          console.error('[Seamless] updateReferralQualification error:', err)
+        )
+      }
 
       await GameTxnLog.create({
         txnId,

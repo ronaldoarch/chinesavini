@@ -16,6 +16,7 @@ function AdminAffiliates() {
     affiliateDepositBonusPercent: 0,
     affiliateAllDeposits: false
   })
+  const [syncing, setSyncing] = useState(false)
 
   useEffect(() => {
     loadAffiliates()
@@ -80,6 +81,24 @@ function AdminAffiliates() {
     }
   }
 
+  const handleSyncMetrics = async () => {
+    if (!window.confirm('Sincronizar métricas de todos os referidos? Isso pode levar alguns segundos.')) return
+    try {
+      setSyncing(true)
+      const response = await api.syncAffiliateMetrics()
+      if (response.success) {
+        alert(response.message || 'Métricas sincronizadas!')
+        loadAffiliates()
+      } else {
+        alert(response.message || 'Erro ao sincronizar')
+      }
+    } catch (err) {
+      alert(err.message || 'Erro ao sincronizar métricas')
+    } finally {
+      setSyncing(false)
+    }
+  }
+
   const formatCurrency = (value) =>
     new Intl.NumberFormat('pt-BR', {
       style: 'currency',
@@ -88,9 +107,19 @@ function AdminAffiliates() {
     }).format(value || 0)
 
   return (
-    <div className="admin-container">
+    <div className="admin-container admin-affiliates">
       <div className="admin-header">
         <h1>Gerenciamento de Afiliados</h1>
+        <button
+          type="button"
+          className="btn-sync-metrics"
+          onClick={handleSyncMetrics}
+          disabled={syncing}
+          title="Recalcula Total Depósitos e Total Apostas dos referidos"
+        >
+          {syncing ? <i className="fa-solid fa-spinner fa-spin"></i> : <i className="fa-solid fa-arrows-rotate"></i>}
+          {' '}{syncing ? 'Sincronizando...' : 'Sincronizar métricas'}
+        </button>
       </div>
 
       <div className="admin-affiliates-content">

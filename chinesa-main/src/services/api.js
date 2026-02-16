@@ -343,6 +343,12 @@ class ApiService {
     })
   }
 
+  async syncAffiliateMetrics() {
+    return this.request('/affiliate/admin/sync-metrics', {
+      method: 'POST'
+    })
+  },
+
   async getAffiliatesAdmin(search = '', page = 1) {
     const params = new URLSearchParams()
     if (search) params.append('search', search)
