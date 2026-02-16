@@ -2,7 +2,7 @@ import mongoose from 'mongoose'
 
 /**
  * Rastreia depósitos de usuários indicados por afiliados
- * Usado para calcular CPA (primeiro depósito) e RevShare (com lógica de pular depósitos)
+ * Usado para calcular bônus % sobre depósito (comissão do afiliado)
  */
 const affiliateDepositSchema = new mongoose.Schema(
   {
@@ -33,33 +33,13 @@ const affiliateDepositSchema = new mongoose.Schema(
       type: Boolean,
       default: false
     },
-    // Posição no ciclo (ex: 1, 2, 3... até totalDepositsCycle)
-    cyclePosition: {
+    // Percentual de bônus aplicado neste depósito
+    depositBonusPercent: {
       type: Number,
       default: 0
     },
-    // Se este depósito deve ser "pulado" (não ganha RevShare)
-    isSkipped: {
-      type: Boolean,
-      default: false
-    },
-    // Se CPA foi pago neste depósito
-    cpaPaid: {
-      type: Boolean,
-      default: false
-    },
-    // Valor do CPA pago
-    cpaAmount: {
-      type: Number,
-      default: 0
-    },
-    // Se RevShare foi calculado neste depósito
-    revShareCalculated: {
-      type: Boolean,
-      default: false
-    },
-    // Valor do RevShare calculado
-    revShareAmount: {
+    // Valor do bônus pago ao afiliado (vai para saldo real sacável)
+    depositBonusAmount: {
       type: Number,
       default: 0
     }

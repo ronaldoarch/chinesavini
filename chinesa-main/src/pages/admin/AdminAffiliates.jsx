@@ -13,10 +13,8 @@ function AdminAffiliates() {
   const [configError, setConfigError] = useState(null)
   const [configSuccess, setConfigSuccess] = useState(null)
   const [affiliateConfig, setAffiliateConfig] = useState({
-    affiliateCpa: 0,
-    affiliateRevShare: 0,
-    affiliateSkipDeposits: 0,
-    affiliateTotalDepositsCycle: 0
+    affiliateDepositBonusPercent: 0,
+    affiliateAllDeposits: false
   })
 
   useEffect(() => {
@@ -45,10 +43,8 @@ function AdminAffiliates() {
       if (response.success) {
         setSelectedAffiliate(response.data)
         setAffiliateConfig({
-          affiliateCpa: response.data.user?.affiliateCpa || 0,
-          affiliateRevShare: response.data.user?.affiliateRevShare || 0,
-          affiliateSkipDeposits: response.data.user?.affiliateSkipDeposits || 0,
-          affiliateTotalDepositsCycle: response.data.user?.affiliateTotalDepositsCycle || 0
+          affiliateDepositBonusPercent: response.data.user?.affiliateDepositBonusPercent ?? 0,
+          affiliateAllDeposits: response.data.user?.affiliateAllDeposits ?? false
         })
         setConfigError(null)
         setConfigSuccess(null)
@@ -240,6 +236,7 @@ function AdminAffiliates() {
 
                 <div className="details-section">
                   <h3>Configuração de Comissões</h3>
+                  <p className="section-description">Bônus % sobre depósito dos indicados. O valor vai direto para o saldo real sacável do afiliado.</p>
                   {configError && (
                     <div className="config-error">
                       <i className="fa-solid fa-circle-exclamation"></i>
@@ -254,61 +251,29 @@ function AdminAffiliates() {
                   )}
                   <div className="config-form">
                     <div className="config-form-group">
-                      <label>CPA (R$)</label>
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={affiliateConfig.affiliateCpa}
-                        onChange={(e) => setAffiliateConfig({ ...affiliateConfig, affiliateCpa: parseFloat(e.target.value) || 0 })}
-                        placeholder="0.00"
-                      />
-                      <small>Valor pago apenas no primeiro depósito do indicado</small>
-                    </div>
-                    <div className="config-form-group">
-                      <label>RevShare (%)</label>
+                      <label>Bônus sobre depósito (%)</label>
                       <input
                         type="number"
                         min="0"
                         max="100"
-                        step="0.01"
-                        value={affiliateConfig.affiliateRevShare}
-                        onChange={(e) => setAffiliateConfig({ ...affiliateConfig, affiliateRevShare: parseFloat(e.target.value) || 0 })}
-                        placeholder="0.00"
-                      />
-                      <small>Percentual sobre o ganho da plataforma do indicado</small>
-                    </div>
-                    <div className="config-form-group">
-                      <label>Pular Depósitos</label>
-                      <input
-                        type="number"
-                        min="0"
-                        value={affiliateConfig.affiliateSkipDeposits}
-                        onChange={(e) => setAffiliateConfig({ ...affiliateConfig, affiliateSkipDeposits: parseInt(e.target.value) || 0 })}
+                        step="0.5"
+                        value={affiliateConfig.affiliateDepositBonusPercent}
+                        onChange={(e) => setAffiliateConfig({ ...affiliateConfig, affiliateDepositBonusPercent: parseFloat(e.target.value) || 0 })}
                         placeholder="0"
                       />
-                      <small>Quantos depósitos pular no ciclo (ex: 1)</small>
+                      <small>Percentual sobre cada depósito do indicado. Ex: 50% = R$ 50 em depósito de R$ 100</small>
                     </div>
-                    <div className="config-form-group">
-                      <label>Total de Depósitos no Ciclo</label>
-                      <input
-                        type="number"
-                        min="0"
-                        value={affiliateConfig.affiliateTotalDepositsCycle}
-                        onChange={(e) => setAffiliateConfig({ ...affiliateConfig, affiliateTotalDepositsCycle: parseInt(e.target.value) || 0 })}
-                        placeholder="0"
-                      />
-                      <small>Total de depósitos no ciclo (ex: 2 para pular 1 a cada 2, ou 10 para pular 5 a cada 10)</small>
+                    <div className="config-form-group config-checkbox">
+                      <label>
+                        <input
+                          type="checkbox"
+                          checked={affiliateConfig.affiliateAllDeposits}
+                          onChange={(e) => setAffiliateConfig({ ...affiliateConfig, affiliateAllDeposits: e.target.checked })}
+                        />
+                        {' '}Ganhar em todos os depósitos
+                      </label>
+                      <small>Se marcado: ganha % em todos os depósitos. Se desmarcado: só no primeiro depósito do indicado</small>
                     </div>
-                    {affiliateConfig.affiliateTotalDepositsCycle > 0 && (
-                      <div className="config-info">
-                        <i className="fa-solid fa-info-circle"></i>
-                        <span>
-                          Configuração: Pular {affiliateConfig.affiliateSkipDeposits} depósito(s) a cada {affiliateConfig.affiliateTotalDepositsCycle} depósito(s).
-                          O afiliado ganhará RevShare em {affiliateConfig.affiliateTotalDepositsCycle - affiliateConfig.affiliateSkipDeposits} depósito(s) e não ganhará em {affiliateConfig.affiliateSkipDeposits} depósito(s).
-                        </span>
-                      </div>
-                    )}
                     <div className="config-form-actions">
                       <button
                         type="button"

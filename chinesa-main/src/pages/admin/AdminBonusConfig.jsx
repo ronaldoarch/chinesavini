@@ -10,7 +10,7 @@ function AdminBonusConfig() {
   const [error, setError] = useState(null)
   const [success, setSuccess] = useState(null)
   const [config, setConfig] = useState({
-    firstDepositBonusPercent: 0,
+    firstDepositBonusPercent: 20,
     depositTiers: [
       { amount: 10, bonusPercent: 0 },
       { amount: 20, bonusPercent: 2 },
@@ -250,18 +250,7 @@ function AdminBonusConfig() {
 
       <div className="config-section">
         <h2><i className="fa-solid fa-users-line"></i> Bônus afiliados</h2>
-        <p className="section-description">Percentual de bônus exclusivo para afiliados (sobre depósitos dos indicados).</p>
-        <div className="form-group">
-          <label>Bônus afiliado (%)</label>
-          <input
-            type="number"
-            min="0"
-            max="100"
-            step="0.5"
-            value={config.affiliateBonusPercent}
-            onChange={(e) => setConfig(prev => ({ ...prev, affiliateBonusPercent: Number(e.target.value) || 0 }))}
-          />
-        </div>
+        <p className="section-description">O bônus % sobre depósito dos afiliados é configurado individualmente em <strong>Afiliados</strong> → Ver Detalhes de cada afiliado.</p>
       </div>
 
       <div className="config-section">

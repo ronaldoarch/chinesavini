@@ -330,10 +330,8 @@ router.get('/admin/:userId', protect, isAdmin, async (req, res) => {
           username: user.username,
           referralCode: user.referralCode,
           affiliateBalance: user.affiliateBalance || 0,
-          affiliateCpa: user.affiliateCpa || 0,
-          affiliateRevShare: user.affiliateRevShare || 0,
-          affiliateSkipDeposits: user.affiliateSkipDeposits || 0,
-          affiliateTotalDepositsCycle: user.affiliateTotalDepositsCycle || 0,
+          affiliateDepositBonusPercent: user.affiliateDepositBonusPercent ?? 0,
+          affiliateAllDeposits: user.affiliateAllDeposits ?? false,
           createdAt: user.createdAt
         },
         stats,
@@ -361,11 +359,11 @@ router.get('/admin/:userId', protect, isAdmin, async (req, res) => {
 })
 
 // @route   PUT /api/affiliate/admin/:userId/config
-// @desc    Update affiliate configuration (CPA, RevShare, skip deposits)
+// @desc    Update affiliate configuration (% bonus on deposit, all deposits or first only)
 // @access  Private/Admin
 router.put('/admin/:userId/config', protect, isAdmin, async (req, res) => {
   try {
-    const { affiliateCpa, affiliateRevShare, affiliateSkipDeposits, affiliateTotalDepositsCycle } = req.body
+    const { affiliateDepositBonusPercent, affiliateAllDeposits } = req.body
     const user = await User.findById(req.params.userId)
     
     if (!user) {
@@ -375,51 +373,18 @@ router.put('/admin/:userId/config', protect, isAdmin, async (req, res) => {
       })
     }
 
-    // Validações
-    if (affiliateCpa !== undefined) {
-      if (affiliateCpa < 0) {
+    if (affiliateDepositBonusPercent !== undefined) {
+      if (affiliateDepositBonusPercent < 0 || affiliateDepositBonusPercent > 100) {
         return res.status(400).json({
           success: false,
-          message: 'CPA deve ser maior ou igual a zero'
+          message: 'Percentual deve estar entre 0 e 100'
         })
       }
-      user.affiliateCpa = affiliateCpa
+      user.affiliateDepositBonusPercent = affiliateDepositBonusPercent
     }
 
-    if (affiliateRevShare !== undefined) {
-      if (affiliateRevShare < 0 || affiliateRevShare > 100) {
-        return res.status(400).json({
-          success: false,
-          message: 'RevShare deve estar entre 0 e 100'
-        })
-      }
-      user.affiliateRevShare = affiliateRevShare
-    }
-
-    if (affiliateSkipDeposits !== undefined) {
-      if (affiliateSkipDeposits < 0) {
-        return res.status(400).json({
-          success: false,
-          message: 'Depósitos a pular deve ser maior ou igual a zero'
-        })
-      }
-      user.affiliateSkipDeposits = affiliateSkipDeposits
-    }
-
-    if (affiliateTotalDepositsCycle !== undefined) {
-      if (affiliateTotalDepositsCycle < 0) {
-        return res.status(400).json({
-          success: false,
-          message: 'Total de depósitos no ciclo deve ser maior ou igual a zero'
-        })
-      }
-      if (affiliateTotalDepositsCycle > 0 && user.affiliateSkipDeposits >= affiliateTotalDepositsCycle) {
-        return res.status(400).json({
-          success: false,
-          message: 'Depósitos a pular deve ser menor que o total de depósitos no ciclo'
-        })
-      }
-      user.affiliateTotalDepositsCycle = affiliateTotalDepositsCycle
+    if (affiliateAllDeposits !== undefined) {
+      user.affiliateAllDeposits = !!affiliateAllDeposits
     }
 
     await user.save()
@@ -428,10 +393,8 @@ router.put('/admin/:userId/config', protect, isAdmin, async (req, res) => {
       success: true,
       message: 'Configuração do afiliado atualizada com sucesso',
       data: {
-        affiliateCpa: user.affiliateCpa,
-        affiliateRevShare: user.affiliateRevShare,
-        affiliateSkipDeposits: user.affiliateSkipDeposits,
-        affiliateTotalDepositsCycle: user.affiliateTotalDepositsCycle
+        affiliateDepositBonusPercent: user.affiliateDepositBonusPercent,
+        affiliateAllDeposits: user.affiliateAllDeposits
       }
     })
   } catch (error) {

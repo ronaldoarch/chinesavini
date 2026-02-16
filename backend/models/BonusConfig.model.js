@@ -40,10 +40,10 @@ const bonusConfigSchema = new mongoose.Schema(
       min: 1,
       max: 1000000
     },
-    // Bônus no primeiro depósito (% sobre o valor)
+    // Bônus no primeiro depósito (% sobre o valor) - usuários normais
     firstDepositBonusPercent: {
       type: Number,
-      default: 0,
+      default: 20,
       min: 0,
       max: 100
     },
