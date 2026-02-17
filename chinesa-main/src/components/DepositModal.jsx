@@ -146,22 +146,6 @@ function DepositModal({ isOpen, onClose, showCpfField = true, onConfirmDeposit, 
   const normalizedAmount = depositAmount.replace(',', '.')
   const parsedAmount = Number.parseFloat(normalizedAmount || '0') || 0
   const amountValue = Math.min(Math.max(parsedAmount, 0), maxDeposit)
-  const selectedAmount = quickAmounts.find((amount) => amount.id === selectedAmountId)
-  const matchedAmount = quickAmounts.find((amount) => amount.amount === amountValue)
-  const tierForValue = quickAmounts.filter((t) => t.amount <= amountValue).sort((a, b) => b.amount - a.amount)[0]
-  const bonusPercent = selectedAmount
-    ? selectedAmount.bonusPercent
-    : (matchedAmount ? matchedAmount.bonusPercent : (tierForValue ? tierForValue.bonusPercent : 0))
-  const bonusAmount = amountValue * (bonusPercent / 100)
-  const totalAmount = amountValue + bonusAmount
-
-  const formatCurrency = (value) =>
-    new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL',
-      minimumFractionDigits: 2
-    }).format(value)
-
   const handleConfirmDeposit = async () => {
     if (amountValue < minDeposit || amountValue > maxDeposit) {
       setError(`Valor deve estar entre R$ ${minDeposit.toFixed(2)} e R$ ${maxDeposit.toFixed(2)}`)
@@ -232,7 +216,6 @@ function DepositModal({ isOpen, onClose, showCpfField = true, onConfirmDeposit, 
           <div className="quick-amounts">
             {quickAmounts.map((amount) => (
               <div key={amount.id} className={`quick-amount-wrapper${amount.full ? ' full' : ''}`}>
-                {amount.bonusPercent > 0 && <span className="bonus-badge">+{amount.bonusPercent}%</span>}
                 <button
                   type="button"
                   className={`quick-amount-btn${selectedAmountId === amount.id ? ' selected' : ''}`}
@@ -295,32 +278,6 @@ function DepositModal({ isOpen, onClose, showCpfField = true, onConfirmDeposit, 
             </div>
           )}
 
-          {amountValue > 0 && bonusPercent > 0 && (
-            <div className="bonus-info">
-              <div className="bonus-details">
-                <div className="bonus-line">
-                  <span>Depósito:</span>
-                  <strong>{formatCurrency(amountValue)}</strong>
-                </div>
-                {bonusPercent > 0 && (
-                  <>
-                    <div className="bonus-line bonus-row">
-                      <span className="bonus-label">
-                        <i className="fa-solid fa-plus-circle"></i>
-                        Bônus: <span>{bonusPercent}%</span>
-                      </span>
-                      <strong>{formatCurrency(bonusAmount)}</strong>
-                    </div>
-                    <div className="bonus-divider" />
-                  </>
-                )}
-                <div className="bonus-line total-row">
-                  <span>Total a receber:</span>
-                  <strong>{formatCurrency(totalAmount)}</strong>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
 
         {error && (
