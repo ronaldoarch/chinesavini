@@ -24,6 +24,9 @@ function AdminGamesConfig() {
   const [gamesByProvider, setGamesByProvider] = useState({})
   const [loadingProviders, setLoadingProviders] = useState(false)
   const [loadingGames, setLoadingGames] = useState({})
+  const [loadingAllGames, setLoadingAllGames] = useState(false)
+  const [gameSearchProvider, setGameSearchProvider] = useState('')
+  const [gameSearchName, setGameSearchName] = useState('')
 
   useEffect(() => {
     if (!isAdmin) {
@@ -50,11 +53,9 @@ function AdminGamesConfig() {
           selectedGames: response.data.selectedGames || []
         })
         
-        // Load games for selected providers
+        // Load all games from selected providers in parallel
         if (response.data.selectedProviders?.length > 0) {
-          for (const providerCode of response.data.selectedProviders) {
-            await loadGames(providerCode)
-          }
+          await loadAllGames(response.data.selectedProviders)
         }
       }
     } catch (err) {
@@ -99,6 +100,33 @@ function AdminGamesConfig() {
     }
   }
 
+  const loadAllGames = async (providerCodes) => {
+    const codes = providerCodes || config.selectedProviders
+    if (!codes?.length) return
+
+    try {
+      setLoadingAllGames(true)
+      const results = await Promise.all(
+        codes.map(async (providerCode) => {
+          const response = await api.getGames(providerCode)
+          return { providerCode, games: response.success ? (response.data || []) : [] }
+        })
+      )
+      setGamesByProvider(prev => {
+        const next = { ...prev }
+        results.forEach(({ providerCode, games }) => {
+          next[providerCode] = games
+        })
+        return next
+      })
+    } catch (err) {
+      console.error('Error loading all games:', err)
+      setError('Erro ao carregar jogos dos provedores')
+    } finally {
+      setLoadingAllGames(false)
+    }
+  }
+
   const handleProviderToggle = async (providerCode) => {
     const isSelected = config.selectedProviders.includes(providerCode)
     
@@ -122,8 +150,8 @@ function AdminGamesConfig() {
         selectedProviders: [...prev.selectedProviders, providerCode]
       }))
       
-      // Load games for this provider automatically
-      await loadGames(providerCode, true)
+      // Load all games from all selected providers (including the new one)
+      await loadAllGames([...config.selectedProviders, providerCode])
     }
   }
 
@@ -166,10 +194,10 @@ function AdminGamesConfig() {
         )
       }))
     } else {
-      // Check limit per provider (15 games per provider)
+      // Check limit per provider (20 games per provider)
       const currentCount = getGamesCountByProvider(game.providerCode)
-      if (currentCount >= 15) {
-        setError(`Máximo de 15 jogos permitidos por provedor. O provedor ${game.providerCode} já tem 15 jogos selecionados.`)
+      if (currentCount >= 20) {
+        setError(`Máximo de 20 jogos permitidos por provedor. O provedor ${game.providerCode} já tem 20 jogos selecionados.`)
         setTimeout(() => setError(null), 3000)
         return
       }
@@ -448,68 +476,121 @@ function AdminGamesConfig() {
             Jogos Selecionados
           </h2>
           <p className="section-description">
-            Selecione até 15 jogos por provedor
+            Selecione até 20 jogos por provedor. Pesquise por provedor ou nome do jogo para encontrar e ativar.
           </p>
 
-          {config.selectedProviders.map(providerCode => {
-            const provider = providers.find(p => p.code === providerCode)
-            const games = gamesByProvider[providerCode] || []
-            const isLoading = loadingGames[providerCode]
-            const gamesCount = getGamesCountByProvider(providerCode)
-
-            return (
-              <div key={providerCode} className="games-provider-section">
-                <h3>
-                  {provider?.name || providerCode}
-                  <span className="games-count">({gamesCount}/15)</span>
-                  {isLoading && <i className="fa-solid fa-spinner fa-spin"></i>}
-                </h3>
-                
-                {isLoading ? (
-                  <div className="loading-games">
-                    <i className="fa-solid fa-spinner fa-spin"></i>
-                    Carregando jogos...
-                  </div>
-                ) : games.length === 0 ? (
-                  <p className="no-games">Nenhum jogo disponível</p>
-                ) : (
-                  <div className="games-grid">
-                    {games.map(game => {
-                      const isSelected = config.selectedGames.some(
-                        g => g.providerCode === providerCode && g.gameCode === game.game_code
-                      )
-                      
-                      return (
-                        <div
-                          key={game.game_code}
-                          className={`game-card ${isSelected ? 'selected' : ''} ${game.status === 0 ? 'disabled' : ''}`}
-                          onClick={() => game.status === 1 && handleGameToggle({ ...game, providerCode })}
-                        >
-                          <div className="game-checkbox">
-                            <input
-                              type="checkbox"
-                              checked={isSelected}
-                              onChange={() => {}}
-                              disabled={game.status === 0}
-                            />
-                          </div>
-                          {game.banner && (
-                            <img src={game.banner} alt={game.game_name} className="game-banner" />
-                          )}
-                          <div className="game-info">
-                            <h4>{game.game_name}</h4>
-                            <span className={`game-status ${game.status === 1 ? 'active' : 'maintenance'}`}>
-                              {game.status === 1 ? 'Disponível' : 'Manutenção'}
-                            </span>
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                )}
+          <div className="games-search-section">
+            <div className="games-search-row">
+              <div className="games-search-field">
+                <label>Provedor</label>
+                <select
+                  value={gameSearchProvider}
+                  onChange={(e) => setGameSearchProvider(e.target.value)}
+                  className="games-search-select"
+                >
+                  <option value="">Todos os provedores</option>
+                  {config.selectedProviders.map(code => {
+                    const p = providers.find(x => x.code === code)
+                    return (
+                      <option key={code} value={code}>{p?.name || code}</option>
+                    )
+                  })}
+                </select>
               </div>
+              <div className="games-search-field">
+                <label>Nome do jogo</label>
+                <input
+                  type="text"
+                  value={gameSearchName}
+                  onChange={(e) => setGameSearchName(e.target.value)}
+                  placeholder="Buscar por nome..."
+                  className="games-search-input"
+                />
+              </div>
+              <button
+                type="button"
+                className="load-all-games-btn"
+                onClick={() => loadAllGames()}
+                disabled={loadingAllGames}
+              >
+                {loadingAllGames ? (
+                  <><i className="fa-solid fa-spinner fa-spin"></i> Carregando...</>
+                ) : (
+                  <><i className="fa-solid fa-refresh"></i> Carregar todos os jogos</>
+                )}
+              </button>
+            </div>
+          </div>
+
+          {loadingAllGames ? (
+            <div className="loading-games">
+              <i className="fa-solid fa-spinner fa-spin"></i>
+              Carregando jogos de todos os provedores...
+            </div>
+          ) : (() => {
+            const allGames = config.selectedProviders.flatMap(providerCode => {
+              const games = gamesByProvider[providerCode] || []
+              return games.map(g => ({ ...g, providerCode }))
+            })
+            const filtered = allGames.filter(g => {
+              const matchProvider = !gameSearchProvider || g.providerCode === gameSearchProvider
+              const matchName = !gameSearchName.trim() || 
+                (g.game_name || '').toLowerCase().includes(gameSearchName.trim().toLowerCase())
+              return matchProvider && matchName
+            })
+
+            return filtered.length === 0 ? (
+              <p className="no-games">
+                {allGames.length === 0
+                  ? 'Nenhum jogo disponível. Clique em "Carregar todos os jogos".'
+                  : 'Nenhum jogo encontrado com os filtros aplicados.'}
+              </p>
+            ) : (
+              <>
+                <p className="games-filtered-info">
+                  Mostrando {filtered.length} de {allGames.length} jogos
+                  {gameSearchProvider && (
+                    <span> • Provedor: {providers.find(p => p.code === gameSearchProvider)?.name || gameSearchProvider}</span>
+                  )}
+                  {gameSearchName.trim() && <span> • Busca: "{gameSearchName.trim()}"</span>}
+                </p>
+                <div className="games-grid">
+                  {filtered.map(game => {
+                    const isSelected = config.selectedGames.some(
+                      g => g.providerCode === game.providerCode && g.gameCode === game.game_code
+                    )
+                    const provider = providers.find(p => p.code === game.providerCode)
+                    return (
+                      <div
+                        key={`${game.providerCode}-${game.game_code}`}
+                        className={`game-card ${isSelected ? 'selected' : ''} ${game.status === 0 ? 'disabled' : ''}`}
+                        onClick={() => game.status === 1 && handleGameToggle(game)}
+                      >
+                        <div className="game-checkbox">
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => {}}
+                            disabled={game.status === 0}
+                          />
+                        </div>
+                        <span className="game-provider-badge">{provider?.name || game.providerCode}</span>
+                        {game.banner && (
+                          <img src={game.banner} alt={game.game_name} className="game-banner" />
+                        )}
+                        <div className="game-info">
+                          <h4>{game.game_name}</h4>
+                          <span className={`game-status ${game.status === 1 ? 'active' : 'maintenance'}`}>
+                            {game.status === 1 ? 'Disponível' : 'Manutenção'}
+                          </span>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </>
             )
-          })}
+          })()}
         </div>
       )}
 
