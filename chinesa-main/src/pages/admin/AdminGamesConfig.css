@@ -166,6 +166,64 @@
   color: #ffc107;
 }
 
+.provider-order-section {
+  margin-bottom: var(--spacing-xl);
+}
+
+.provider-order-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.provider-order-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md) var(--spacing-lg);
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.provider-order-position {
+  min-width: 36px;
+  font-weight: 700;
+  color: var(--gold);
+  font-size: var(--font-size-md);
+}
+
+.provider-order-name {
+  flex: 1;
+  color: var(--text-white);
+  font-weight: 500;
+}
+
+.provider-order-actions {
+  display: flex;
+  gap: var(--spacing-xs);
+}
+
+.provider-order-btn {
+  padding: 6px 10px;
+  background: rgba(139, 92, 246, 0.2);
+  border: 1px solid rgba(139, 92, 246, 0.4);
+  border-radius: 6px;
+  color: var(--primary-purple, #8b5cf6);
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: all 0.2s;
+}
+
+.provider-order-btn:hover:not(:disabled) {
+  background: rgba(139, 92, 246, 0.3);
+}
+
+.provider-order-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 .games-provider-section {
   margin-bottom: var(--spacing-xl);
 }

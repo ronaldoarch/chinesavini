@@ -131,6 +131,28 @@ function AdminGamesConfig() {
     return config.selectedGames.filter(g => g.providerCode === providerCode).length
   }
 
+  const handleProviderMoveUp = (providerCode) => {
+    const idx = config.selectedProviders.indexOf(providerCode)
+    if (idx <= 0) return
+    const newOrder = [...config.selectedProviders]
+    ;[newOrder[idx - 1], newOrder[idx]] = [newOrder[idx], newOrder[idx - 1]]
+    setConfig(prev => ({ ...prev, selectedProviders: newOrder }))
+  }
+
+  const handleProviderMoveDown = (providerCode) => {
+    const idx = config.selectedProviders.indexOf(providerCode)
+    if (idx < 0 || idx >= config.selectedProviders.length - 1) return
+    const newOrder = [...config.selectedProviders]
+    ;[newOrder[idx], newOrder[idx + 1]] = [newOrder[idx + 1], newOrder[idx]]
+    setConfig(prev => ({ ...prev, selectedProviders: newOrder }))
+  }
+
+  const handleSetProviderFirst = (providerCode) => {
+    const newOrder = config.selectedProviders.filter(p => p !== providerCode)
+    newOrder.unshift(providerCode)
+    setConfig(prev => ({ ...prev, selectedProviders: newOrder }))
+  }
+
   const handleGameToggle = (game) => {
     const isSelected = config.selectedGames.some(
       g => g.providerCode === game.providerCode && g.gameCode === game.gameCode
@@ -366,6 +388,58 @@ function AdminGamesConfig() {
           </div>
         )}
       </div>
+
+      {config.selectedProviders.length > 0 && (
+        <div className="config-section provider-order-section">
+          <h2>
+            <i className="fa-solid fa-sort"></i>
+            Ordem dos Provedores
+          </h2>
+          <p className="section-description">
+            Defina qual provedor aparece primeiro na página inicial. Use as setas para reordenar.
+          </p>
+          <div className="provider-order-list">
+            {config.selectedProviders.map((providerCode, idx) => {
+              const provider = providers.find(p => p.code === providerCode)
+              return (
+                <div key={providerCode} className="provider-order-item">
+                  <span className="provider-order-position">{idx + 1}º</span>
+                  <span className="provider-order-name">{provider?.name || providerCode}</span>
+                  <div className="provider-order-actions">
+                    <button
+                      type="button"
+                      className="provider-order-btn"
+                      onClick={() => handleSetProviderFirst(providerCode)}
+                      title="Definir como primeiro"
+                      disabled={idx === 0}
+                    >
+                      <i className="fa-solid fa-arrow-up"></i> 1º
+                    </button>
+                    <button
+                      type="button"
+                      className="provider-order-btn"
+                      onClick={() => handleProviderMoveUp(providerCode)}
+                      title="Subir"
+                      disabled={idx === 0}
+                    >
+                      <i className="fa-solid fa-chevron-up"></i>
+                    </button>
+                    <button
+                      type="button"
+                      className="provider-order-btn"
+                      onClick={() => handleProviderMoveDown(providerCode)}
+                      title="Descer"
+                      disabled={idx === config.selectedProviders.length - 1}
+                    >
+                      <i className="fa-solid fa-chevron-down"></i>
+                    </button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       {config.selectedProviders.length > 0 && (
         <div className="config-section">
