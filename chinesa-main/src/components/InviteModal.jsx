@@ -359,9 +359,11 @@ function InviteModal({ isOpen, onClose }) {
                   </div>
                   <div className="invite-top-affiliate-details">
                     <span>Depósitos dos indicados: {formatCurrency(topAffiliateData.totalDeposits)}</span>
-                    {topAffiliateData.prizeValue > 0 && (
-                      <span className="invite-top-affiliate-prize">Prêmio atual: {formatCurrency(topAffiliateData.prizeValue)}</span>
-                    )}
+                    {topAffiliateData.config?.competitionEnded && topAffiliateData.prizeValue > 0 ? (
+                      <span className="invite-top-affiliate-prize">Prêmio: {formatCurrency(topAffiliateData.prizeValue)}</span>
+                    ) : !topAffiliateData.config?.competitionEnded ? (
+                      <span className="invite-top-affiliate-prize">Prêmio a definir na data final</span>
+                    ) : null}
                   </div>
                   <small className="invite-top-affiliate-period">
                     Período: {new Date(topAffiliateData.config?.startDate).toLocaleDateString('pt-BR')} até {new Date(topAffiliateData.config?.endDate).toLocaleDateString('pt-BR')}

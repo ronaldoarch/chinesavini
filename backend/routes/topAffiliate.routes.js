@@ -35,16 +35,32 @@ async function getTopAffiliateRanking(startDate, endDate) {
       continue
     }
 
-    const txMatch = {
-      user: { $in: referredIds },
-      type: 'deposit',
-      status: 'paid',
-      paidAt: { $gte: startDate, $lte: endDate }
-    }
-
+    // Usar paidAt quando existir; senão createdAt (depósitos antigos podem não ter paidAt)
     const agg = await Transaction.aggregate([
-      { $match: txMatch },
-      { $group: { _id: null, total: { $sum: '$netAmount' }, count: { $sum: 1 } } }
+      {
+        $match: {
+          user: { $in: referredIds },
+          type: 'deposit',
+          status: 'paid'
+        }
+      },
+      {
+        $addFields: {
+          effectiveDate: { $ifNull: ['$paidAt', '$createdAt'] }
+        }
+      },
+      {
+        $match: {
+          effectiveDate: { $gte: startDate, $lte: endDate }
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          total: { $sum: { $ifNull: ['$netAmount', '$amount', 0] } },
+          count: { $sum: 1 }
+        }
+      }
     ])
 
     const totalDeposits = agg[0]?.total ?? 0
@@ -165,15 +181,18 @@ router.get('/admin/ranking', protect, isAdmin, async (req, res) => {
 
     const ranking = await getTopAffiliateRanking(startDate, endDate)
 
-    // Adicionar prêmio de cada posição
+    // Premiação só é definida na data final — até lá mostrar 0
+    const now = new Date()
+    const competitionEnded = now >= endDate
     const prizeMap = {}
     ;(config.prizes || []).forEach(p => {
-      prizeMap[p.position] = p.prizeValue
+      prizeMap[p.position] = competitionEnded ? p.prizeValue : 0
     })
 
     const rankingWithPrizes = ranking.map(r => ({
       ...r,
-      prizeValue: prizeMap[r.position] ?? 0
+      prizeValue: prizeMap[r.position] ?? 0,
+      competitionEnded
     }))
 
     res.json({
@@ -182,7 +201,8 @@ router.get('/admin/ranking', protect, isAdmin, async (req, res) => {
         config: {
           startDate: config.startDate,
           endDate: config.endDate,
-          prizes: config.prizes
+          prizes: config.prizes,
+          competitionEnded
         },
         ranking: rankingWithPrizes
       }
@@ -218,13 +238,14 @@ router.get('/my-position', protect, async (req, res) => {
     const config = await TopAffiliateConfig.getConfig()
     const startDate = new Date(config.startDate)
     const endDate = new Date(config.endDate)
+    const competitionEnded = new Date() >= endDate
 
     const ranking = await getTopAffiliateRanking(startDate, endDate)
     const myEntry = ranking.find(r => r.affiliateId.toString() === user._id.toString())
 
     const prizeMap = {}
     ;(config.prizes || []).forEach(p => {
-      prizeMap[p.position] = p.prizeValue
+      prizeMap[p.position] = competitionEnded ? p.prizeValue : 0
     })
 
     res.json({
@@ -233,7 +254,8 @@ router.get('/my-position', protect, async (req, res) => {
         eligible: true,
         config: {
           startDate: config.startDate,
-          endDate: config.endDate
+          endDate: config.endDate,
+          competitionEnded
         },
         position: myEntry?.position ?? null,
         totalDeposits: myEntry?.totalDeposits ?? 0,

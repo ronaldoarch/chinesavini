@@ -90,7 +90,8 @@ const transactionSchema = new mongoose.Schema(
 // Indexes (idTransaction index comes from schema unique+sparse)
 transactionSchema.index({ user: 1, createdAt: -1 })
 transactionSchema.index({ status: 1 })
-transactionSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 })
+// NOTA: Não usar TTL em expiresAt — transações devem ser mantidas para histórico.
+// O expiresAt serve apenas para indicar expiração do PIX ao usuário.
 
 // Method to check if transaction is expired
 transactionSchema.methods.isExpired = function () {

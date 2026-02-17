@@ -20,6 +20,7 @@ function AdminTopAffiliate() {
   })
   const [ranking, setRanking] = useState([])
   const [rankingLoading, setRankingLoading] = useState(false)
+  const [competitionEnded, setCompetitionEnded] = useState(false)
 
   useEffect(() => {
     loadConfig()
@@ -68,6 +69,7 @@ function AdminTopAffiliate() {
       const response = await api.getTopAffiliateRanking()
       if (response.success && response.data) {
         setRanking(response.data.ranking || [])
+        setCompetitionEnded(response.data.config?.competitionEnded ?? false)
       }
     } catch (err) {
       console.error('Erro ao carregar ranking:', err)
@@ -170,6 +172,7 @@ function AdminTopAffiliate() {
 
       <div className="config-section">
         <h2><i className="fa-solid fa-calendar"></i> Período</h2>
+        <p className="period-hint">Depósitos são filtrados por data de pagamento. Ajuste as datas para incluir o período em que os indicados fizeram depósitos.</p>
         <div className="top-affiliate-dates">
           <div className="form-group">
             <label>Data de início</label>
@@ -231,6 +234,9 @@ function AdminTopAffiliate() {
 
       <div className="config-section ranking-section">
         <h2><i className="fa-solid fa-ranking-star"></i> Ranking (atual)</h2>
+        {!competitionEnded && (
+          <p className="competition-status">A premiação será definida na data final. Até lá, o ranking é dinâmico.</p>
+        )}
         <button type="button" className="btn-refresh" onClick={loadRanking} disabled={rankingLoading}>
           {rankingLoading ? <i className="fa-solid fa-spinner fa-spin"></i> : <i className="fa-solid fa-arrows-rotate"></i>}
           {' '}Atualizar
@@ -265,7 +271,9 @@ function AdminTopAffiliate() {
                     <td><code>{r.referralCode}</code></td>
                     <td>{r.depositsCount}</td>
                     <td>{formatCurrency(r.totalDeposits)}</td>
-                    <td className="prize-cell">{formatCurrency(r.prizeValue)}</td>
+                    <td className="prize-cell">
+                      {competitionEnded ? formatCurrency(r.prizeValue) : 'A definir na data final'}
+                    </td>
                   </tr>
                 ))}
               </tbody>
