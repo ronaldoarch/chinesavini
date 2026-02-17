@@ -182,15 +182,16 @@ function AdminGamesConfig() {
   }
 
   const handleGameToggle = (game) => {
+    const code = game.game_code || game.gameCode
     const isSelected = config.selectedGames.some(
-      g => g.providerCode === game.providerCode && g.gameCode === game.gameCode
+      g => g.providerCode === game.providerCode && g.gameCode === code
     )
     
     if (isSelected) {
       setConfig(prev => ({
         ...prev,
         selectedGames: prev.selectedGames.filter(
-          g => !(g.providerCode === game.providerCode && g.gameCode === game.gameCode)
+          g => !(g.providerCode === game.providerCode && g.gameCode === code)
         )
       }))
     } else {
@@ -564,14 +565,21 @@ function AdminGamesConfig() {
                       <div
                         key={`${game.providerCode}-${game.game_code}`}
                         className={`game-card ${isSelected ? 'selected' : ''} ${game.status === 0 ? 'disabled' : ''}`}
-                        onClick={() => game.status === 1 && handleGameToggle(game)}
+                        onClick={() => game.status !== 0 && handleGameToggle(game)}
                       >
-                        <div className="game-checkbox">
+                        <div
+                          className="game-checkbox"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            if (game.status !== 0) handleGameToggle(game)
+                          }}
+                        >
                           <input
                             type="checkbox"
                             checked={isSelected}
                             onChange={() => {}}
                             disabled={game.status === 0}
+                            onClick={(e) => e.preventDefault()}
                           />
                         </div>
                         <span className="game-provider-badge">{provider?.name || game.providerCode}</span>
