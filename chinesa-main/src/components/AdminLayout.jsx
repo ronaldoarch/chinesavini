@@ -17,6 +17,7 @@ import AdminJackpot from '../pages/admin/AdminJackpot'
 import AdminTracking from '../pages/admin/AdminTracking'
 import AdminSupport from '../pages/admin/AdminSupport'
 import AdminPromotions from '../pages/admin/AdminPromotions'
+import AdminTopAffiliate from '../pages/admin/AdminTopAffiliate'
 import './AdminLayout.css'
 
 function AdminLayout() {
@@ -220,6 +221,8 @@ function AdminLayout() {
         return <AdminSupport />
       case 'promotions':
         return <AdminPromotions />
+      case 'top-affiliate':
+        return <AdminTopAffiliate />
       default:
         return <AdminDashboard />
     }
@@ -305,6 +308,15 @@ function AdminLayout() {
             >
               <i className="fa-solid fa-users-line"></i>
               <span>Afiliados</span>
+            </button>
+          </li>
+          <li>
+            <button
+              className={activePage === 'top-affiliate' ? 'active' : ''}
+              onClick={() => setActivePage('top-affiliate')}
+            >
+              <i className="fa-solid fa-trophy"></i>
+              <span>Top Afiliado</span>
             </button>
           </li>
           <li>

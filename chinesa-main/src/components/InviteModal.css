@@ -224,6 +224,62 @@
   font-weight: 700;
 }
 
+.invite-top-affiliate-card {
+  background: linear-gradient(135deg, rgba(255, 193, 7, 0.15) 0%, rgba(255, 193, 7, 0.05) 100%);
+  border: 1px solid rgba(255, 193, 7, 0.3);
+  border-radius: 12px;
+  padding: 14px 16px;
+}
+
+.invite-top-affiliate-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--gold);
+  font-weight: 600;
+  font-size: 14px;
+  margin-bottom: 10px;
+}
+
+.invite-top-affiliate-header i {
+  font-size: 18px;
+}
+
+.invite-top-affiliate-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.invite-top-affiliate-position {
+  color: var(--text-white);
+  font-size: 15px;
+}
+
+.invite-top-affiliate-position strong {
+  color: var(--gold);
+  font-size: 18px;
+}
+
+.invite-top-affiliate-details {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.invite-top-affiliate-prize {
+  color: #4caf50;
+  font-weight: 600;
+}
+
+.invite-top-affiliate-period {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.6);
+  margin-top: 4px;
+}
+
 .invite-balance-action {
   margin-left: auto;
 }

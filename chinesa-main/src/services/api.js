@@ -371,6 +371,26 @@ class ApiService {
     })
   }
 
+  // Top Affiliate (ranking 50% affiliates)
+  async getTopAffiliateConfig() {
+    return this.request('/top-affiliate/admin/config', { method: 'GET' })
+  }
+
+  async updateTopAffiliateConfig(data) {
+    return this.request('/top-affiliate/admin/config', {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    })
+  }
+
+  async getTopAffiliateRanking() {
+    return this.request('/top-affiliate/admin/ranking', { method: 'GET' })
+  }
+
+  async getMyTopAffiliatePosition() {
+    return this.request('/top-affiliate/my-position', { method: 'GET' })
+  }
+
   // Banner endpoints
   async getBanners() {
     return this.request('/banners', {

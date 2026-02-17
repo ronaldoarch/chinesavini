@@ -14,6 +14,7 @@ function InviteModal({ isOpen, onClose }) {
   const [chests, setChests] = useState([])
   const [affiliateStats, setAffiliateStats] = useState(null)
   const [claimingChest, setClaimingChest] = useState(null)
+  const [topAffiliateData, setTopAffiliateData] = useState(null)
 
   const PERIOD_OPTIONS = [
     { value: 'all', label: 'Tudo' },
@@ -42,9 +43,24 @@ function InviteModal({ isOpen, onClose }) {
       if (isAuthenticated) {
         loadChests()
         loadAffiliateStats(period)
+        if ((user?.affiliateDepositBonusPercent ?? 0) >= 50) {
+          api.getMyTopAffiliatePosition()
+            .then((res) => {
+              if (res.success && res.data?.eligible) {
+                setTopAffiliateData(res.data)
+              } else {
+                setTopAffiliateData(null)
+              }
+            })
+            .catch(() => setTopAffiliateData(null))
+        } else {
+          setTopAffiliateData(null)
+        }
+      } else {
+        setTopAffiliateData(null)
       }
     }
-  }, [isOpen, isAuthenticated])
+  }, [isOpen, isAuthenticated, user?.affiliateDepositBonusPercent])
 
   useEffect(() => {
     if (!isOpen) return
@@ -328,6 +344,31 @@ function InviteModal({ isOpen, onClose }) {
                 </span>
               </div>
             </div>
+
+            {topAffiliateData && (
+              <div className="invite-top-affiliate-card">
+                <div className="invite-top-affiliate-header">
+                  <i className="fa-solid fa-trophy"></i>
+                  <span>Top Afiliado</span>
+                </div>
+                <div className="invite-top-affiliate-body">
+                  <div className="invite-top-affiliate-position">
+                    {topAffiliateData.position != null
+                      ? <>Você está em <strong>{topAffiliateData.position}º</strong> lugar</>
+                      : <>No ranking ({topAffiliateData.totalInRanking} {topAffiliateData.totalInRanking === 1 ? 'afiliado' : 'afiliados'})</>}
+                  </div>
+                  <div className="invite-top-affiliate-details">
+                    <span>Depósitos dos indicados: {formatCurrency(topAffiliateData.totalDeposits)}</span>
+                    {topAffiliateData.prizeValue > 0 && (
+                      <span className="invite-top-affiliate-prize">Prêmio atual: {formatCurrency(topAffiliateData.prizeValue)}</span>
+                    )}
+                  </div>
+                  <small className="invite-top-affiliate-period">
+                    Período: {new Date(topAffiliateData.config?.startDate).toLocaleDateString('pt-BR')} até {new Date(topAffiliateData.config?.endDate).toLocaleDateString('pt-BR')}
+                  </small>
+                </div>
+              </div>
+            )}
 
             <div className="invite-info">
               <div className="invite-info-title">

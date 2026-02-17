@@ -29,6 +29,7 @@ import promotionRoutes from './routes/promotion.routes.js'
 import trackingRoutes from './routes/tracking.routes.js'
 import pixAccountRoutes from './routes/pixAccount.routes.js'
 import siteConfigRoutes from './routes/siteConfig.routes.js'
+import topAffiliateRoutes from './routes/topAffiliate.routes.js'
 import { errorHandler } from './middleware/errorHandler.js'
 
 // Load environment variables
@@ -109,6 +110,7 @@ app.use('/api/support', supportRoutes)
 app.use('/api/promotions', promotionRoutes)
 app.use('/api/pix-accounts', pixAccountRoutes)
 app.use('/api/site-config', siteConfigRoutes)
+app.use('/api/top-affiliate', topAffiliateRoutes)
 
 // Health check
 app.get('/api/health', (req, res) => {
