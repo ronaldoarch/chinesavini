@@ -154,6 +154,7 @@ router.post(
             referralCode: user.referralCode,
             vipLevel: user.vipLevel,
             role: user.role,
+            affiliateDepositBonusPercent: user.affiliateDepositBonusPercent ?? 0,
             createdAt: user.createdAt
           }
         }
@@ -248,6 +249,7 @@ router.post(
             referralCode: user.referralCode,
             vipLevel: user.vipLevel,
             role: user.role,
+            affiliateDepositBonusPercent: user.affiliateDepositBonusPercent ?? 0,
             createdAt: user.createdAt
           }
         }
@@ -285,6 +287,7 @@ router.get('/me', protect, async (req, res) => {
           role: user.role,
           totalDeposits: user.totalDeposits,
           totalWithdrawals: user.totalWithdrawals,
+          affiliateDepositBonusPercent: user.affiliateDepositBonusPercent ?? 0,
           createdAt: user.createdAt,
           lastLogin: user.lastLogin
         }

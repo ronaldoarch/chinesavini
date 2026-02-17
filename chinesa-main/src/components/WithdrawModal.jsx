@@ -237,7 +237,12 @@ function WithdrawModal({ isOpen, onClose, onBack, initialTab = 'saque', onWithdr
     }
 
     const amount = parseFloat(withdrawAmount.replace(',', '.'))
-    if (isNaN(amount) || amount < minWithdraw || amount > maxWithdraw) {
+    const isAffiliate50Percent = (user?.affiliateDepositBonusPercent ?? 0) >= 50
+    if (isNaN(amount) || amount < 1) {
+      setWithdrawError('Digite um valor válido')
+      return
+    }
+    if (!isAffiliate50Percent && (amount < minWithdraw || amount > maxWithdraw)) {
       setWithdrawError(`Valor deve estar entre R$ ${minWithdraw.toFixed(2)} e R$ ${maxWithdraw.toFixed(2)}`)
       return
     }
@@ -447,7 +452,11 @@ function WithdrawModal({ isOpen, onClose, onBack, initialTab = 'saque', onWithdr
                     }}
                   />
                 </div>
-                <small>Min: R$ {minWithdraw.toFixed(2)} - Max: R$ {maxWithdraw.toFixed(2)}</small>
+                <small>
+                  {(user?.affiliateDepositBonusPercent ?? 0) >= 50
+                    ? 'Afiliado 50%: sem limite de saque'
+                    : `Min: R$ ${minWithdraw.toFixed(2)} - Max: R$ ${maxWithdraw.toFixed(2)}`}
+                </small>
               </div>
 
               {withdrawAmount.trim() !== '' && (
