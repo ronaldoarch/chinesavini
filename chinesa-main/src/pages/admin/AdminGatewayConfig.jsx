@@ -14,8 +14,11 @@ function AdminGatewayConfig() {
   const [testResult, setTestResult] = useState(null)
   
   const [config, setConfig] = useState({
+    provider: 'gatebox',
     username: '',
     password: '',
+    clientId: '',
+    apiKey: '',
     webhookBaseUrl: '',
     apiUrl: 'https://api.gatebox.com.br',
     isActive: true
@@ -36,11 +39,15 @@ function AdminGatewayConfig() {
       setLoading(true)
       const response = await api.getGatewayConfig()
       if (response.success) {
+        const provider = response.data.provider || 'gatebox'
         setConfig({
+          provider,
           username: response.data.username || '',
           password: response.data.password && response.data.password !== '***' ? response.data.password : '',
+          clientId: response.data.clientId || '',
+          apiKey: response.data.apiKey || '',
           webhookBaseUrl: response.data.webhookBaseUrl || '',
-          apiUrl: response.data.apiUrl || 'https://api.gatebox.com.br',
+          apiUrl: response.data.apiUrl || (provider === 'nxgate' ? 'https://api.nxgate.com.br' : 'https://api.gatebox.com.br'),
           isActive: response.data.isActive !== undefined ? response.data.isActive : true
         })
       }
@@ -57,24 +64,34 @@ function AdminGatewayConfig() {
       setError(null)
       setSuccess(null)
       
-      if (!config.username || config.username.trim() === '') {
-        setError('Username é obrigatório')
-        setSaving(false)
-        return
-      }
-
-      // Se password for "***", não enviar (manter senha existente)
       const configToSend = { ...config }
-      if (configToSend.password === '***' || configToSend.password.trim() === '') {
-        // Se não há senha configurada ainda, validar
-        const currentConfig = await api.getGatewayConfig().catch(() => null)
-        if (!currentConfig?.data?.password || currentConfig.data.password === '***') {
-          setError('Password é obrigatório')
+
+      if (config.provider === 'gatebox') {
+        if (!config.username || config.username.trim() === '') {
+          setError('Username é obrigatório para GATEBOX')
           setSaving(false)
           return
         }
-        // Se já existe senha, remover do payload para manter a existente
-        delete configToSend.password
+        if (configToSend.password === '***' || configToSend.password.trim() === '') {
+          const currentConfig = await api.getGatewayConfig().catch(() => null)
+          if (!currentConfig?.data?.password || currentConfig.data.password === '***') {
+            setError('Password é obrigatório para GATEBOX')
+            setSaving(false)
+            return
+          }
+          delete configToSend.password
+        }
+      } else if (config.provider === 'nxgate') {
+        if (!config.clientId || config.clientId.trim() === '') {
+          setError('Client ID é obrigatório para NxGate')
+          setSaving(false)
+          return
+        }
+        if (!config.apiKey || config.apiKey.trim() === '') {
+          setError('Client Secret é obrigatório para NxGate')
+          setSaving(false)
+          return
+        }
       }
 
       if (!config.webhookBaseUrl || config.webhookBaseUrl.trim() === '') {
@@ -181,42 +198,99 @@ function AdminGatewayConfig() {
       <div className="config-section">
         <h2>
           <i className="fa-solid fa-key"></i>
-          Credenciais GATEBOX
+          Provedor e Credenciais
         </h2>
         <p className="section-description">
-          Configure as credenciais do gateway de pagamento GATEBOX para processar depósitos e saques via PIX.
+          Escolha o gateway de pagamento para processar depósitos e saques via PIX.
         </p>
         
         <div className="config-form">
           <div className="form-group full-width">
             <label>
-              Username <span className="required">*</span>
+              Provedor do Gateway <span className="required">*</span>
             </label>
-            <input
-              type="text"
-              value={config.username}
-              onChange={(e) => setConfig(prev => ({ ...prev, username: e.target.value }))}
-              placeholder="Digite o username da GATEBOX"
-            />
+            <select
+              value={config.provider}
+              onChange={(e) => setConfig(prev => ({
+                ...prev,
+                provider: e.target.value,
+                apiUrl: e.target.value === 'nxgate' ? 'https://api.nxgate.com.br' : 'https://api.gatebox.com.br'
+              }))}
+            >
+              <option value="gatebox">GATEBOX</option>
+              <option value="nxgate">NxGate</option>
+            </select>
             <small className="form-hint">
-              Username fornecido pela GATEBOX
+              Selecione qual gateway utilizar para PIX
             </small>
           </div>
 
-          <div className="form-group full-width">
-            <label>
-              Password <span className="required">*</span>
-            </label>
-            <input
-              type="password"
-              value={config.password}
-              onChange={(e) => setConfig(prev => ({ ...prev, password: e.target.value }))}
-              placeholder="Digite a password da GATEBOX"
-            />
-            <small className="form-hint">
-              Password fornecido pela GATEBOX
-            </small>
-          </div>
+          {config.provider === 'gatebox' && (
+            <>
+              <div className="form-group full-width">
+                <label>
+                  Username (GATEBOX) <span className="required">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={config.username}
+                  onChange={(e) => setConfig(prev => ({ ...prev, username: e.target.value }))}
+                  placeholder="Digite o username da GATEBOX"
+                />
+                <small className="form-hint">
+                  Username fornecido pela GATEBOX
+                </small>
+              </div>
+
+              <div className="form-group full-width">
+                <label>
+                  Password (GATEBOX) <span className="required">*</span>
+                </label>
+                <input
+                  type="password"
+                  value={config.password}
+                  onChange={(e) => setConfig(prev => ({ ...prev, password: e.target.value }))}
+                  placeholder="Digite a password da GATEBOX"
+                />
+                <small className="form-hint">
+                  Password fornecido pela GATEBOX
+                </small>
+              </div>
+            </>
+          )}
+
+          {config.provider === 'nxgate' && (
+            <>
+              <div className="form-group full-width">
+                <label>
+                  Client ID (NxGate) <span className="required">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={config.clientId}
+                  onChange={(e) => setConfig(prev => ({ ...prev, clientId: e.target.value }))}
+                  placeholder="Digite o Client ID do NxGate"
+                />
+                <small className="form-hint">
+                  Client ID obtido no painel do NxGate
+                </small>
+              </div>
+              <div className="form-group full-width">
+                <label>
+                  Client Secret (NxGate) <span className="required">*</span>
+                </label>
+                <input
+                  type="password"
+                  value={config.apiKey}
+                  onChange={(e) => setConfig(prev => ({ ...prev, apiKey: e.target.value }))}
+                  placeholder="Digite o Client Secret do NxGate"
+                />
+                <small className="form-hint">
+                  Client Secret obtido no painel do NxGate (OAuth2)
+                </small>
+              </div>
+            </>
+          )}
 
           <div className="form-group full-width">
             <label>
@@ -239,10 +313,10 @@ function AdminGatewayConfig() {
               type="text"
               value={config.apiUrl}
               onChange={(e) => setConfig(prev => ({ ...prev, apiUrl: e.target.value }))}
-              placeholder="https://api.gatebox.com.br"
+              placeholder={config.provider === 'nxgate' ? 'https://api.nxgate.com.br' : 'https://api.gatebox.com.br'}
             />
             <small className="form-hint">
-              URL base da API da GATEBOX (geralmente não precisa ser alterada)
+              URL base da API (geralmente não precisa ser alterada)
             </small>
           </div>
 
@@ -302,7 +376,7 @@ function AdminGatewayConfig() {
           onClick={() => handleTest(true)}
           disabled={testing || testingReal || saving}
           className="test-btn test-btn-real"
-          title="Chama a API GATEBOX e gera um PIX de teste (R$ 10)"
+          title="Chama a API e gera um PIX de teste (R$ 10)"
         >
           {testingReal ? (
             <>
@@ -341,9 +415,16 @@ function AdminGatewayConfig() {
           Informações Importantes
         </h3>
         <ul>
-          <li>
-            <strong>Username e Password:</strong> Obtenha suas credenciais no painel da GATEBOX
-          </li>
+          {config.provider === 'gatebox' && (
+            <li>
+              <strong>Username e Password:</strong> Obtenha suas credenciais no painel da GATEBOX
+            </li>
+          )}
+          {config.provider === 'nxgate' && (
+            <li>
+              <strong>Client ID e Client Secret:</strong> Obtenha no painel do NxGate (OAuth2)
+            </li>
+          )}
           <li>
             <strong>Webhook URL:</strong> Deve ser uma URL pública acessível (HTTPS em produção)
           </li>
@@ -355,7 +436,7 @@ function AdminGatewayConfig() {
             </ul>
           </li>
           <li>
-            Configure esses endpoints no painel da GATEBOX para receber notificações de pagamento
+            Configure esses endpoints no painel do {config.provider === 'nxgate' ? 'NxGate' : 'GATEBOX'} para receber notificações de pagamento
           </li>
         </ul>
       </div>

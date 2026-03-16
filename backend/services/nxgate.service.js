@@ -1,277 +1,143 @@
-import axios from 'axios'
+import { NXGate } from '@nxgate/sdk'
 import GatewayConfig from '../models/GatewayConfig.model.js'
 
-const NXGATE_API_URL = 'https://api.nxgate.com.br'
-const NXGATE_API_KEY = process.env.NXGATE_API_KEY || 'd6fd1a0ed8daf4b33754d9f7d494d697'
 const WEBHOOK_BASE_URL = process.env.WEBHOOK_BASE_URL || 'http://localhost:5000'
 
 class NxgateService {
   constructor() {
-    this.apiKey = NXGATE_API_KEY
-    this.baseURL = NXGATE_API_URL
+    this.nx = null
     this.webhookBaseUrl = WEBHOOK_BASE_URL
   }
 
   async getConfig() {
     try {
       const config = await GatewayConfig.getConfig()
-      
-      // Correção automática: atualizar URL incorreta (nxgate.com.br/api) para correta (api.nxgate.com.br)
-      if (config && (config.apiUrl === 'https://nxgate.com.br/api' || config.apiUrl === 'https://nxgate.com.br/api/')) {
-        console.log('⚠️  Corrigindo URL incorreta do NXGATE no banco de dados...')
-        config.apiUrl = 'https://api.nxgate.com.br'
-        await config.save()
-        console.log('✅ URL atualizada para:', config.apiUrl)
-      }
-      
-      if (config && config.isActive) {
-        this.apiKey = config.apiKey || this.apiKey
-        this.baseURL = config.apiUrl || this.baseURL
+
+      if (config && config.provider === 'nxgate' && config.isActive) {
+        const clientId = config.clientId || ''
+        const clientSecret = config.apiKey || '' // apiKey = clientSecret (OAuth2)
         this.webhookBaseUrl = config.webhookBaseUrl || this.webhookBaseUrl
+
+        if (clientId && clientSecret) {
+          this.nx = new NXGate({
+            clientId,
+            clientSecret,
+            baseUrl: config.apiUrl || 'https://api.nxgate.com.br'
+          })
+          console.log('📡 NXGATE configurado com OAuth2')
+        } else {
+          this.nx = null
+        }
+      } else {
+        this.nx = null
       }
-      
-      // Garantir que sempre use a URL correta
-      if (this.baseURL === 'https://nxgate.com.br/api' || this.baseURL === 'https://nxgate.com.br/api/') {
-        console.log('⚠️  Corrigindo baseURL para URL correta do NXGATE')
-        this.baseURL = 'https://api.nxgate.com.br'
-      }
-      
-      // Log para debug
-      console.log('📡 NXGATE baseURL configurado:', this.baseURL)
     } catch (error) {
-      console.error('Error loading gateway config:', error)
-      // Use defaults from env (já está correto no const)
+      console.error('Error loading NxGate config:', error)
+      this.nx = null
     }
   }
 
+  async ensureClient() {
+    if (!this.nx) await this.getConfig()
+    if (!this.nx) throw new Error('NxGate não configurado. Configure Client ID e Client Secret no admin.')
+  }
+
   /**
-   * Gera um PIX para depósito
+   * Gera um PIX para depósito (Cash-in)
    * @param {Object} data - Dados do pagamento
    * @param {string} data.nome_pagador - Nome do pagador
    * @param {string} data.documento_pagador - CPF do pagador
    * @param {number} data.valor - Valor do pagamento
    * @param {string} data.webhook - URL do webhook
+   * @param {string} data.externalId - ID externo (tag) para conciliação
    * @returns {Promise<Object>} Resposta da API
    */
   async generatePix(data) {
     try {
-      await this.getConfig()
-      
-      // Garantir URL correta antes de fazer a requisição
-      if (this.baseURL === 'https://nxgate.com.br/api' || this.baseURL === 'https://nxgate.com.br/api/') {
-        console.log('⚠️  Corrigindo baseURL para depósito PIX')
-        this.baseURL = 'https://api.nxgate.com.br'
-      }
-      
-      const payload = {
-        nome_pagador: data.nome_pagador,
-        documento_pagador: data.documento_pagador,
-        valor: parseFloat(data.valor).toFixed(2),
-        api_key: this.apiKey,
-        webhook: data.webhook || `${this.webhookBaseUrl}/api/webhooks/pix`
-      }
+      await this.ensureClient()
 
-      const endpoint = `${this.baseURL}/pix/gerar`
-      console.log('NXGATE Generate PIX Request:', {
-        url: endpoint,
-        baseURL: this.baseURL,
-        payload: { ...payload, api_key: '***' }
+      const documento = (data.documento_pagador || '').replace(/\D/g, '')
+      const webhook = data.webhook || `${this.webhookBaseUrl}/api/webhooks/pix`
+
+      const cobranca = await this.nx.pixGenerate({
+        valor: parseFloat(data.valor),
+        nome_pagador: data.nome_pagador || 'Pagador',
+        documento_pagador: documento || '00000000000',
+        webhook,
+        descricao: data.externalId ? `Depósito ${data.externalId}` : undefined,
+        magic_id: data.externalId
       })
 
-      const response = await axios.post(endpoint, payload, {
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        timeout: 30000,
-        maxRedirects: 5, // Seguir redirects automaticamente
-        validateStatus: function (status) {
-          return status < 500 // Aceitar tudo exceto erros 5xx
-        }
-      })
-      
-      // Verificar se a resposta é HTML (Cloudflare challenge ou redirect)
-      const contentType = response.headers['content-type'] || ''
-      const responseData = response.data
-      const isHtml = contentType.includes('text/html') || 
-                     (typeof responseData === 'string' && (
-                       responseData.includes('Redirecting') || 
-                       responseData.includes('Cloudflare') ||
-                       responseData.includes('<html') ||
-                       responseData.includes('<!DOCTYPE')
-                     ))
-      
-      if (isHtml) {
-        console.error('⚠️  NXGATE retornou HTML ao invés de JSON')
-        console.error('Content-Type:', contentType)
-        console.error('Response preview:', typeof responseData === 'string' ? responseData.substring(0, 300) : JSON.stringify(responseData).substring(0, 300))
-        throw new Error('API retornou HTML ao invés de JSON. A URL pode estar incorreta ou o Cloudflare está bloqueando a requisição.')
-      }
-      
-      // Verificar se é JSON válido
-      if (typeof responseData === 'string' && !responseData.trim().startsWith('{') && !responseData.trim().startsWith('[')) {
-        console.error('⚠️  Resposta não é JSON válido')
-        console.error('Response:', responseData.substring(0, 500))
-        throw new Error('API retornou resposta inválida. Verifique a configuração do gateway.')
-      }
-
+      // NxGate retorna: paymentCode, paymentCodeBase64, idTransaction
       return {
         success: true,
-        data: response.data
+        data: {
+          key: cobranca.paymentCode,
+          paymentCode: cobranca.paymentCode,
+          qrCode: cobranca.paymentCode,
+          pixCopyPaste: cobranca.paymentCode,
+          paymentCodeBase64: cobranca.paymentCodeBase64,
+          qrCodeBase64: cobranca.paymentCodeBase64,
+          idTransaction: cobranca.idTransaction,
+          tag: cobranca.idTransaction,
+          transactionId: cobranca.idTransaction
+        }
       }
     } catch (error) {
-      console.error('NXGATE Generate PIX Error:', error.response?.data || error.message)
+      console.error('NXGATE Generate PIX Error:', error)
+      const message = error?.description || error?.message || 'Erro ao gerar PIX'
       return {
         success: false,
-        error: error.response?.data || error.message,
-        message: error.response?.data?.message || 'Erro ao gerar PIX'
+        error: error,
+        message
       }
     }
   }
 
   /**
-   * Cria um saque via PIX
+   * Cria um saque via PIX (Cash-out)
    * @param {Object} data - Dados do saque
    * @param {number} data.valor - Valor do saque
    * @param {string} data.chave_pix - Chave PIX do recebedor
    * @param {string} data.tipo_chave - Tipo da chave (CPF, CNPJ, PHONE, EMAIL, RANDOM)
    * @param {string} data.documento - CPF do recebedor
-   * @param {string} data.nome_recebedor - Nome do recebedor (opcional)
    * @param {string} data.webhook - URL do webhook
+   * @param {string} data.externalId - ID externo para conciliação
    * @returns {Promise<Object>} Resposta da API
    */
   async withdrawPix(data) {
     try {
-      await this.getConfig()
-      
-      // Formatar documento (CPF) se necessário - deve estar no formato XXX.XXX.XXX-XX
-      let documento = data.documento
-      if (documento && !documento.includes('.')) {
-        // Se está apenas com números, formatar
-        const digits = documento.replace(/\D/g, '')
-        if (digits.length === 11) {
-          documento = `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`
-        }
-      }
-      
-      // Formatar valor como string conforme documentação
-      const valor = parseFloat(data.valor).toFixed(2)
-      
-      const payload = {
-        api_key: this.apiKey,
-        valor: valor, // String conforme documentação
+      await this.ensureClient()
+
+      const webhook = data.webhook || `${this.webhookBaseUrl}/api/webhooks/pix-withdraw`
+
+      const saque = await this.nx.pixWithdraw({
+        valor: parseFloat(data.valor),
         chave_pix: data.chave_pix,
         tipo_chave: data.tipo_chave,
-        documento: documento,
-        ...(data.webhook && { webhook: data.webhook })
-      }
-
-      const endpoint = `${this.baseURL}/pix/sacar`
-      console.log('NXGATE Withdraw Request:', {
-        url: endpoint,
-        baseURL: this.baseURL,
-        payload: { ...payload, api_key: '***' }
+        documento: (data.documento || '').replace(/\D/g, ''),
+        webhook,
+        magic_id: data.externalId
       })
 
-      const response = await axios.post(endpoint, payload, {
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        timeout: 30000,
-        maxRedirects: 5, // Seguir redirects automaticamente
-        validateStatus: function (status) {
-          return status < 500 // Aceitar tudo exceto erros 5xx
-        }
-      })
-      
-      // Verificar se a resposta é HTML (Cloudflare challenge ou redirect)
-      const contentType = response.headers['content-type'] || ''
-      const responseData = response.data
-      const isHtml = contentType.includes('text/html') || 
-                     (typeof responseData === 'string' && (
-                       responseData.includes('Redirecting') || 
-                       responseData.includes('Cloudflare') ||
-                       responseData.includes('<html') ||
-                       responseData.includes('<!DOCTYPE') ||
-                       responseData.includes('Cannot POST')
-                     ))
-      
-      if (isHtml) {
-        console.error('⚠️  NXGATE retornou HTML ao invés de JSON no saque')
-        console.error('Content-Type:', contentType)
-        console.error('Status:', response.status)
-        console.error('Response preview:', typeof responseData === 'string' ? responseData.substring(0, 500) : JSON.stringify(responseData).substring(0, 500))
-        
-        // Verificar se é erro 404 específico
-        if (response.status === 404 || (typeof responseData === 'string' && responseData.includes('Cannot POST'))) {
-          throw new Error('Endpoint /pix/sacar não encontrado (404). Verifique se o endpoint está disponível na sua conta NXGATE ou se precisa de configuração adicional no painel administrativo.')
-        }
-        
-        throw new Error('API retornou HTML ao invés de JSON. O endpoint /pix/sacar pode não existir ou estar bloqueado pelo Cloudflare.')
-      }
-      
-      // Verificar se é JSON válido
-      if (typeof responseData === 'string' && !responseData.trim().startsWith('{') && !responseData.trim().startsWith('[')) {
-        console.error('⚠️  Resposta não é JSON válido no saque')
-        console.error('Response:', responseData.substring(0, 500))
-        throw new Error('API retornou resposta inválida. Verifique a configuração do gateway.')
-      }
-
+      // NxGate retorna internalreference (tag/idTransaction)
+      const idTransaction = saque.internalreference || saque.idTransaction || saque.tag || data.externalId
       return {
         success: true,
-        data: response.data
+        data: {
+          idTransaction,
+          transactionId: idTransaction,
+          tag: idTransaction,
+          internalreference: idTransaction
+        }
       }
     } catch (error) {
-      const errorDetails = {
-        message: error.message,
-        status: error.response?.status,
-        statusText: error.response?.statusText,
-        data: error.response?.data,
-        url: error.config?.url,
-        method: error.config?.method
-      }
-      console.error('NXGATE Withdraw PIX Error:', JSON.stringify(errorDetails, null, 2))
-
-      // Mensagem de erro mais específica baseada no status
-      let errorMessage = 'Erro ao processar saque'
-      if (error.response?.status === 404 || error.message?.includes('404')) {
-        // Verificar se a resposta é HTML (Cloudflare)
-        const responseData = error.response?.data || error.message
-        const isHtml = typeof responseData === 'string' && (
-          responseData.includes('Cannot POST') ||
-          responseData.includes('Cloudflare') ||
-          responseData.includes('<html')
-        )
-        
-        if (isHtml || error.message?.includes('Cannot POST')) {
-          errorMessage = 'O endpoint de saque /pix/sacar não está disponível na API do NXGATE. Verifique: 1) Se sua conta tem permissão para saques, 2) Se o endpoint está habilitado no painel do NXGATE, 3) Entre em contato com o suporte do NXGATE para confirmar a disponibilidade do endpoint.'
-        } else {
-          errorMessage = 'Endpoint de saque não encontrado (404). Verifique a configuração da API do gateway no admin.'
-        }
-      } else if (error.response?.status === 403) {
-        errorMessage = 'Acesso negado. Verifique se a API Key está correta e tem permissão para saques.'
-      } else if (error.response?.status === 400 || error.response?.status === 422) {
-        const apiMessage = error.response?.data?.message || error.response?.data?.error || ''
-        // Se a mensagem menciona documento/CPF mas a chave não é CPF, adaptar mensagem
-        if (apiMessage.toLowerCase().includes('documento') || apiMessage.toLowerCase().includes('cpf')) {
-          const tipoChave = data.tipo_chave
-          if (tipoChave !== 'CPF' && tipoChave !== 'CNPJ') {
-            errorMessage = 'Dados inválidos. Verifique se a chave PIX está correta.'
-          } else {
-            errorMessage = apiMessage || 'Dados inválidos. Verifique os dados da conta PIX.'
-          }
-        } else {
-          errorMessage = apiMessage || 'Dados inválidos. Verifique os dados da conta PIX.'
-        }
-      } else if (error.response?.data) {
-        errorMessage = error.response.data.message || error.response.data.error || errorMessage
-      }
-
+      console.error('NXGATE Withdraw PIX Error:', error)
+      const message = error?.description || error?.message || 'Erro ao processar saque'
       return {
         success: false,
-        error: error.response?.data || error.message,
-        message: errorMessage
+        error: error,
+        message
       }
     }
   }

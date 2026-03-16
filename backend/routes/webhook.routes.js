@@ -72,7 +72,7 @@ function logWebhook(source, req, extra = {}) {
     method: req.method,
     bodySummary,
     bodyKeys: Object.keys(body),
-    idTransaction: body.externalId || body.idTransaction || body.transactionId || body.transaction_id || body.tx_id || body?.transaction?.externalId || body?.invoice?.externalId || body?.data?.idTransaction,
+    idTransaction: body.externalId || body.idTransaction || body.transactionId || body.transaction_id || body.tx_id || body.tag || body?.transaction?.externalId || body?.invoice?.externalId || body?.data?.idTransaction || body?.data?.tag,
     ip: req.ip || req.connection?.remoteAddress,
     ...extra
   }).catch(err => console.error('WebhookLog create error:', err))
@@ -84,10 +84,10 @@ router.use(express.urlencoded({ extended: true }))
 
 function getIdTransaction(body) {
   return (
-    body.externalId || body.idTransaction || body.transactionId || body.transaction_id || body.tx_id || body.id ||
+    body.externalId || body.idTransaction || body.transactionId || body.transaction_id || body.tx_id || body.id || body.tag ||
     body?.transaction?.externalId || body?.transaction?.idTransaction || body?.transaction?.transactionId ||
     body?.invoice?.externalId || body?.invoice?.idTransaction || body?.invoice?.transactionId ||
-    body?.data?.externalId || body?.data?.idTransaction || body?.data?.transactionId || body?.data?.id || body?.data?.tx_id
+    body?.data?.externalId || body?.data?.idTransaction || body?.data?.transactionId || body?.data?.id || body?.data?.tx_id || body?.data?.tag || body?.data?.magic_id
   )
 }
 
@@ -153,9 +153,12 @@ async function processDepositWebhook(body, transaction) {
     rawStatus === 'PAYMENT_CONFIRMED' || rawStatus === 'SUCCESS' || rawStatus === 'COMPLETED' || rawStatus === 'APPROVED'
   ) {
     paymentStatus = 'paid'
-  } else if (rawStatus === 'FAILED' || rawStatus === 'ERROR' || rawStatus === 'REJECTED' || rawStatus === 'REFUSED') {
+  } else if (rawStatus === 'FAILED' || rawStatus === 'ERROR' || rawStatus === 'REJECTED' || rawStatus === 'REFUSED' || rawStatus === 'REFUNDED') {
     paymentStatus = 'failed'
+  } else if (rawType === 'QR_CODE_COPY_AND_PASTE_REFUNDED' || rawStatus === 'REFUNDED') {
+    paymentStatus = 'failed' // Estorno: reverter crédito
   }
+  const wasPaid = transaction.status === 'paid'
   await transaction.updateStatus(paymentStatus, webhookData)
   if (paymentStatus === 'paid' && transaction.type === 'deposit') {
     const user = await User.findById(transaction.user)
@@ -174,6 +177,21 @@ async function processDepositWebhook(body, transaction) {
       if (isFirstDeposit) facebookService.sendFirstDeposit(user, depositAmount, 'BRL').catch(() => {})
     }
   }
+  } else if (paymentStatus === 'failed' && transaction.type === 'deposit' && wasPaid) {
+    // Estorno (REFUNDED): reverter crédito já dado
+    const user = await User.findById(transaction.user)
+    if (user) {
+      const depositAmount = transaction.netAmount
+      const bonusConfig = await BonusConfig.getConfig().catch(() => null)
+      const isFirstDeposit = user.totalDeposits <= depositAmount
+      const bonusAmount = calcDepositBonus(depositAmount, isFirstDeposit, bonusConfig)
+      user.balance = Math.max(0, (user.balance || 0) - depositAmount - bonusAmount)
+      user.bonusBalance = Math.max(0, (user.bonusBalance || 0) - bonusAmount)
+      user.totalDeposits = Math.max(0, (user.totalDeposits || 0) - depositAmount)
+      await user.save()
+      console.log(`Webhook PIX (estorno): Crédito revertido para usuário ${user._id} - R$ ${depositAmount}`)
+    }
+  }
   console.log(`Webhook PIX (depósito): Transação ${transaction.idTransaction} atualizada para ${paymentStatus}`)
 }
 
@@ -187,6 +205,8 @@ async function processWithdrawWebhook(body, transaction) {
   let paymentStatus = null
   if (body._gateboxReversal) {
     paymentStatus = 'failed'
+  } else if (typeUpper === 'PIX_CASHOUT_REFUNDED' || statusUpper === 'REFUNDED') {
+    paymentStatus = 'failed' // Saque devolvido: reembolsar usuário
   } else if (typeUpper === 'PIX_CASHOUT_SUCCESS' || statusUpper === 'SUCCESS' || statusUpper === 'COMPLETED') {
     paymentStatus = 'paid'
   } else {
@@ -252,7 +272,10 @@ router.post('/pix', async (req, res) => {
       console.error('Webhook PIX: idTransaction não fornecido. Body:', JSON.stringify(body))
       return
     }
-    const transaction = await Transaction.findOne({ idTransaction })
+    let transaction = await Transaction.findOne({ idTransaction })
+    if (!transaction && /^[a-fA-F0-9]{24}$/.test(idTransaction)) {
+      transaction = await Transaction.findById(idTransaction)
+    }
     if (!transaction) {
       console.error(`Webhook PIX: Transação não encontrada: ${idTransaction}`)
       return

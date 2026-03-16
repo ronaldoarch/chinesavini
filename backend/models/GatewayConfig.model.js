@@ -2,7 +2,13 @@ import mongoose from 'mongoose'
 
 const gatewayConfigSchema = new mongoose.Schema(
   {
-    // Gatebox credentials
+    // Provedor: gatebox | nxgate
+    provider: {
+      type: String,
+      enum: ['gatebox', 'nxgate'],
+      default: 'gatebox'
+    },
+    // Gatebox credentials (username/password)
     username: {
       type: String,
       required: false
@@ -11,7 +17,11 @@ const gatewayConfigSchema = new mongoose.Schema(
       type: String,
       required: false
     },
-    // Legacy NXGATE support (mantido para compatibilidade)
+    // NxGate credentials (OAuth2: clientId + clientSecret)
+    clientId: {
+      type: String,
+      required: false
+    },
     apiKey: {
       type: String,
       required: false
@@ -43,9 +53,11 @@ gatewayConfigSchema.statics.getConfig = async function() {
   let config = await this.findOne()
   if (!config) {
       config = await this.create({
+        provider: 'gatebox',
         username: process.env.GATEBOX_USERNAME || '',
         password: process.env.GATEBOX_PASSWORD || '',
-        apiKey: process.env.NXGATE_API_KEY || '', // Legacy
+        clientId: process.env.NXGATE_CLIENT_ID || '',
+        apiKey: process.env.NXGATE_CLIENT_SECRET || process.env.NXGATE_API_KEY || '',
         webhookBaseUrl: process.env.WEBHOOK_BASE_URL || 'http://localhost:5000',
         apiUrl: 'https://api.gatebox.com.br',
         defaultCpf: process.env.GATEBOX_DEFAULT_CPF || '000.000.000-00'

@@ -5,7 +5,7 @@ import Transaction from '../models/Transaction.model.js'
 import User from '../models/User.model.js'
 import BonusConfig from '../models/BonusConfig.model.js'
 import GatewayConfig from '../models/GatewayConfig.model.js'
-import gateboxService from '../services/gatebox.service.js'
+import { getGatewayService } from '../services/gateway.service.js'
 
 const router = express.Router()
 
@@ -79,8 +79,9 @@ router.post(
         webhookUrl
       })
 
-      // Generate PIX via GATEBOX
-      const pixResult = await gateboxService.generatePix({
+      // Generate PIX via gateway configurado (GATEBOX ou NxGate)
+      const gatewayService = await getGatewayService()
+      const pixResult = await gatewayService.generatePix({
         nome_pagador: user.username,
         documento_pagador: cpf,
         valor: amount,
@@ -100,7 +101,7 @@ router.post(
       const pixData = pixResult.data
       const raw = pixData?.data || pixData || {}
       // Gatebox returns transactionId, but we use externalId (our transaction ID) for webhook matching
-      transaction.idTransaction = pixData?.transactionId || pixData?.idTransaction || pixData?.externalId || pixData?.tx_id || raw?.transactionId || raw?.idTransaction || raw?.externalId || raw?.tx_id || transaction._id.toString()
+      transaction.idTransaction = pixData?.transactionId || pixData?.idTransaction || pixData?.tag || pixData?.externalId || pixData?.tx_id || raw?.transactionId || raw?.idTransaction || raw?.tag || raw?.externalId || raw?.tx_id || transaction._id.toString()
 
       // GATEBOX retorna o código PIX em data.key; outros gateways usam qrCode, pixCopyPaste, etc.
       const copyPaste =
@@ -137,7 +138,7 @@ router.post(
 
       // If gateway didn't return PIX code, log raw response for debugging and fail
       if (!transaction.pixCopyPaste) {
-        console.warn('GATEBOX deposit success but no PIX code found. Raw response:', JSON.stringify(pixData, null, 2))
+        console.warn('Gateway deposit success but no PIX code found. Raw response:', JSON.stringify(pixData, null, 2))
         await transaction.updateStatus('failed')
         return res.status(502).json({
           success: false,
@@ -264,10 +265,10 @@ router.post(
       transaction.idTransaction = transaction._id.toString()
       await transaction.save()
 
-      // Process withdrawal via GATEBOX — documentNumber = CPF do recebedor (titular da chave). Gatebox valida correspondência.
+      // Process withdrawal via gateway configurado (GATEBOX ou NxGate)
       const documentoFormatted = String(cpf).replace(/\D/g, '')
-
-      const withdrawResult = await gateboxService.withdrawPix({
+      const gatewayService = await getGatewayService()
+      const withdrawResult = await gatewayService.withdrawPix({
         valor: amount,
         chave_pix: pixKey,
         tipo_chave: pixKeyType,
@@ -288,7 +289,7 @@ router.post(
       // Update transaction with withdrawal data
       const withdrawData = withdrawResult.data
       // Gatebox returns transactionId, but we use externalId (our transaction ID) for webhook matching
-      transaction.idTransaction = withdrawData.transactionId || withdrawData.idTransaction || withdrawData.externalId || withdrawData.transaction_id || transaction._id.toString()
+      transaction.idTransaction = withdrawData.transactionId || withdrawData.idTransaction || withdrawData.internalreference || withdrawData.tag || withdrawData.externalId || withdrawData.transaction_id || transaction._id.toString()
       await transaction.save()
 
       // Deduct balance immediately (will be reversed if withdrawal fails)
