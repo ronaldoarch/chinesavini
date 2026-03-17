@@ -26,9 +26,11 @@ class NxgateService {
           }
           if (config.hmacSecret && config.hmacSecret.trim()) {
             opts.hmacSecret = config.hmacSecret.trim()
+            console.log('📡 NXGATE configurado com OAuth2 + HMAC')
+          } else {
+            console.log('📡 NXGATE configurado com OAuth2 (sem HMAC)')
           }
           this.nx = new NXGate(opts)
-          console.log('📡 NXGATE configurado com OAuth2')
         } else {
           this.nx = null
         }
@@ -42,7 +44,8 @@ class NxgateService {
   }
 
   async ensureClient() {
-    if (!this.nx) await this.getConfig()
+    // Sempre recarregar config para pegar HMAC Secret e outras alterações recentes
+    await this.getConfig()
     if (!this.nx) throw new Error('NxGate não configurado. Configure Client ID e Client Secret no admin.')
   }
 
