@@ -176,7 +176,6 @@ async function processDepositWebhook(body, transaction) {
       if (user.referredBy) await processAffiliateCommissions(user, transaction, depositAmount, isFirstDeposit)
       if (isFirstDeposit) facebookService.sendFirstDeposit(user, depositAmount, 'BRL').catch(() => {})
     }
-  }
   } else if (paymentStatus === 'failed' && transaction.type === 'deposit' && wasPaid) {
     // Estorno (REFUNDED): reverter crédito já dado
     const user = await User.findById(transaction.user)
