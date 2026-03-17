@@ -17,12 +17,16 @@ const gatewayConfigSchema = new mongoose.Schema(
       type: String,
       required: false
     },
-    // NxGate credentials (OAuth2: clientId + clientSecret)
+    // NxGate credentials (OAuth2: clientId + clientSecret + hmacSecret)
     clientId: {
       type: String,
       required: false
     },
     apiKey: {
+      type: String,
+      required: false
+    },
+    hmacSecret: {
       type: String,
       required: false
     },

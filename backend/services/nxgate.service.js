@@ -19,11 +19,15 @@ class NxgateService {
         this.webhookBaseUrl = config.webhookBaseUrl || this.webhookBaseUrl
 
         if (clientId && clientSecret) {
-          this.nx = new NXGate({
+          const opts = {
             clientId,
             clientSecret,
             baseUrl: config.apiUrl || 'https://api.nxgate.com.br'
-          })
+          }
+          if (config.hmacSecret && config.hmacSecret.trim()) {
+            opts.hmacSecret = config.hmacSecret.trim()
+          }
+          this.nx = new NXGate(opts)
           console.log('📡 NXGATE configurado com OAuth2')
         } else {
           this.nx = null

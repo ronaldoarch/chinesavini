@@ -19,6 +19,7 @@ router.get('/config', protect, isAdmin, async (req, res) => {
         password: config.password ? '***' : '', // Não retornar senha real
         clientId: config.clientId,
         apiKey: config.apiKey,
+        hmacSecret: config.hmacSecret ? '***' : '',
         webhookBaseUrl: config.webhookBaseUrl,
         apiUrl: config.apiUrl,
         defaultCpf: config.defaultCpf,
@@ -40,7 +41,7 @@ router.get('/config', protect, isAdmin, async (req, res) => {
 // @access  Private/Admin
 router.put('/config', protect, isAdmin, async (req, res) => {
   try {
-    const { provider, username, password, clientId, apiKey, webhookBaseUrl, apiUrl, defaultCpf, isActive } = req.body
+    const { provider, username, password, clientId, apiKey, hmacSecret, webhookBaseUrl, apiUrl, defaultCpf, isActive } = req.body
 
     let config = await GatewayConfig.findOne()
 
@@ -62,6 +63,7 @@ router.put('/config', protect, isAdmin, async (req, res) => {
     if (password !== undefined) config.password = password
     if (clientId !== undefined) config.clientId = clientId
     if (apiKey !== undefined) config.apiKey = apiKey
+    if (hmacSecret !== undefined && hmacSecret !== '***') config.hmacSecret = hmacSecret || ''
     if (webhookBaseUrl !== undefined) config.webhookBaseUrl = webhookBaseUrl
     if (apiUrl !== undefined) config.apiUrl = apiUrl
     if (defaultCpf !== undefined) config.defaultCpf = defaultCpf
@@ -78,6 +80,7 @@ router.put('/config', protect, isAdmin, async (req, res) => {
         password: config.password ? '***' : '',
         clientId: config.clientId,
         apiKey: config.apiKey,
+        hmacSecret: config.hmacSecret ? '***' : '',
         webhookBaseUrl: config.webhookBaseUrl,
         apiUrl: config.apiUrl,
         defaultCpf: config.defaultCpf,

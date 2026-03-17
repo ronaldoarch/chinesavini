@@ -19,6 +19,7 @@ function AdminGatewayConfig() {
     password: '',
     clientId: '',
     apiKey: '',
+    hmacSecret: '',
     webhookBaseUrl: '',
     apiUrl: 'https://api.gatebox.com.br',
     isActive: true
@@ -46,6 +47,7 @@ function AdminGatewayConfig() {
           password: response.data.password && response.data.password !== '***' ? response.data.password : '',
           clientId: response.data.clientId || '',
           apiKey: response.data.apiKey || '',
+          hmacSecret: response.data.hmacSecret && response.data.hmacSecret !== '***' ? response.data.hmacSecret : '***',
           webhookBaseUrl: response.data.webhookBaseUrl || '',
           apiUrl: response.data.apiUrl || (provider === 'nxgate' ? 'https://api.nxgate.com.br' : 'https://api.gatebox.com.br'),
           isActive: response.data.isActive !== undefined ? response.data.isActive : true
@@ -92,6 +94,7 @@ function AdminGatewayConfig() {
           setSaving(false)
           return
         }
+        if (configToSend.hmacSecret === '***') delete configToSend.hmacSecret
       }
 
       if (!config.webhookBaseUrl || config.webhookBaseUrl.trim() === '') {
@@ -287,6 +290,20 @@ function AdminGatewayConfig() {
                 />
                 <small className="form-hint">
                   Client Secret obtido no painel do NxGate (OAuth2)
+                </small>
+              </div>
+              <div className="form-group full-width">
+                <label>
+                  HMAC Secret (NxGate)
+                </label>
+                <input
+                  type="password"
+                  value={config.hmacSecret}
+                  onChange={(e) => setConfig(prev => ({ ...prev, hmacSecret: e.target.value }))}
+                  placeholder="Obrigatório se sua conta exige validação HMAC"
+                />
+                <small className="form-hint">
+                  Se aparecer erro &quot;This client requires HMAC validation&quot;, preencha o HMAC Secret do painel NxGate
                 </small>
               </div>
             </>
