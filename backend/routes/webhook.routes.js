@@ -212,9 +212,9 @@ async function processDepositWebhook(body, transaction) {
 async function processWithdrawWebhook(body, transaction) {
   const { type, status, fee } = body
   // Gatebox pode enviar vários webhooks (ex: primeiro processing, depois COMPLETED). Só reembolsar em falha explícita.
-  const txStatus = body.transaction?.status
-  const statusUpper = (txStatus ?? status ?? body.invoice?.status ?? body.status ?? '').toString().toUpperCase()
-  const typeUpper = (type ?? body.invoice?.type ?? body.type ?? body.event ?? '').toString().toUpperCase()
+  const txStatus = body.transaction?.status ?? body.data?.status
+  const statusUpper = (txStatus ?? status ?? body.invoice?.status ?? body.status ?? body.data?.status ?? '').toString().toUpperCase()
+  const typeUpper = (type ?? body.invoice?.type ?? body.type ?? body.event ?? body.data?.type ?? '').toString().toUpperCase()
 
   let paymentStatus = null
   if (body._gateboxReversal) {
@@ -227,17 +227,21 @@ async function processWithdrawWebhook(body, transaction) {
     paymentStatus = 'paid'
   } else {
     const worked = body.worked === true || body.worked === 'true'
-    const errorMsg = body.error || body.invoice?.error || body.motivo || body.message || body.reason || ''
+    const errorMsg = body.error || body.invoice?.error || body.motivo || body.message || body.reason || body.data?.error || ''
     const errorStr = typeof errorMsg === 'string' ? errorMsg : (errorMsg?.message || JSON.stringify(errorMsg))
     const hasError = !!errorStr || typeUpper === 'PIX_CASHOUT_ERROR' || /invalid|falha|error|invalid/i.test(errorStr)
     if (worked && statusUpper !== 'ERROR' && statusUpper !== 'FAILED' && !hasError) {
       paymentStatus = 'paid'
     } else if (statusUpper === 'FAILED' || statusUpper === 'ERROR') {
       paymentStatus = 'failed'
+    } else if (body.worked === false || body.worked === 'false') {
+      // NxGate: worked=false indica falha mesmo sem status explícito
+      paymentStatus = 'failed'
     }
   }
 
-  const hadBalanceDeducted = transaction.status === 'processing'
+  // Saldo foi debitado se: flag explícita OU status ainda processing (retrocompatível)
+  const hadBalanceDeducted = transaction.balanceDeducted === true || transaction.status === 'processing'
 
   transaction.webhookReceived = true
   transaction.webhookData = body
@@ -259,18 +263,20 @@ async function processWithdrawWebhook(body, transaction) {
     const wasPaid = transaction.status === 'paid'
     transaction.status = 'failed'
     transaction.failedAt = new Date()
-    const errorMsg = body.error || body.message || ''
+    const errorMsg = body.error || body.message || body.data?.error || ''
     const isRefunded = typeUpper === 'PIX_CASHOUT_REFUNDED' || statusUpper === 'REFUNDED'
     const user = await User.findById(transaction.user)
-    // Reembolsar: (1) saque falhou antes de sair (hadBalanceDeducted) ou (2) saque foi devolvido (REFUNDED)
+    // Reembolsar: (1) saldo foi debitado (hadBalanceDeducted) ou (2) saque foi devolvido (REFUNDED)
     const shouldRefund = user && (hadBalanceDeducted || (isRefunded && wasPaid))
     if (shouldRefund) {
-      user.balance += transaction.amount
+      user.balance = (user.balance || 0) + transaction.amount
       if (isRefunded && wasPaid) user.totalWithdrawals = Math.max(0, (user.totalWithdrawals || 0) - (transaction.netAmount || transaction.amount))
       await user.save()
       console.log(`Webhook PIX Withdraw: Reembolso para usuário ${user._id} - R$ ${transaction.amount} (${isRefunded ? 'saque devolvido' : 'saque falhou'}${errorMsg ? ': ' + errorMsg : ''})`)
     } else if (!hadBalanceDeducted && !isRefunded) {
       console.log(`Webhook PIX Withdraw: Saque falhou; saldo não havia sido debitado, reembolso não necessário`)
+    } else if (!user) {
+      console.error(`Webhook PIX Withdraw: Usuário não encontrado para reembolso - transaction.user: ${transaction.user}`)
     }
     console.log(`Webhook PIX Withdraw: Transação ${transaction.idTransaction} atualizada para failed`)
   } else {
@@ -322,8 +328,8 @@ router.post('/pix-withdraw', async (req, res) => {
   logWebhook('pix-withdraw', req)
   try {
     const body = req.body || {}
-    // NxGate PIX_CASHOUT_SUCCESS: idTransaction, tag (mesmo valor) ou transaction_id no topo
-    const idTransaction = body.idTransaction || body.tag || body.transaction_id || body.data?.idTransaction || body.data?.tag || getIdTransaction(body)
+    // NxGate PIX_CASHOUT_SUCCESS: internalReference (camelCase), idTransaction, tag ou transaction_id
+    const idTransaction = body.internalReference || body.internalreference || body.idTransaction || body.tag || body.transaction_id || body.data?.internalReference || body.data?.idTransaction || body.data?.tag || getIdTransaction(body)
     res.status(200).json({ status: 'received' })
     if (!idTransaction) {
       console.error('Webhook PIX Withdraw: idTransaction não fornecido. Body:', JSON.stringify(body).slice(0, 500))

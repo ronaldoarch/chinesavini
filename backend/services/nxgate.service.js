@@ -142,10 +142,10 @@ class NxgateService {
         magic_id: data.externalId
       })
 
-      // NxGate /pix/sacar retorna tag/idTransaction - webhook usa para buscar (doc: idTransaction = tag)
+      // NxGate /pix/sacar retorna internalReference (camelCase) - webhook usa para buscar
       const raw = saque?.data || saque?.result || saque?.response || saque
-      const apiTag = raw?.tag || raw?.idTransaction || raw?.internalreference || raw?.id || raw?.reference ||
-        saque?.tag || saque?.idTransaction || saque?.internalreference || saque?.id || saque?.reference ||
+      const apiTag = raw?.internalReference || raw?.internalreference || raw?.tag || raw?.idTransaction || raw?.id || raw?.reference ||
+        saque?.internalReference || saque?.internalreference || saque?.tag || saque?.idTransaction || saque?.id || saque?.reference ||
         saque?.cashOutRequestKey
       const tagForWebhook = apiTag || data.externalId
       const txId = raw.transaction_id || saque.transaction_id
@@ -162,7 +162,8 @@ class NxgateService {
           idTransaction: tagForWebhook,
           transactionId: tagForWebhook,
           tag: tagForWebhook,
-          internalreference: saque.internalreference || tagForWebhook,
+          internalReference: tagForWebhook,
+          internalreference: saque.internalReference || saque.internalreference || tagForWebhook,
           transaction_id: txId
         }
       }

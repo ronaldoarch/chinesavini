@@ -297,13 +297,14 @@ router.post(
       // Update transaction with withdrawal data (NxGate webhook usa idTransaction/tag)
       const withdrawData = withdrawResult.data
       const ids = [
-        withdrawData.transactionId, withdrawData.idTransaction, withdrawData.internalreference,
+        withdrawData.transactionId, withdrawData.idTransaction, withdrawData.internalreference, withdrawData.internalReference,
         withdrawData.tag, withdrawData.transaction_id, withdrawData.externalId,
         transaction._id.toString()
       ].filter(Boolean)
-      transaction.idTransaction = withdrawData.transactionId || withdrawData.idTransaction || withdrawData.internalreference || withdrawData.tag || withdrawData.externalId || withdrawData.transaction_id || transaction._id.toString()
-      transaction.gatewayTxId = withdrawData.internalreference || withdrawData.idTransaction || withdrawData.tag
+      transaction.idTransaction = withdrawData.idTransaction || withdrawData.tag || withdrawData.internalreference || withdrawData.internalReference || withdrawData.transactionId || withdrawData.externalId || withdrawData.transaction_id || transaction._id.toString()
+      transaction.gatewayTxId = withdrawData.internalreference || withdrawData.internalReference || withdrawData.idTransaction || withdrawData.tag
       transaction.gatewayIds = [...new Set(ids)]
+      transaction.balanceDeducted = true // Para reembolso confiável no webhook de falha
       await transaction.save()
 
       // Deduct balance immediately (will be reversed if withdrawal fails)

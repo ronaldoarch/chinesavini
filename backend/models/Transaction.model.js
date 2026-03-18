@@ -91,6 +91,11 @@ const transactionSchema = new mongoose.Schema(
     },
     failedAt: {
       type: Date
+    },
+    // Saque: true quando o saldo foi debitado (para reembolso confiável no webhook de falha)
+    balanceDeducted: {
+      type: Boolean,
+      default: false
     }
   },
   {
