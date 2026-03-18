@@ -80,15 +80,13 @@ class NxgateService {
         magic_id: data.externalId
       })
 
-      // NxGate retorna: idTransaction, cashInRequestKey (logs: status,message,cashInRequestKey,paymentCode,idTransaction,paymentCodeBase64)
-      // O webhook envia data.tag = um desses IDs. Priorizar cashInRequestKey pois pode ser o tag do webhook.
+      // NxGate retorna: idTransaction, cashInRequestKey (webhook envia data.tag = idTransaction)
       const raw = cobranca?.data || cobranca
-      const nxTag = raw.cashInRequestKey || raw.tag || raw.idTransaction || raw.id || raw.transactionId || raw.tx_id ||
-        cobranca.cashInRequestKey || cobranca.tag || cobranca.idTransaction || cobranca.id || cobranca.transactionId || cobranca.tx_id ||
-        cobranca?.transaction?.tag || cobranca?.transaction?.idTransaction
-      const tagForWebhook = nxTag || data.externalId
+      const apiIdTransaction = raw.idTransaction || cobranca.idTransaction
+      const apiCashInRequestKey = raw.cashInRequestKey || cobranca.cashInRequestKey
+      const tagForWebhook = apiIdTransaction || apiCashInRequestKey || data.externalId
       if (process.env.NODE_ENV === 'production') {
-        console.log('NXGATE pixGenerate response - tag:', nxTag || '(não encontrado)', '| cobranca keys:', Object.keys(cobranca || {}).join(','), '| raw keys:', raw ? Object.keys(raw).join(',') : 'n/a')
+        console.log('NXGATE pixGenerate - idTransaction:', apiIdTransaction, '| cashInRequestKey:', apiCashInRequestKey)
       }
       return {
         success: true,
@@ -99,10 +97,10 @@ class NxgateService {
           pixCopyPaste: cobranca.paymentCode,
           paymentCodeBase64: cobranca.paymentCodeBase64,
           qrCodeBase64: cobranca.paymentCodeBase64,
-          idTransaction: tagForWebhook,
+          idTransaction: apiIdTransaction || tagForWebhook,
           tag: tagForWebhook,
           transactionId: cobranca.idTransaction,
-          cashInRequestKey: raw.cashInRequestKey || cobranca.cashInRequestKey,
+          cashInRequestKey: apiCashInRequestKey,
           tx_id: raw.tx_id || cobranca.tx_id || cobranca.idTransaction
         }
       }

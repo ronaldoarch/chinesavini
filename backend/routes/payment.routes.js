@@ -100,9 +100,9 @@ router.post(
       // Update transaction with PIX data (support multiple gateway response formats)
       const pixData = pixResult.data
       const raw = pixData?.data || pixData || {}
-      // NxGate webhook usa data.tag (UUID da API). Salvar idTransaction e gatewayTxId (cashInRequestKey/tx_id) para lookup.
+      // NxGate webhook envia data.tag = idTransaction. Salvar idTransaction e gatewayTxId (cashInRequestKey) para lookup.
       transaction.idTransaction = pixData?.idTransaction || pixData?.tag || pixData?.transactionId || pixData?.tx_id || raw?.idTransaction || raw?.tag || raw?.transactionId || raw?.tx_id || pixData?.externalId || transaction._id.toString()
-      transaction.gatewayTxId = pixData?.cashInRequestKey || raw?.cashInRequestKey || pixData?.tx_id || raw?.tx_id
+      transaction.gatewayTxId = pixData?.cashInRequestKey || raw?.cashInRequestKey || pixData?.tx_id || raw?.tx_id || transaction.idTransaction
 
       // GATEBOX retorna o código PIX em data.key; outros gateways usam qrCode, pixCopyPaste, etc.
       const copyPaste =
