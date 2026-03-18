@@ -143,13 +143,18 @@ class NxgateService {
       })
 
       // NxGate /pix/sacar retorna tag/idTransaction - webhook usa para buscar (doc: idTransaction = tag)
-      const raw = saque?.data || saque
-      const apiTag = raw.tag || raw.idTransaction || raw.internalreference || saque.tag || saque.idTransaction || saque.internalreference
+      const raw = saque?.data || saque?.result || saque?.response || saque
+      const apiTag = raw?.tag || raw?.idTransaction || raw?.internalreference || raw?.id || raw?.reference ||
+        saque?.tag || saque?.idTransaction || saque?.internalreference || saque?.id || saque?.reference ||
+        saque?.cashOutRequestKey
       const tagForWebhook = apiTag || data.externalId
       const txId = raw.transaction_id || saque.transaction_id
       if (process.env.NODE_ENV === 'production') {
-        const safe = { tag: raw?.tag, idTransaction: raw?.idTransaction, internalreference: raw?.internalreference || saque?.internalreference, transaction_id: txId }
-        console.log('NXGATE pixWithdraw:', JSON.stringify(safe))
+        const keys = Object.keys(saque || {})
+        const uuidLike = (v) => typeof v === 'string' && /^[a-f0-9-]{36}$/i.test(v)
+        const allValues = { ...saque, ...(saque?.data || {}), ...(saque?.result || {}) }
+        const found = Object.entries(allValues).filter(([, v]) => uuidLike(v)).map(([k, v]) => `${k}:${v}`)
+        console.log('NXGATE pixWithdraw keys:', keys.join(','), '| tagForWebhook:', tagForWebhook, '| uuidLike:', found.join(', ') || 'nenhum')
       }
       return {
         success: true,
