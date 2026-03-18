@@ -113,6 +113,7 @@ router.post('/gatebox', async (req, res) => {
       return
     }
     let transaction = await Transaction.findOne({ idTransaction })
+    if (!transaction) transaction = await Transaction.findOne({ gatewayTxId: idTransaction })
     if (!transaction && /^[a-fA-F0-9]{24}$/.test(idTransaction)) {
       transaction = await Transaction.findById(idTransaction)
     }
@@ -280,6 +281,7 @@ router.post('/pix', async (req, res) => {
       return
     }
     let transaction = await Transaction.findOne({ idTransaction })
+    if (!transaction) transaction = await Transaction.findOne({ gatewayTxId: idTransaction })
     if (!transaction && /^[a-fA-F0-9]{24}$/.test(idTransaction)) {
       transaction = await Transaction.findById(idTransaction)
     }

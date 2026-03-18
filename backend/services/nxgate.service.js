@@ -80,11 +80,11 @@ class NxgateService {
         magic_id: data.externalId
       })
 
-      // NxGate retorna: paymentCode, paymentCodeBase64, idTransaction, tag
-      // O webhook envia data.tag = id da NxGate (UUID). SDK pode retornar em cobranca ou cobranca.data
+      // NxGate retorna: idTransaction, cashInRequestKey (logs: status,message,cashInRequestKey,paymentCode,idTransaction,paymentCodeBase64)
+      // O webhook envia data.tag = um desses IDs. Priorizar cashInRequestKey pois pode ser o tag do webhook.
       const raw = cobranca?.data || cobranca
-      const nxTag = raw.tag || raw.idTransaction || raw.id || raw.transactionId || raw.tx_id ||
-        cobranca.tag || cobranca.idTransaction || cobranca.id || cobranca.transactionId || cobranca.tx_id ||
+      const nxTag = raw.cashInRequestKey || raw.tag || raw.idTransaction || raw.id || raw.transactionId || raw.tx_id ||
+        cobranca.cashInRequestKey || cobranca.tag || cobranca.idTransaction || cobranca.id || cobranca.transactionId || cobranca.tx_id ||
         cobranca?.transaction?.tag || cobranca?.transaction?.idTransaction
       const tagForWebhook = nxTag || data.externalId
       if (process.env.NODE_ENV === 'production') {
@@ -101,7 +101,9 @@ class NxgateService {
           qrCodeBase64: cobranca.paymentCodeBase64,
           idTransaction: tagForWebhook,
           tag: tagForWebhook,
-          transactionId: cobranca.idTransaction
+          transactionId: cobranca.idTransaction,
+          cashInRequestKey: raw.cashInRequestKey || cobranca.cashInRequestKey,
+          tx_id: raw.tx_id || cobranca.tx_id || cobranca.idTransaction
         }
       }
     } catch (error) {
