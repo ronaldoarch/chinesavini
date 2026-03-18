@@ -37,8 +37,7 @@ const transactionSchema = new mongoose.Schema(
       sparse: true
     },
     gatewayTxId: {
-      type: String,
-      sparse: true
+      type: String
     },
     qrCode: {
       type: String
