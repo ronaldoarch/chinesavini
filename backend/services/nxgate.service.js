@@ -66,16 +66,23 @@ class NxgateService {
       const documento = (data.documento_pagador || '').replace(/\D/g, '')
       const webhook = data.webhook || `${this.webhookBaseUrl}/api/webhooks/pix`
 
+      // NxGate exige CPF com exatamente 11 dígitos (TS0019 Payer Document Invalid)
+      if (!documento || documento.length !== 11) {
+        throw new Error(`CPF inválido: deve ter 11 dígitos. Recebido: "${data.documento_pagador || ''}" (${documento.length} dígitos)`)
+      }
+
       const cobranca = await this.nx.pixGenerate({
         valor: parseFloat(data.valor),
         nome_pagador: data.nome_pagador || 'Pagador',
-        documento_pagador: documento || '00000000000',
+        documento_pagador: documento,
         webhook,
         descricao: data.externalId ? `Depósito ${data.externalId}` : undefined,
         magic_id: data.externalId
       })
 
       // NxGate retorna: paymentCode, paymentCodeBase64, idTransaction
+      // tag = nosso magic_id (externalId) - usado no webhook data.tag para buscar a transação
+      const tag = cobranca.tag || cobranca.magic_id || data.externalId
       return {
         success: true,
         data: {
@@ -85,8 +92,8 @@ class NxgateService {
           pixCopyPaste: cobranca.paymentCode,
           paymentCodeBase64: cobranca.paymentCodeBase64,
           qrCodeBase64: cobranca.paymentCodeBase64,
-          idTransaction: cobranca.idTransaction,
-          tag: cobranca.idTransaction,
+          idTransaction: tag || cobranca.idTransaction,
+          tag: tag || cobranca.idTransaction,
           transactionId: cobranca.idTransaction
         }
       }

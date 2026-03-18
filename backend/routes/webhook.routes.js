@@ -83,11 +83,14 @@ router.use(express.json())
 router.use(express.urlencoded({ extended: true }))
 
 function getIdTransaction(body) {
+  // NxGate usa data.tag (nosso magic_id) - priorizar para webhook cash-in
+  const dataTag = body?.data?.tag || body?.data?.magic_id
+  if (dataTag) return dataTag
   return (
     body.externalId || body.idTransaction || body.transactionId || body.transaction_id || body.tx_id || body.id || body.tag ||
     body?.transaction?.externalId || body?.transaction?.idTransaction || body?.transaction?.transactionId ||
     body?.invoice?.externalId || body?.invoice?.idTransaction || body?.invoice?.transactionId ||
-    body?.data?.externalId || body?.data?.idTransaction || body?.data?.transactionId || body?.data?.id || body?.data?.tx_id || body?.data?.tag || body?.data?.magic_id
+    body?.data?.externalId || body?.data?.idTransaction || body?.data?.transactionId || body?.data?.id || body?.data?.tx_id
   )
 }
 
@@ -147,10 +150,15 @@ async function processDepositWebhook(body, transaction) {
   const rawType = (type ?? body.type ?? data?.type ?? body?.invoice?.type ?? '').toString().toUpperCase()
   let paymentStatus = 'pending'
   const webhookData = data || body.invoice || body
+  // NxGate exige data.worked === true (https://nxgate-api.readme.io/reference/webhook_cashin_paid)
+  const worked = data?.worked === true || data?.worked === 'true'
+  const isNxGateFormat = rawType === 'QR_CODE_COPY_AND_PASTE_PAID'
+  const canCredit = isNxGateFormat ? worked : true // NxGate: só creditar se worked; Gatebox: não envia worked
   if (
-    rawType.includes('PAID') || rawType === 'QR_CODE_COPY_AND_PASTE_PAID' ||
+    (rawType.includes('PAID') || rawType === 'QR_CODE_COPY_AND_PASTE_PAID' ||
     rawStatus === 'PAID' || rawStatus === 'PAYED' || rawStatus === 'CONFIRMED' ||
-    rawStatus === 'PAYMENT_CONFIRMED' || rawStatus === 'SUCCESS' || rawStatus === 'COMPLETED' || rawStatus === 'APPROVED'
+    rawStatus === 'PAYMENT_CONFIRMED' || rawStatus === 'SUCCESS' || rawStatus === 'COMPLETED' || rawStatus === 'APPROVED') &&
+    canCredit
   ) {
     paymentStatus = 'paid'
   } else if (rawStatus === 'FAILED' || rawStatus === 'ERROR' || rawStatus === 'REJECTED' || rawStatus === 'REFUSED' || rawStatus === 'REFUNDED') {

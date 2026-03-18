@@ -39,7 +39,8 @@ const app = express()
 const PORT = process.env.PORT || 5000
 
 // Trust proxy - Required when behind a reverse proxy (Colify, Railway, etc.)
-app.set('trust proxy', true)
+// Use 1 (not true) to trust only the first proxy hop - avoids ERR_ERL_PERMISSIVE_TRUST_PROXY
+app.set('trust proxy', 1)
 
 // Connect to database
 connectDB()
