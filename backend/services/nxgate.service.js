@@ -81,10 +81,15 @@ class NxgateService {
       })
 
       // NxGate retorna: paymentCode, paymentCodeBase64, idTransaction, tag
-      // O webhook envia data.tag = id da NxGate (UUID). Priorizar o que a API retorna para o webhook encontrar.
+      // O webhook envia data.tag = id da NxGate (UUID). SDK pode retornar em cobranca ou cobranca.data
       const raw = cobranca?.data || cobranca
-      const nxTag = raw.tag || raw.idTransaction || cobranca.tag || cobranca.idTransaction
+      const nxTag = raw.tag || raw.idTransaction || raw.id || raw.transactionId || raw.tx_id ||
+        cobranca.tag || cobranca.idTransaction || cobranca.id || cobranca.transactionId || cobranca.tx_id ||
+        cobranca?.transaction?.tag || cobranca?.transaction?.idTransaction
       const tagForWebhook = nxTag || data.externalId
+      if (process.env.NODE_ENV === 'production') {
+        console.log('NXGATE pixGenerate response - tag:', nxTag || '(não encontrado)', '| cobranca keys:', Object.keys(cobranca || {}).join(','), '| raw keys:', raw ? Object.keys(raw).join(',') : 'n/a')
+      }
       return {
         success: true,
         data: {
