@@ -80,9 +80,11 @@ class NxgateService {
         magic_id: data.externalId
       })
 
-      // NxGate retorna: paymentCode, paymentCodeBase64, idTransaction
-      // tag = nosso magic_id (externalId) - usado no webhook data.tag para buscar a transação
-      const tag = cobranca.tag || cobranca.magic_id || data.externalId
+      // NxGate retorna: paymentCode, paymentCodeBase64, idTransaction, tag
+      // O webhook envia data.tag = id da NxGate (UUID). Priorizar o que a API retorna para o webhook encontrar.
+      const raw = cobranca?.data || cobranca
+      const nxTag = raw.tag || raw.idTransaction || cobranca.tag || cobranca.idTransaction
+      const tagForWebhook = nxTag || data.externalId
       return {
         success: true,
         data: {
@@ -92,8 +94,8 @@ class NxgateService {
           pixCopyPaste: cobranca.paymentCode,
           paymentCodeBase64: cobranca.paymentCodeBase64,
           qrCodeBase64: cobranca.paymentCodeBase64,
-          idTransaction: tag || cobranca.idTransaction,
-          tag: tag || cobranca.idTransaction,
+          idTransaction: tagForWebhook,
+          tag: tagForWebhook,
           transactionId: cobranca.idTransaction
         }
       }
