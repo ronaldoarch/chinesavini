@@ -39,6 +39,10 @@ const transactionSchema = new mongoose.Schema(
     gatewayTxId: {
       type: String
     },
+    gatewayIds: {
+      type: [String],
+      default: undefined
+    },
     qrCode: {
       type: String
     },
@@ -94,6 +98,7 @@ const transactionSchema = new mongoose.Schema(
 transactionSchema.index({ user: 1, createdAt: -1 })
 transactionSchema.index({ status: 1 })
 transactionSchema.index({ gatewayTxId: 1 }, { sparse: true })
+transactionSchema.index({ gatewayIds: 1 }, { sparse: true })
 // NOTA: Não usar TTL em expiresAt — transações devem ser mantidas para histórico.
 // O expiresAt serve apenas para indicar expiração do PIX ao usuário.
 

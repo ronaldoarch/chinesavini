@@ -86,7 +86,8 @@ class NxgateService {
       const apiCashInRequestKey = raw.cashInRequestKey || cobranca.cashInRequestKey
       const tagForWebhook = apiIdTransaction || apiCashInRequestKey || data.externalId
       if (process.env.NODE_ENV === 'production') {
-        console.log('NXGATE pixGenerate - idTransaction:', apiIdTransaction, '| cashInRequestKey:', apiCashInRequestKey)
+        const safe = { status: raw?.status, message: raw?.message, idTransaction: raw?.idTransaction, cashInRequestKey: raw?.cashInRequestKey, tx_id: raw?.tx_id }
+        console.log('NXGATE pixGenerate:', JSON.stringify(safe))
       }
       return {
         success: true,

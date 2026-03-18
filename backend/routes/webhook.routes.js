@@ -114,6 +114,7 @@ router.post('/gatebox', async (req, res) => {
     }
     let transaction = await Transaction.findOne({ idTransaction })
     if (!transaction) transaction = await Transaction.findOne({ gatewayTxId: idTransaction })
+    if (!transaction) transaction = await Transaction.findOne({ gatewayIds: idTransaction })
     if (!transaction && /^[a-fA-F0-9]{24}$/.test(idTransaction)) {
       transaction = await Transaction.findById(idTransaction)
     }
@@ -282,11 +283,16 @@ router.post('/pix', async (req, res) => {
     }
     let transaction = await Transaction.findOne({ idTransaction })
     if (!transaction) transaction = await Transaction.findOne({ gatewayTxId: idTransaction })
+    if (!transaction) transaction = await Transaction.findOne({ gatewayIds: idTransaction })
+    if (!transaction && body?.data?.tx_id) {
+      transaction = await Transaction.findOne({ $or: [{ idTransaction: body.data.tx_id }, { gatewayTxId: body.data.tx_id }, { gatewayIds: body.data.tx_id }] })
+    }
     if (!transaction && /^[a-fA-F0-9]{24}$/.test(idTransaction)) {
       transaction = await Transaction.findById(idTransaction)
     }
     if (!transaction) {
-      console.error(`Webhook PIX: Transação não encontrada: ${idTransaction}`)
+      const dataKeys = body?.data ? Object.keys(body.data) : []
+      console.error(`Webhook PIX: Transação não encontrada: ${idTransaction} | data.tx_id: ${body?.data?.tx_id || 'n/a'} | dataKeys: ${dataKeys.join(',')}`)
       return
     }
     await processDepositWebhook(body, transaction)
