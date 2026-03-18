@@ -142,15 +142,23 @@ class NxgateService {
         magic_id: data.externalId
       })
 
-      // NxGate retorna internalreference (tag/idTransaction)
-      const idTransaction = saque.internalreference || saque.idTransaction || saque.tag || data.externalId
+      // NxGate /pix/sacar retorna tag/idTransaction - webhook usa para buscar (doc: idTransaction = tag)
+      const raw = saque?.data || saque
+      const apiTag = raw.tag || raw.idTransaction || raw.internalreference || saque.tag || saque.idTransaction || saque.internalreference
+      const tagForWebhook = apiTag || data.externalId
+      const txId = raw.transaction_id || saque.transaction_id
+      if (process.env.NODE_ENV === 'production') {
+        const safe = { tag: raw?.tag, idTransaction: raw?.idTransaction, internalreference: raw?.internalreference || saque?.internalreference, transaction_id: txId }
+        console.log('NXGATE pixWithdraw:', JSON.stringify(safe))
+      }
       return {
         success: true,
         data: {
-          idTransaction,
-          transactionId: idTransaction,
-          tag: idTransaction,
-          internalreference: idTransaction
+          idTransaction: tagForWebhook,
+          transactionId: tagForWebhook,
+          tag: tagForWebhook,
+          internalreference: saque.internalreference || tagForWebhook,
+          transaction_id: txId
         }
       }
     } catch (error) {

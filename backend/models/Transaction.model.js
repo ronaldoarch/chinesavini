@@ -30,6 +30,10 @@ const transactionSchema = new mongoose.Schema(
       type: Number,
       required: true
     },
+    bonusAmount: {
+      type: Number,
+      default: 0
+    },
     // Dados do PIX
     idTransaction: {
       type: String,

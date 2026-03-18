@@ -294,10 +294,16 @@ router.post(
         })
       }
 
-      // Update transaction with withdrawal data
+      // Update transaction with withdrawal data (NxGate webhook usa idTransaction/tag)
       const withdrawData = withdrawResult.data
-      // Gatebox returns transactionId, but we use externalId (our transaction ID) for webhook matching
+      const ids = [
+        withdrawData.transactionId, withdrawData.idTransaction, withdrawData.internalreference,
+        withdrawData.tag, withdrawData.transaction_id, withdrawData.externalId,
+        transaction._id.toString()
+      ].filter(Boolean)
       transaction.idTransaction = withdrawData.transactionId || withdrawData.idTransaction || withdrawData.internalreference || withdrawData.tag || withdrawData.externalId || withdrawData.transaction_id || transaction._id.toString()
+      transaction.gatewayTxId = withdrawData.internalreference || withdrawData.idTransaction || withdrawData.tag
+      transaction.gatewayIds = [...new Set(ids)]
       await transaction.save()
 
       // Deduct balance immediately (will be reversed if withdrawal fails)

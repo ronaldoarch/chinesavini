@@ -177,6 +177,8 @@ async function processDepositWebhook(body, transaction) {
       const depositAmount = transaction.netAmount
       const bonusConfig = await BonusConfig.getConfig().catch(() => null)
       const bonusAmount = calcDepositBonus(depositAmount, isFirstDeposit, bonusConfig)
+      transaction.bonusAmount = bonusAmount
+      await transaction.save()
       user.balance += depositAmount + bonusAmount
       user.bonusBalance = (user.bonusBalance || 0) + bonusAmount
       user.totalDeposits += depositAmount
@@ -187,13 +189,16 @@ async function processDepositWebhook(body, transaction) {
       if (isFirstDeposit) facebookService.sendFirstDeposit(user, depositAmount, 'BRL').catch(() => {})
     }
   } else if (paymentStatus === 'failed' && transaction.type === 'deposit' && wasPaid) {
-    // Estorno (REFUNDED): reverter crédito já dado
+    // Estorno (REFUNDED): reverter crédito já dado (usar bonusAmount armazenado para precisão)
     const user = await User.findById(transaction.user)
     if (user) {
       const depositAmount = transaction.netAmount
-      const bonusConfig = await BonusConfig.getConfig().catch(() => null)
-      const isFirstDeposit = user.totalDeposits <= depositAmount
-      const bonusAmount = calcDepositBonus(depositAmount, isFirstDeposit, bonusConfig)
+      let bonusAmount = transaction.bonusAmount ?? 0
+      if (bonusAmount <= 0) {
+        const bonusConfig = await BonusConfig.getConfig().catch(() => null)
+        const isFirstDeposit = user.totalDeposits <= depositAmount
+        bonusAmount = calcDepositBonus(depositAmount, isFirstDeposit, bonusConfig)
+      }
       user.balance = Math.max(0, (user.balance || 0) - depositAmount - bonusAmount)
       user.bonusBalance = Math.max(0, (user.bonusBalance || 0) - bonusAmount)
       user.totalDeposits = Math.max(0, (user.totalDeposits || 0) - depositAmount)
@@ -216,6 +221,8 @@ async function processWithdrawWebhook(body, transaction) {
     paymentStatus = 'failed'
   } else if (typeUpper === 'PIX_CASHOUT_REFUNDED' || statusUpper === 'REFUNDED') {
     paymentStatus = 'failed' // Saque devolvido: reembolsar usuário
+  } else if (typeUpper === 'PIX_CASHOUT_ERROR' || (statusUpper === 'ERROR' && !body.worked)) {
+    paymentStatus = 'failed' // NxGate: saque falhou (chave inválida, etc.) - reembolsar
   } else if (typeUpper === 'PIX_CASHOUT_SUCCESS' || statusUpper === 'SUCCESS' || statusUpper === 'COMPLETED') {
     paymentStatus = 'paid'
   } else {
@@ -249,14 +256,20 @@ async function processWithdrawWebhook(body, transaction) {
     }
     console.log(`Webhook PIX Withdraw: Transação ${transaction.idTransaction} atualizada para paid`)
   } else if (paymentStatus === 'failed') {
+    const wasPaid = transaction.status === 'paid'
     transaction.status = 'failed'
     transaction.failedAt = new Date()
+    const errorMsg = body.error || body.message || ''
+    const isRefunded = typeUpper === 'PIX_CASHOUT_REFUNDED' || statusUpper === 'REFUNDED'
     const user = await User.findById(transaction.user)
-    if (user && hadBalanceDeducted) {
+    // Reembolsar: (1) saque falhou antes de sair (hadBalanceDeducted) ou (2) saque foi devolvido (REFUNDED)
+    const shouldRefund = user && (hadBalanceDeducted || (isRefunded && wasPaid))
+    if (shouldRefund) {
       user.balance += transaction.amount
+      if (isRefunded && wasPaid) user.totalWithdrawals = Math.max(0, (user.totalWithdrawals || 0) - (transaction.netAmount || transaction.amount))
       await user.save()
-      console.log(`Webhook PIX Withdraw: Reembolso automático para usuário ${user._id} - R$ ${transaction.amount} (saque falhou)`)
-    } else if (!hadBalanceDeducted) {
+      console.log(`Webhook PIX Withdraw: Reembolso para usuário ${user._id} - R$ ${transaction.amount} (${isRefunded ? 'saque devolvido' : 'saque falhou'}${errorMsg ? ': ' + errorMsg : ''})`)
+    } else if (!hadBalanceDeducted && !isRefunded) {
       console.log(`Webhook PIX Withdraw: Saque falhou; saldo não havia sido debitado, reembolso não necessário`)
     }
     console.log(`Webhook PIX Withdraw: Transação ${transaction.idTransaction} atualizada para failed`)
@@ -309,15 +322,25 @@ router.post('/pix-withdraw', async (req, res) => {
   logWebhook('pix-withdraw', req)
   try {
     const body = req.body || {}
-    const idTransaction = getIdTransaction(body)
+    // NxGate PIX_CASHOUT_SUCCESS: idTransaction, tag (mesmo valor) ou transaction_id no topo
+    const idTransaction = body.idTransaction || body.tag || body.transaction_id || body.data?.idTransaction || body.data?.tag || getIdTransaction(body)
     res.status(200).json({ status: 'received' })
     if (!idTransaction) {
-      console.error('Webhook PIX Withdraw: idTransaction não fornecido. Body:', JSON.stringify(body))
+      console.error('Webhook PIX Withdraw: idTransaction não fornecido. Body:', JSON.stringify(body).slice(0, 500))
       return
     }
-    const transaction = await Transaction.findOne({ idTransaction })
+    let transaction = await Transaction.findOne({ idTransaction })
+    if (!transaction) transaction = await Transaction.findOne({ gatewayTxId: idTransaction })
+    if (!transaction) transaction = await Transaction.findOne({ gatewayIds: idTransaction })
+    const altIds = [body?.tx_id, body?.transaction_id].filter(Boolean)
+    for (const altId of altIds) {
+      if (!transaction) transaction = await Transaction.findOne({ $or: [{ idTransaction: altId }, { gatewayTxId: altId }, { gatewayIds: altId }] })
+    }
+    if (!transaction && /^[a-fA-F0-9]{24}$/.test(idTransaction)) {
+      transaction = await Transaction.findById(idTransaction)
+    }
     if (!transaction) {
-      console.error(`Webhook PIX Withdraw: Transação não encontrada: ${idTransaction}`)
+      console.error(`Webhook PIX Withdraw: Transação não encontrada: ${idTransaction} | bodyKeys: ${Object.keys(body).join(',')}`)
       return
     }
     await processWithdrawWebhook(body, transaction)
