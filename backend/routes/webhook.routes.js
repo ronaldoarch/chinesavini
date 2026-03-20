@@ -87,10 +87,10 @@ function getIdTransaction(body) {
   const dataTag = body?.data?.tag || body?.data?.magic_id
   if (dataTag) return dataTag
   return (
-    body.externalId || body.idTransaction || body.transactionId || body.transaction_id || body.tx_id || body.id || body.tag ||
-    body?.transaction?.externalId || body?.transaction?.idTransaction || body?.transaction?.transactionId ||
+    body.externalId || body.idTransaction || body.transactionId || body.transaction_id || body.tx_id || body.id || body.tag || body.internalreference || body.magic_id ||
+    body?.transaction?.externalId || body?.transaction?.idTransaction || body?.transaction?.transactionId || body?.transaction?.internalreference ||
     body?.invoice?.externalId || body?.invoice?.idTransaction || body?.invoice?.transactionId ||
-    body?.data?.externalId || body?.data?.idTransaction || body?.data?.transactionId || body?.data?.id || body?.data?.tx_id
+    body?.data?.externalId || body?.data?.idTransaction || body?.data?.transactionId || body?.data?.id || body?.data?.tx_id || body?.data?.tag || body?.data?.magic_id || body?.data?.internalreference || body?.data?.withdrawalId
   )
 }
 
@@ -147,13 +147,13 @@ router.post('/gatebox', async (req, res) => {
 
 async function processDepositWebhook(body, transaction) {
   const { status, type, data } = body
-  // Gatebox pode enviar status em body.invoice.status ou no topo
-  const rawStatus = (status ?? body.status ?? data?.status ?? body?.invoice?.status ?? '').toString().toUpperCase()
+  const webhookData = body.data || body.invoice || body
+  // Gatebox, NxGate, Escale Cyber: status pode estar em body.status ou body.data.status
+  const rawStatus = (status ?? body.status ?? webhookData?.status ?? body?.invoice?.status ?? '').toString().toUpperCase()
   const rawType = (type ?? body.type ?? data?.type ?? body?.invoice?.type ?? '').toString().toUpperCase()
   let paymentStatus = 'pending'
-  const webhookData = data || body.invoice || body
   // NxGate exige data.worked === true (https://nxgate-api.readme.io/reference/webhook_cashin_paid)
-  const worked = data?.worked === true || data?.worked === 'true'
+  const worked = webhookData?.worked === true || webhookData?.worked === 'true'
   const isNxGateFormat = rawType === 'QR_CODE_COPY_AND_PASTE_PAID'
   const canCredit = isNxGateFormat ? worked : true // NxGate: só creditar se worked; Gatebox: não envia worked
   if (
@@ -163,7 +163,7 @@ async function processDepositWebhook(body, transaction) {
     canCredit
   ) {
     paymentStatus = 'paid'
-  } else if (rawStatus === 'FAILED' || rawStatus === 'ERROR' || rawStatus === 'REJECTED' || rawStatus === 'REFUSED' || rawStatus === 'REFUNDED') {
+  } else if (rawStatus === 'FAILED' || rawStatus === 'ERROR' || rawStatus === 'REJECTED' || rawStatus === 'REFUSED' || rawStatus === 'REFUNDED' || rawStatus === 'EXPIRED') {
     paymentStatus = 'failed'
   } else if (rawType === 'QR_CODE_COPY_AND_PASTE_REFUNDED' || rawStatus === 'REFUNDED') {
     paymentStatus = 'failed' // Estorno: reverter crédito
@@ -211,25 +211,26 @@ async function processDepositWebhook(body, transaction) {
 
 async function processWithdrawWebhook(body, transaction) {
   const { type, status, fee } = body
-  // Gatebox pode enviar vários webhooks (ex: primeiro processing, depois COMPLETED). Só reembolsar em falha explícita.
-  const txStatus = body.transaction?.status ?? body.data?.status
-  const statusUpper = (txStatus ?? status ?? body.invoice?.status ?? body.status ?? body.data?.status ?? '').toString().toUpperCase()
-  const typeUpper = (type ?? body.invoice?.type ?? body.type ?? body.event ?? body.data?.type ?? '').toString().toUpperCase()
+  const data = body.data || body
+  // Gatebox, NxGate, Escale Cyber: status pode estar em body.data.status
+  const txStatus = body.transaction?.status ?? data?.status
+  const statusUpper = (txStatus ?? status ?? body.invoice?.status ?? body.status ?? data?.status ?? '').toString().toUpperCase()
+  const typeUpper = (type ?? body.invoice?.type ?? body.type ?? body.event ?? data?.type ?? '').toString().toUpperCase()
 
   let paymentStatus = null
   if (body._gateboxReversal) {
     paymentStatus = 'failed'
-  } else if (typeUpper === 'PIX_CASHOUT_REFUNDED' || statusUpper === 'REFUNDED') {
+  } else if (typeUpper === 'PIX_OUT_REVERSAL' || typeUpper === 'PIX.OUT.REVERSAL' || typeUpper === 'PIX_CASHOUT_REFUNDED' || statusUpper === 'REFUNDED' || statusUpper === 'REVERSED') {
     paymentStatus = 'failed' // Saque devolvido: reembolsar usuário
-  } else if (typeUpper === 'PIX_CASHOUT_ERROR' || (statusUpper === 'ERROR' && !body.worked)) {
-    paymentStatus = 'failed' // NxGate: saque falhou (chave inválida, etc.) - reembolsar
-  } else if (typeUpper === 'PIX_CASHOUT_SUCCESS' || statusUpper === 'SUCCESS' || statusUpper === 'COMPLETED') {
+  } else if (typeUpper === 'PIX_CASHOUT_ERROR' || typeUpper === 'PIX_OUT_FAILURE' || typeUpper === 'PIX.OUT.FAILURE' || (statusUpper === 'ERROR' && !body.worked)) {
+    paymentStatus = 'failed' // NxGate/Escale Cyber: saque falhou - reembolsar
+  } else if (typeUpper === 'PIX_CASHOUT_SUCCESS' || typeUpper === 'PIX_OUT_CONFIRMATION' || typeUpper === 'PIX.OUT.CONFIRMATION' || statusUpper === 'SUCCESS' || statusUpper === 'COMPLETED' || statusUpper === 'PAID' || statusUpper === 'APPROVED') {
     paymentStatus = 'paid'
   } else {
     const worked = body.worked === true || body.worked === 'true'
-    const errorMsg = body.error || body.invoice?.error || body.motivo || body.message || body.reason || body.data?.error || ''
+    const errorMsg = body.error || body.invoice?.error || body.motivo || body.message || body.reason || data?.reason || data?.error || ''
     const errorStr = typeof errorMsg === 'string' ? errorMsg : (errorMsg?.message || JSON.stringify(errorMsg))
-    const hasError = !!errorStr || typeUpper === 'PIX_CASHOUT_ERROR' || /invalid|falha|error|invalid/i.test(errorStr)
+    const hasError = !!errorStr || typeUpper === 'PIX_CASHOUT_ERROR' || typeUpper === 'PIX_OUT_FAILURE' || typeUpper === 'PIX.OUT.FAILURE' || /invalid|falha|error|invalid/i.test(errorStr)
     if (worked && statusUpper !== 'ERROR' && statusUpper !== 'FAILED' && !hasError) {
       paymentStatus = 'paid'
     } else if (statusUpper === 'FAILED' || statusUpper === 'ERROR') {
@@ -245,14 +246,16 @@ async function processWithdrawWebhook(body, transaction) {
 
   transaction.webhookReceived = true
   transaction.webhookData = body
-  if (fee !== undefined && fee !== null) {
-    transaction.fee = parseFloat(fee) || 0
+  const feeValue = fee ?? data?.totalFee ?? data?.feeAmount ?? data?.fee
+  if (feeValue !== undefined && feeValue !== null) {
+    transaction.fee = parseFloat(feeValue) || 0
     transaction.netAmount = transaction.amount - transaction.fee
   }
 
   if (paymentStatus === 'paid') {
     transaction.status = 'paid'
-    transaction.paidAt = new Date(body.payment_date ? new Date(body.payment_date) : new Date())
+    const paidAt = body.payment_date ?? body.paymentAt ?? data?.paymentAt ?? data?.payment_date
+    transaction.paidAt = new Date(paidAt ? new Date(paidAt) : new Date())
     const user = await User.findById(transaction.user)
     if (user) {
       user.totalWithdrawals += transaction.netAmount || transaction.amount
@@ -286,6 +289,50 @@ async function processWithdrawWebhook(body, transaction) {
 
   await transaction.save()
 }
+
+// @route   POST /api/webhooks/escalecyber
+// @desc    Webhook único Escale Cyber (depósito e saque)
+// @access  Public
+router.post('/escalecyber', async (req, res) => {
+  logWebhook('escalecyber', req)
+  try {
+    const body = req.body || {}
+    res.status(200).json({ status: 'received' })
+
+    const eventType = (body.type || '').toString()
+    const data = body.data || body
+    const idTransaction = data?.transactionId || data?.id || data?.withdrawalId || data?.externalId || body.id
+
+    if (!idTransaction) {
+      console.error('Webhook Escale Cyber: idTransaction não fornecido. Body:', JSON.stringify(body).slice(0, 500))
+      return
+    }
+
+    let transaction = await Transaction.findOne({ idTransaction })
+    if (!transaction && /^[a-fA-F0-9]{24}$/.test(idTransaction)) {
+      transaction = await Transaction.findById(idTransaction)
+    }
+    if (!transaction) {
+      console.error(`Webhook Escale Cyber: Transação não encontrada: ${idTransaction}`)
+      return
+    }
+
+    const isDeposit = /^pix\.in\./.test(eventType)
+    const isWithdraw = /^pix\.out\./.test(eventType)
+
+    if (isDeposit) {
+      await processDepositWebhook(body, transaction)
+    } else if (isWithdraw) {
+      await processWithdrawWebhook(body, transaction)
+    } else if (transaction.type === 'withdraw') {
+      await processWithdrawWebhook(body, transaction)
+    } else {
+      await processDepositWebhook(body, transaction)
+    }
+  } catch (error) {
+    console.error('Webhook Escale Cyber Error:', error)
+  }
+})
 
 // @route   POST /api/webhooks/pix
 // @desc    Webhook for PIX payment confirmation (deposit)

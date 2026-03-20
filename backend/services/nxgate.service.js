@@ -118,13 +118,14 @@ class NxgateService {
 
   /**
    * Cria um saque via PIX (Cash-out)
+   * POST https://api.nxgate.com.br/pix/sacar
    * @param {Object} data - Dados do saque
-   * @param {number} data.valor - Valor do saque
-   * @param {string} data.chave_pix - Chave PIX do recebedor
+   * @param {number} data.valor - Valor do saque em reais
+   * @param {string} data.chave_pix - Chave PIX do destinatário
    * @param {string} data.tipo_chave - Tipo da chave (CPF, CNPJ, PHONE, EMAIL, RANDOM)
-   * @param {string} data.documento - CPF do recebedor
-   * @param {string} data.webhook - URL do webhook
-   * @param {string} data.externalId - ID externo para conciliação
+   * @param {string} data.documento - CPF/CNPJ do destinatário (opcional, somente dígitos)
+   * @param {string} data.webhook - URL para notificação do resultado
+   * @param {string} data.externalId - magic_id para idempotência
    * @returns {Promise<Object>} Resposta da API
    */
   async withdrawPix(data) {
@@ -132,15 +133,21 @@ class NxgateService {
       await this.ensureClient()
 
       const webhook = data.webhook || `${this.webhookBaseUrl}/api/webhooks/pix-withdraw`
+      const documento = (data.documento || '').replace(/\D/g, '')
+      const tipoChave = (data.tipo_chave || 'CPF').toUpperCase()
 
-      const saque = await this.nx.pixWithdraw({
+      const payload = {
         valor: parseFloat(data.valor),
-        chave_pix: data.chave_pix,
-        tipo_chave: data.tipo_chave,
-        documento: (data.documento || '').replace(/\D/g, ''),
+        chave_pix: String(data.chave_pix || '').trim(),
+        tipo_chave: tipoChave,
         webhook,
         magic_id: data.externalId
-      })
+      }
+      if (documento && (tipoChave === 'CPF' || tipoChave === 'CNPJ')) {
+        payload.documento = documento
+      }
+
+      const saque = await this.nx.pixWithdraw(payload)
 
       // NxGate /pix/sacar retorna internalReference (camelCase) - webhook usa para buscar
       const raw = saque?.data || saque?.result || saque?.response || saque
@@ -148,7 +155,7 @@ class NxgateService {
         saque?.internalReference || saque?.internalreference || saque?.tag || saque?.idTransaction || saque?.id || saque?.reference ||
         saque?.cashOutRequestKey
       const tagForWebhook = apiTag || data.externalId
-      const txId = raw.transaction_id || saque.transaction_id
+      const txId = raw?.transaction_id || saque?.transaction_id
       if (process.env.NODE_ENV === 'production') {
         const keys = Object.keys(saque || {})
         const uuidLike = (v) => typeof v === 'string' && /^[a-f0-9-]{36}$/i.test(v)
@@ -169,7 +176,13 @@ class NxgateService {
       }
     } catch (error) {
       console.error('NXGATE Withdraw PIX Error:', error)
-      const message = error?.description || error?.message || 'Erro ao processar saque'
+      const status = error?.status ?? error?.statusCode
+      let message = error?.description || error?.message || 'Erro ao processar saque'
+      if (status === 400) message = error?.description || 'Saldo insuficiente ou dados inválidos'
+      else if (status === 401) message = 'Token ou API Key inválidos'
+      else if (status === 403) message = error?.description || 'IP não autorizado ou conta inativa'
+      else if (status === 422) message = error?.description || 'Dados inválidos ou ausentes'
+      else if (status === 503) message = 'Serviço indisponível. Tente novamente em instantes.'
       return {
         success: false,
         error: error,

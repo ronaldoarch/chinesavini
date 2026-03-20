@@ -51,9 +51,9 @@ router.put('/config', protect, isAdmin, async (req, res) => {
         username: username || process.env.GATEBOX_USERNAME || '',
         password: password || process.env.GATEBOX_PASSWORD || '',
         clientId: clientId || process.env.NXGATE_CLIENT_ID || '',
-        apiKey: apiKey || process.env.NXGATE_CLIENT_SECRET || process.env.NXGATE_API_KEY || '',
+        apiKey: apiKey || process.env.NXGATE_CLIENT_SECRET || process.env.NXGATE_API_KEY || process.env.ESCALECYBER_API_KEY || '',
         webhookBaseUrl: webhookBaseUrl || process.env.WEBHOOK_BASE_URL || 'http://localhost:5000',
-        apiUrl: apiUrl || (provider === 'nxgate' ? 'https://api.nxgate.com.br' : 'https://api.gatebox.com.br'),
+        apiUrl: apiUrl || (provider === 'nxgate' ? 'https://api.nxgate.com.br' : provider === 'escalecyber' ? 'https://api.escalecyber.com/v1' : 'https://api.gatebox.com.br'),
         defaultCpf: defaultCpf || process.env.GATEBOX_DEFAULT_CPF || '000.000.000-00'
       })
     }
@@ -119,6 +119,13 @@ router.post('/test', protect, isAdmin, async (req, res) => {
           message: 'Client ID e Client Secret não configurados para NxGate'
         })
       }
+    } else if (provider === 'escalecyber') {
+      if (!config.apiKey || config.apiKey.trim() === '') {
+        return res.status(400).json({
+          success: false,
+          message: 'API Key não configurada para Escale Cyber'
+        })
+      }
     }
 
     const { realTest } = req.body || {}
@@ -131,12 +138,14 @@ router.post('/test', protect, isAdmin, async (req, res) => {
         documento_pagador: config.provider === 'nxgate' ? '52998224725' : '00000000000',
         valor: 10,
         webhook: `${webhookBase}/api/webhooks/pix`,
-        externalId: `test_${Date.now()}`
+        externalId: `test_${Date.now()}`,
+        customerPhone: '5511999999999',
+        customerEmail: 'teste@admin.local'
       })
       if (!result.success) {
         return res.status(400).json({
           success: false,
-          message: result.message || `Falha ao chamar a API ${provider === 'nxgate' ? 'NxGate' : 'GATEBOX'}`,
+          message: result.message || `Falha ao chamar a API ${provider === 'nxgate' ? 'NxGate' : provider === 'escalecyber' ? 'Escale Cyber' : 'GATEBOX'}`,
           data: { detail: result.error }
         })
       }
@@ -163,8 +172,8 @@ router.post('/test', protect, isAdmin, async (req, res) => {
       message: 'Configuração válida (teste rápido). Use "Teste real" para validar geração de PIX.',
       data: {
         provider: config.provider,
-        credentialsConfigured: provider === 'gatebox' ? (config.username && config.password ? 'Sim' : 'Não') : (config.clientId && config.apiKey ? 'Sim' : 'Não'),
-        apiKeyConfigured: provider === 'nxgate' ? (config.apiKey ? 'Sim' : 'Não') : undefined,
+        credentialsConfigured: provider === 'gatebox' ? (config.username && config.password ? 'Sim' : 'Não') : provider === 'escalecyber' ? (config.apiKey ? 'Sim' : 'Não') : (config.clientId && config.apiKey ? 'Sim' : 'Não'),
+        apiKeyConfigured: (provider === 'nxgate' || provider === 'escalecyber') ? (config.apiKey ? 'Sim' : 'Não') : undefined,
         webhookBaseUrl: config.webhookBaseUrl,
         apiUrl: config.apiUrl
       }

@@ -79,14 +79,16 @@ router.post(
         webhookUrl
       })
 
-      // Generate PIX via gateway configurado (GATEBOX ou NxGate)
+      // Generate PIX via gateway configurado (GATEBOX, NxGate ou Escale Cyber)
       const gatewayService = await getGatewayService()
       const pixResult = await gatewayService.generatePix({
         nome_pagador: user.username,
         documento_pagador: cpf,
         valor: amount,
         webhook: transaction.webhookUrl,
-        externalId: transaction._id.toString()
+        externalId: transaction._id.toString(),
+        customerPhone: user.phone,
+        customerEmail: user.email || `${user.username}@deposito.local`
       })
 
       if (!pixResult.success) {

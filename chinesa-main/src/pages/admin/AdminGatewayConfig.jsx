@@ -49,7 +49,7 @@ function AdminGatewayConfig() {
           apiKey: response.data.apiKey || '',
           hmacSecret: response.data.hmacSecret && response.data.hmacSecret !== '***' ? response.data.hmacSecret : '***',
           webhookBaseUrl: response.data.webhookBaseUrl || '',
-          apiUrl: response.data.apiUrl || (provider === 'nxgate' ? 'https://api.nxgate.com.br' : 'https://api.gatebox.com.br'),
+          apiUrl: response.data.apiUrl || (provider === 'nxgate' ? 'https://api.nxgate.com.br' : provider === 'escalecyber' ? 'https://api.escalecyber.com/v1' : 'https://api.gatebox.com.br'),
           isActive: response.data.isActive !== undefined ? response.data.isActive : true
         })
       }
@@ -95,6 +95,12 @@ function AdminGatewayConfig() {
           return
         }
         if (configToSend.hmacSecret === '***') delete configToSend.hmacSecret
+      } else if (config.provider === 'escalecyber') {
+        if (!config.apiKey || config.apiKey.trim() === '') {
+          setError('API Key é obrigatória para Escale Cyber')
+          setSaving(false)
+          return
+        }
       }
 
       if (!config.webhookBaseUrl || config.webhookBaseUrl.trim() === '') {
@@ -217,11 +223,12 @@ function AdminGatewayConfig() {
               onChange={(e) => setConfig(prev => ({
                 ...prev,
                 provider: e.target.value,
-                apiUrl: e.target.value === 'nxgate' ? 'https://api.nxgate.com.br' : 'https://api.gatebox.com.br'
+                apiUrl: e.target.value === 'nxgate' ? 'https://api.nxgate.com.br' : e.target.value === 'escalecyber' ? 'https://api.escalecyber.com/v1' : 'https://api.gatebox.com.br'
               }))}
             >
               <option value="gatebox">GATEBOX</option>
               <option value="nxgate">NxGate</option>
+              <option value="escalecyber">Escale Cyber</option>
             </select>
             <small className="form-hint">
               Selecione qual gateway utilizar para PIX
@@ -309,6 +316,23 @@ function AdminGatewayConfig() {
             </>
           )}
 
+          {config.provider === 'escalecyber' && (
+            <div className="form-group full-width">
+              <label>
+                API Key (Escale Cyber) <span className="required">*</span>
+              </label>
+              <input
+                type="password"
+                value={config.apiKey}
+                onChange={(e) => setConfig(prev => ({ ...prev, apiKey: e.target.value }))}
+                placeholder="Digite a API Key do Escale Cyber"
+              />
+              <small className="form-hint">
+                API Key obtida no painel do Escale Cyber (header X-API-Key)
+              </small>
+            </div>
+          )}
+
           <div className="form-group full-width">
             <label>
               URL Base do Webhook <span className="required">*</span>
@@ -330,7 +354,7 @@ function AdminGatewayConfig() {
               type="text"
               value={config.apiUrl}
               onChange={(e) => setConfig(prev => ({ ...prev, apiUrl: e.target.value }))}
-              placeholder={config.provider === 'nxgate' ? 'https://api.nxgate.com.br' : 'https://api.gatebox.com.br'}
+              placeholder={config.provider === 'nxgate' ? 'https://api.nxgate.com.br' : config.provider === 'escalecyber' ? 'https://api.escalecyber.com/v1' : 'https://api.gatebox.com.br'}
             />
             <small className="form-hint">
               URL base da API (geralmente não precisa ser alterada)
@@ -442,18 +466,29 @@ function AdminGatewayConfig() {
               <strong>Client ID e Client Secret:</strong> Obtenha no painel do NxGate (OAuth2)
             </li>
           )}
+          {config.provider === 'escalecyber' && (
+            <li>
+              <strong>API Key:</strong> Obtenha no painel do Escale Cyber. Configure o webhook em <code>POST /webhooks</code> apontando para <code>{config.webhookBaseUrl || 'SEU_URL'}/api/webhooks/escalecyber</code>
+            </li>
+          )}
           <li>
             <strong>Webhook URL:</strong> Deve ser uma URL pública acessível (HTTPS em produção)
           </li>
           <li>
             <strong>Endpoints de Webhook:</strong>
             <ul>
-              <li>Depósitos: <code>{config.webhookBaseUrl || 'SEU_URL'}/api/webhooks/pix</code></li>
-              <li>Saques: <code>{config.webhookBaseUrl || 'SEU_URL'}/api/webhooks/pix-withdraw</code></li>
+              {config.provider === 'escalecyber' ? (
+                <li>Escale Cyber (único): <code>{config.webhookBaseUrl || 'SEU_URL'}/api/webhooks/escalecyber</code></li>
+              ) : (
+                <>
+                  <li>Depósitos: <code>{config.webhookBaseUrl || 'SEU_URL'}/api/webhooks/pix</code></li>
+                  <li>Saques: <code>{config.webhookBaseUrl || 'SEU_URL'}/api/webhooks/pix-withdraw</code></li>
+                </>
+              )}
             </ul>
           </li>
           <li>
-            Configure esses endpoints no painel do {config.provider === 'nxgate' ? 'NxGate' : 'GATEBOX'} para receber notificações de pagamento
+            Configure esses endpoints no painel do {config.provider === 'nxgate' ? 'NxGate' : config.provider === 'escalecyber' ? 'Escale Cyber' : 'GATEBOX'} para receber notificações de pagamento
           </li>
         </ul>
       </div>
