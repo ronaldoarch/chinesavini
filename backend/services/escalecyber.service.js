@@ -207,6 +207,7 @@ class EscaleCyberService {
       let message = error.response?.data?.message || error.message || 'Erro ao processar saque'
       if (status === 400) message = error.response?.data?.message || 'Requisição inválida'
       else if (status === 401) message = 'API Key inválida ou não autenticado'
+      else if (status === 403) message = error.response?.data?.message || 'Acesso negado ou serviço em manutenção'
       return {
         success: false,
         error: error.response?.data || error,

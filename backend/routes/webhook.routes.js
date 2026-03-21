@@ -299,7 +299,7 @@ async function handleEscaleCyberWebhook(req, res) {
 
     const eventType = (body.type || '').toString()
     const data = body.data || body
-    const idTransaction = data?.transactionId || data?.id || data?.withdrawalId || data?.externalId || body.id
+    const idTransaction = data?.transactionId || data?.id || data?.withdrawalId || data?.transaction_id || data?.externalId || data?.externalTransactionId || body.id
 
     if (!idTransaction) {
       console.error('Webhook Escale Cyber: idTransaction não fornecido. Body:', JSON.stringify(body).slice(0, 500))
@@ -307,11 +307,17 @@ async function handleEscaleCyberWebhook(req, res) {
     }
 
     let transaction = await Transaction.findOne({ idTransaction })
+    if (!transaction) transaction = await Transaction.findOne({ gatewayTxId: idTransaction })
+    if (!transaction) transaction = await Transaction.findOne({ gatewayIds: idTransaction })
     if (!transaction && /^[a-fA-F0-9]{24}$/.test(idTransaction)) {
       transaction = await Transaction.findById(idTransaction)
     }
+    if (!transaction && data?.description && /Saque\s+[a-f0-9]{24}/i.test(data.description)) {
+      const match = data.description.match(/([a-f0-9]{24})/i)
+      if (match) transaction = await Transaction.findById(match[1])
+    }
     if (!transaction) {
-      console.error(`Webhook Escale Cyber: Transação não encontrada: ${idTransaction}`)
+      console.error(`Webhook Escale Cyber: Transação não encontrada: ${idTransaction} | type: ${eventType} | dataKeys: ${data ? Object.keys(data).join(',') : 'n/a'}`)
       return
     }
 
