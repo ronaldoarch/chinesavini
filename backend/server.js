@@ -91,6 +91,9 @@ app.use(express.static(publicPath, {
   }
 }))
 
+// Webhook Escale Cyber: aceita https://api.89vipsbet.com/webhook (único para todos os eventos)
+app.use('/webhook', cors({ origin: true }), webhookRoutes)
+
 // Routes (tracking antes de admin — /config/public é rota pública)
 app.use('/api/auth', authRoutes)
 app.use('/api/payments', paymentRoutes)

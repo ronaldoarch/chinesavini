@@ -71,21 +71,34 @@ class EscaleCyberService {
     try {
       await this.ensureConfig()
 
-      const documento = (data.documento_pagador || '').replace(/\D/g, '')
+      const documentoRaw = (data.documento_pagador || '').replace(/\D/g, '')
+      let documento = documentoRaw.length >= 11 ? documentoRaw : (await GatewayConfig.getConfig())?.defaultCpf?.replace(/\D/g, '') || documentoRaw
+      if (!documento || documento.length < 11) documento = '00000000000'
       const docType = documento.length === 14 ? 'cnpj' : 'cpf'
-      const customerEmail = data.customerEmail || `${(data.nome_pagador || 'user').replace(/\s/g, '')}@deposito.local`
+      // Escale Cyber: exemplo na doc usa CPF formatado (179.539.020-44)
+      const customerDocument = docType === 'cpf' && documento.length === 11
+        ? `${documento.slice(0, 3)}.${documento.slice(3, 6)}.${documento.slice(6, 9)}-${documento.slice(9)}`
+        : docType === 'cnpj' && documento.length === 14
+          ? `${documento.slice(0, 2)}.${documento.slice(2, 5)}.${documento.slice(5, 8)}/${documento.slice(8, 12)}-${documento.slice(12)}`
+          : documento
+      // Escale Cyber exige email válido; .local pode ser rejeitado
+      const customerEmail = data.customerEmail || `${(data.nome_pagador || 'user').replace(/\s/g, '_')}@example.com`
       const customerPhone = formatPhoneInternational(data.customerPhone)
 
       const payload = {
         amount: parseFloat(data.valor),
-        customerName: data.nome_pagador || 'Pagador',
-        customerDocument: documento || '00000000000',
+        customerName: (data.nome_pagador || 'Pagador').trim().substring(0, 100),
+        customerDocument,
         customerDocumentType: docType,
-        customerEmail,
+        customerEmail: customerEmail.substring(0, 255),
         customerPhone,
-        description: data.externalId ? `Depósito ${data.externalId}` : 'Depósito PIX'
+        description: (data.externalId ? `Depósito ${data.externalId}` : 'Depósito PIX').substring(0, 255)
       }
       if (data.metadata) payload.metadata = data.metadata
+
+      if (process.env.NODE_ENV === 'production') {
+        console.log('ESCALECYBER generatePix payload (sem doc completo):', { amount: payload.amount, customerName: payload.customerName, docLen: payload.customerDocument?.length, phone: payload.customerPhone?.length })
+      }
 
       const response = await axios.post(
         `${this.baseURL}/payments/transactions`,
@@ -124,7 +137,11 @@ class EscaleCyberService {
         }
       }
     } catch (error) {
-      console.error('ESCALECYBER Generate PIX Error:', error.response?.data || error.message)
+      const errBody = error.response?.data || {}
+      console.error('ESCALECYBER Generate PIX Error:', JSON.stringify(errBody))
+      if (errBody?.errors || errBody?.details) {
+        console.error('ESCALECYBER validation details:', JSON.stringify(errBody.errors || errBody.details))
+      }
       const status = error.response?.status
       let message = error.response?.data?.message || error.message || 'Erro ao gerar PIX'
       if (status === 400) message = error.response?.data?.message || 'Requisição inválida'

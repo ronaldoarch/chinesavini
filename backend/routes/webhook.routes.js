@@ -290,10 +290,8 @@ async function processWithdrawWebhook(body, transaction) {
   await transaction.save()
 }
 
-// @route   POST /api/webhooks/escalecyber
-// @desc    Webhook único Escale Cyber (depósito e saque)
-// @access  Public
-router.post('/escalecyber', async (req, res) => {
+// Handler Escale Cyber (reutilizado em /escalecyber e /webhook)
+async function handleEscaleCyberWebhook(req, res) {
   logWebhook('escalecyber', req)
   try {
     const body = req.body || {}
@@ -332,7 +330,16 @@ router.post('/escalecyber', async (req, res) => {
   } catch (error) {
     console.error('Webhook Escale Cyber Error:', error)
   }
-})
+}
+
+// @route   POST /webhook (alias para Escale Cyber - mesma URL para todos os eventos)
+// @desc    Aceita https://api.89vipsbet.com/webhook
+router.post('/', handleEscaleCyberWebhook)
+
+// @route   POST /api/webhooks/escalecyber
+// @desc    Webhook único Escale Cyber (depósito e saque)
+// @access  Public
+router.post('/escalecyber', handleEscaleCyberWebhook)
 
 // @route   POST /api/webhooks/pix
 // @desc    Webhook for PIX payment confirmation (deposit)
