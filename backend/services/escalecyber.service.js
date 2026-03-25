@@ -16,6 +16,41 @@ function formatPhoneInternational(phone) {
   return '5511999999999'
 }
 
+/** Tipos aceitos pelo app (uppercase) → valores esperados pela API Escale (geralmente lowercase). */
+function mapPixKeyTypeToEscale(tipoChave) {
+  const t = (tipoChave || 'CPF').toString().toUpperCase()
+  const map = {
+    CPF: 'cpf',
+    CNPJ: 'cnpj',
+    PHONE: 'phone',
+    EMAIL: 'email',
+    RANDOM: 'evp'
+  }
+  return map[t] || 'cpf'
+}
+
+/**
+ * Normaliza valor da chave PIX para o mesmo padrão usado em generatePix (CPF/CNPJ formatados, telefone 55...).
+ */
+function formatPixKeyValueForEscale(rawKey, tipoApi) {
+  const key = String(rawKey || '').trim()
+  if (!key) return key
+  if (tipoApi === 'email') return key.toLowerCase()
+  if (tipoApi === 'evp') return key.replace(/\s/g, '').toLowerCase()
+  if (tipoApi === 'phone') return formatPhoneInternational(key)
+  if (tipoApi === 'cpf') {
+    const d = key.replace(/\D/g, '')
+    if (d.length !== 11) return d
+    return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}`
+  }
+  if (tipoApi === 'cnpj') {
+    const d = key.replace(/\D/g, '')
+    if (d.length !== 14) return d
+    return `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5, 8)}/${d.slice(8, 12)}-${d.slice(12)}`
+  }
+  return key
+}
+
 class EscaleCyberService {
   constructor() {
     this.apiKey = null
@@ -27,7 +62,7 @@ class EscaleCyberService {
     try {
       const config = await GatewayConfig.getConfig()
       if (config && config.provider === 'escalecyber' && config.isActive) {
-        this.apiKey = config.apiKey || ''
+        this.apiKey = (config.apiKey || '').trim()
         this.baseURL = (config.apiUrl || ESCALECYBER_BASE_URL).replace(/\/$/, '')
         this.webhookBaseUrl = config.webhookBaseUrl || this.webhookBaseUrl
       } else {
@@ -47,10 +82,11 @@ class EscaleCyberService {
   }
 
   _headers() {
+    const key = (this.apiKey || '').trim()
     return {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
-      'X-API-Key': this.apiKey
+      'X-API-Key': key
     }
   }
 
@@ -171,13 +207,22 @@ class EscaleCyberService {
     try {
       await this.ensureConfig()
 
-      const tipoChave = (data.tipo_chave || 'CPF').toUpperCase()
+      const tipoApi = mapPixKeyTypeToEscale(data.tipo_chave)
+      const pixKey = formatPixKeyValueForEscale(data.chave_pix, tipoApi)
 
       const payload = {
         amount: parseFloat(data.valor),
-        pixKey: String(data.chave_pix || '').trim(),
-        pixKeyType: tipoChave,
+        pixKey,
+        pixKeyType: tipoApi,
         description: data.externalId ? `Saque ${data.externalId}` : 'Saque PIX'
+      }
+
+      if (process.env.NODE_ENV === 'production') {
+        console.log('ESCALECYBER withdraw (sem chave completa):', {
+          amount: payload.amount,
+          pixKeyType: payload.pixKeyType,
+          pixKeyLen: pixKey?.length
+        })
       }
 
       const response = await axios.post(
