@@ -1,0 +1,6 @@
+# Coolify/Railway Nixpacks: install mais leve e reproduzível (evita falha silenciosa no `npm i`).
+[variables]
+NODE_OPTIONS = "--max-old-space-size=4096"
+
+[phases.install]
+cmds = ["npm ci --omit=dev --no-audit --no-fund"]
