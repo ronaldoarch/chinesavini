@@ -30,14 +30,24 @@ function mapPixKeyTypeToEscale(tipoChave) {
 }
 
 /**
- * Normaliza valor da chave PIX para o mesmo padrão usado em generatePix (CPF/CNPJ formatados, telefone 55...).
+ * Chave PIX telefone: DICT costuma exigir E.164 com "+" (ex: +5594992961626).
+ * Só dígitos 55DDD... sem "+" costuma retornar "Invalid Pix Key" em várias APIs.
+ */
+function formatPixPhoneKeyForEscale(rawKey) {
+  const digits = formatPhoneInternational(rawKey).replace(/\D/g, '')
+  const br = digits.startsWith('55') ? digits : `55${digits}`
+  return `+${br}`
+}
+
+/**
+ * Normaliza valor da chave PIX para o mesmo padrão usado em generatePix (CPF/CNPJ formatados, telefone E.164).
  */
 function formatPixKeyValueForEscale(rawKey, tipoApi) {
   const key = String(rawKey || '').trim()
   if (!key) return key
   if (tipoApi === 'email') return key.toLowerCase()
   if (tipoApi === 'evp') return key.replace(/\s/g, '').toLowerCase()
-  if (tipoApi === 'phone') return formatPhoneInternational(key)
+  if (tipoApi === 'phone') return formatPixPhoneKeyForEscale(key)
   if (tipoApi === 'cpf') {
     const d = key.replace(/\D/g, '')
     if (d.length !== 11) return d
