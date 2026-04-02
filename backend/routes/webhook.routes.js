@@ -8,15 +8,17 @@ import affiliateService from '../services/affiliate.service.js'
 import facebookService from '../services/facebook.service.js'
 
 function calcDepositBonus(amount, isFirstDeposit, bonusConfig) {
+  if (!bonusConfig) return 0
   let percent = 0
-  if (isFirstDeposit && bonusConfig?.firstDepositBonusPercent) {
+  if (isFirstDeposit && bonusConfig.firstDepositBonusPercent > 0) {
     percent = bonusConfig.firstDepositBonusPercent
-  } else if (bonusConfig?.depositTiers?.length) {
+  } else if (bonusConfig.depositTiers?.length) {
     const tier = [...bonusConfig.depositTiers]
-      .filter((t) => Number(t.amount) <= amount)
+      .filter((t) => Number(t.amount) <= amount && Number(t.bonusPercent) > 0)
       .sort((a, b) => Number(b.amount) - Number(a.amount))[0]
-    if (tier) percent = Number(tier.bonusPercent) || 0
+    if (tier) percent = Number(tier.bonusPercent)
   }
+  if (percent <= 0) return 0
   return Math.round((amount * percent / 100) * 100) / 100
 }
 
@@ -180,7 +182,7 @@ async function processDepositWebhook(body, transaction) {
       transaction.bonusAmount = bonusAmount
       await transaction.save()
       user.balance += depositAmount + bonusAmount
-      user.bonusBalance = (user.bonusBalance || 0) + bonusAmount
+      user.bonusBalance = (user.bonusBalance || 0) + depositAmount + bonusAmount
       user.totalDeposits += depositAmount
       await user.save()
       await affiliateService.updateReferralQualification(user._id)
@@ -200,7 +202,7 @@ async function processDepositWebhook(body, transaction) {
         bonusAmount = calcDepositBonus(depositAmount, isFirstDeposit, bonusConfig)
       }
       user.balance = Math.max(0, (user.balance || 0) - depositAmount - bonusAmount)
-      user.bonusBalance = Math.max(0, (user.bonusBalance || 0) - bonusAmount)
+      user.bonusBalance = Math.max(0, (user.bonusBalance || 0) - depositAmount - bonusAmount)
       user.totalDeposits = Math.max(0, (user.totalDeposits || 0) - depositAmount)
       await user.save()
       console.log(`Webhook PIX (estorno): Crédito revertido para usuário ${user._id} - R$ ${depositAmount}`)
