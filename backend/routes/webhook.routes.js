@@ -316,6 +316,13 @@ async function handleEscaleCyberWebhook(req, res) {
       const match = data.description.match(/([a-f0-9]{24})/i)
       if (match) transaction = await Transaction.findById(match[1])
     }
+    if (!transaction && data?.description && /Depósito\s+([a-f0-9]{24})/i.test(data.description)) {
+      const match = data.description.match(/([a-f0-9]{24})/i)
+      if (match) transaction = await Transaction.findById(match[1])
+    }
+    if (!transaction && data?.metadata?.externalId && /^[a-f0-9]{24}$/i.test(data.metadata.externalId)) {
+      transaction = await Transaction.findById(data.metadata.externalId)
+    }
     if (!transaction) {
       console.error(`Webhook Escale Cyber: Transação não encontrada: ${idTransaction} | type: ${eventType} | dataKeys: ${data ? Object.keys(data).join(',') : 'n/a'}`)
       return

@@ -139,8 +139,8 @@ function AdminGamesConfig() {
       }))
     } else {
       // Add provider (max 3)
-      if (config.selectedProviders.length >= 3) {
-        setError('Máximo de 3 provedores permitidos')
+      if (config.selectedProviders.length >= 6) {
+        setError('Máximo de 6 provedores permitidos')
         setTimeout(() => setError(null), 3000)
         return
       }
@@ -379,10 +379,10 @@ function AdminGamesConfig() {
       <div className="config-section">
         <h2>
           <i className="fa-solid fa-layer-group"></i>
-          Provedores Selecionados ({config.selectedProviders.length}/3)
+          Provedores Selecionados ({config.selectedProviders.length}/6)
         </h2>
         <p className="section-description">
-          Selecione até 3 provedores de jogos
+          Selecione até 6 provedores de jogos
         </p>
         
         {loadingProviders ? (

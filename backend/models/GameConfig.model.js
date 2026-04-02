@@ -20,9 +20,9 @@ const gameConfigSchema = new mongoose.Schema(
       default: [],
       validate: {
         validator: function(v) {
-          return v.length <= 3
+          return v.length <= 6
         },
-        message: 'Máximo de 3 provedores permitidos'
+        message: 'Máximo de 6 provedores permitidos'
       }
     },
     selectedGames: {

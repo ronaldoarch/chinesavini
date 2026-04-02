@@ -140,7 +140,8 @@ class EscaleCyberService {
         customerPhone,
         description: (data.externalId ? `Depósito ${data.externalId}` : 'Depósito PIX').substring(0, 255)
       }
-      if (data.metadata) payload.metadata = data.metadata
+      if (data.externalId) payload.metadata = { ...(data.metadata || {}), externalId: data.externalId }
+      else if (data.metadata) payload.metadata = data.metadata
 
       if (process.env.NODE_ENV === 'production') {
         console.log('ESCALECYBER generatePix payload (sem doc completo):', { amount: payload.amount, customerName: payload.customerName, docLen: payload.customerDocument?.length, phone: payload.customerPhone?.length })
@@ -187,6 +188,9 @@ class EscaleCyberService {
       console.error('ESCALECYBER Generate PIX Error:', JSON.stringify(errBody))
       if (errBody?.errors || errBody?.details) {
         console.error('ESCALECYBER validation details:', JSON.stringify(errBody.errors || errBody.details))
+      }
+      if (errBody?.message && error.response?.status === 400) {
+        console.error('ESCALECYBER 400 - payload summary:', { amount: data?.valor, docLen: (data?.documento_pagador || '').replace(/\D/g, '').length, phone: (data?.customerPhone || '').length })
       }
       const status = error.response?.status
       let message = error.response?.data?.message || error.message || 'Erro ao gerar PIX'

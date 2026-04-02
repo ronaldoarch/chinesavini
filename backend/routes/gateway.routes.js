@@ -16,7 +16,7 @@ router.get('/config', protect, isAdmin, async (req, res) => {
       data: {
         provider: config.provider || 'gatebox',
         username: config.username,
-        password: config.password ? '***' : '', // Não retornar senha real
+        password: config.password ? '***' : '',
         clientId: config.clientId,
         apiKey: config.apiKey,
         hmacSecret: config.hmacSecret ? '***' : '',
