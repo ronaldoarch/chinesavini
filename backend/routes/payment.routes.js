@@ -296,6 +296,11 @@ router.post(
         })
       }
 
+      // Deduct balance immediately (will be reversed if withdrawal fails via webhook)
+      user.balance -= parseFloat(amount)
+      user.bonusBalance = Math.min(user.bonusBalance || 0, user.balance)
+      await user.save()
+
       // Update transaction with withdrawal data (NxGate webhook usa idTransaction/tag)
       const withdrawData = withdrawResult.data
       const ids = [
@@ -306,13 +311,8 @@ router.post(
       transaction.idTransaction = withdrawData.idTransaction || withdrawData.tag || withdrawData.internalreference || withdrawData.internalReference || withdrawData.transactionId || withdrawData.externalId || withdrawData.transaction_id || transaction._id.toString()
       transaction.gatewayTxId = withdrawData.internalreference || withdrawData.internalReference || withdrawData.idTransaction || withdrawData.tag
       transaction.gatewayIds = [...new Set(ids)]
-      transaction.balanceDeducted = true // Para reembolso confiável no webhook de falha
+      transaction.balanceDeducted = true
       await transaction.save()
-
-      // Deduct balance immediately (will be reversed if withdrawal fails)
-      user.balance -= parseFloat(amount)
-      user.bonusBalance = Math.min(user.bonusBalance || 0, user.balance)
-      await user.save()
 
       res.json({
         success: true,

@@ -275,6 +275,7 @@ async function processWithdrawWebhook(body, transaction) {
     const shouldRefund = user && (hadBalanceDeducted || (isRefunded && wasPaid))
     if (shouldRefund) {
       user.balance = (user.balance || 0) + transaction.amount
+      user.bonusBalance = Math.min(user.bonusBalance || 0, user.balance)
       if (isRefunded && wasPaid) user.totalWithdrawals = Math.max(0, (user.totalWithdrawals || 0) - (transaction.netAmount || transaction.amount))
       await user.save()
       console.log(`Webhook PIX Withdraw: Reembolso para usuário ${user._id} - R$ ${transaction.amount} (${isRefunded ? 'saque devolvido' : 'saque falhou'}${errorMsg ? ': ' + errorMsg : ''})`)
