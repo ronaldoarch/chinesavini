@@ -185,7 +185,7 @@ class EscaleCyberService {
       }
     } catch (error) {
       const errBody = error.response?.data || {}
-      console.error('ESCALECYBER Generate PIX Error:', JSON.stringify(errBody))
+      console.error('ESCALECYBER Generate PIX Error:', JSON.stringify(errBody), '| status:', error.response?.status, '| msg:', error.message)
       if (errBody?.errors || errBody?.details) {
         console.error('ESCALECYBER validation details:', JSON.stringify(errBody.errors || errBody.details))
       }
@@ -222,12 +222,13 @@ class EscaleCyberService {
       await this.ensureConfig()
 
       const tipoApi = mapPixKeyTypeToEscale(data.tipo_chave)
+      const tipoUpper = (data.tipo_chave || 'CPF').toString().toUpperCase()
       const pixKey = formatPixKeyValueForEscale(data.chave_pix, tipoApi)
 
       const payload = {
         amount: parseFloat(data.valor),
         pixKey,
-        pixKeyType: tipoApi,
+        pixKeyType: tipoUpper === 'RANDOM' ? 'RANDOM' : tipoUpper,
         description: data.externalId ? `Saque ${data.externalId}` : 'Saque PIX'
       }
 
@@ -261,7 +262,7 @@ class EscaleCyberService {
         }
       }
     } catch (error) {
-      console.error('ESCALECYBER Withdraw PIX Error:', error.response?.data || error.message)
+      console.error('ESCALECYBER Withdraw PIX Error:', JSON.stringify(error.response?.data || {}), '| status:', error.response?.status, '| payload:', JSON.stringify({ amount: data?.valor, pixKeyType: data?.tipo_chave, pixKeyLen: (data?.chave_pix || '').length }))
       const status = error.response?.status
       let message = error.response?.data?.message || error.message || 'Erro ao processar saque'
       if (status === 400) message = error.response?.data?.message || 'Requisição inválida'
