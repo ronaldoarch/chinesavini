@@ -79,7 +79,7 @@ router.post(
         webhookUrl
       })
 
-      // Generate PIX via gateway configurado (GATEBOX, NxGate ou Escale Cyber)
+      // Generate PIX via gateway configurado (GATEBOX, NxGate, Escale Cyber ou SarrixPay)
       const gatewayService = await getGatewayService()
       const pixResult = await gatewayService.generatePix({
         nome_pagador: user.username,
@@ -109,9 +109,13 @@ router.post(
         transaction._id.toString()
       ].filter(Boolean)
       const uniqueIds = [...new Set(ids)]
+      const gwProvider = (await GatewayConfig.getConfig()).provider?.toLowerCase()
+      if (gwProvider === 'sarrixpay') {
+        uniqueIds.push(`deposit-${transaction._id.toString()}`)
+      }
       transaction.idTransaction = pixData?.idTransaction || pixData?.tag || pixData?.transactionId || pixData?.tx_id || raw?.idTransaction || raw?.tag || raw?.transactionId || raw?.tx_id || pixData?.externalId || transaction._id.toString()
       transaction.gatewayTxId = pixData?.cashInRequestKey || raw?.cashInRequestKey || pixData?.tx_id || raw?.tx_id || transaction.idTransaction
-      transaction.gatewayIds = uniqueIds.length ? uniqueIds : undefined
+      transaction.gatewayIds = uniqueIds.length ? [...new Set(uniqueIds)] : undefined
 
       // GATEBOX retorna o código PIX em data.key; outros gateways usam qrCode, pixCopyPaste, etc.
       const copyPaste =
@@ -119,7 +123,7 @@ router.post(
         pixData?.qrCode || pixData?.pixCopyPaste || pixData?.copyPaste ||
         raw?.qrCode || raw?.pixCopyPaste || raw?.copyPaste ||
         raw?.pix_copy_and_paste || raw?.pixCopyPaste || raw?.copy_paste || raw?.qr_code || raw?.qrcode ||
-        raw?.codigo_pix || raw?.codigo || raw?.pix_copia_cola || raw?.brcode || raw?.emv || raw?.payload ||
+        raw?.codigo_pix || raw?.codigo || raw?.pix_copia_cola || raw?.brcode || raw?.br_code || pixData?.br_code || raw?.emv || raw?.payload ||
         pixData?.paymentCode || raw?.paymentCode
       const qrImage =
         pixData?.qrCodeImage || pixData?.qrCodeBase64 ||
@@ -308,9 +312,12 @@ router.post(
         withdrawData.tag, withdrawData.transaction_id, withdrawData.externalId,
         transaction._id.toString()
       ].filter(Boolean)
+      if ((await GatewayConfig.getConfig()).provider?.toLowerCase() === 'sarrixpay') {
+        ids.push(`withdraw-${transaction._id.toString()}`)
+      }
       transaction.idTransaction = withdrawData.idTransaction || withdrawData.tag || withdrawData.internalreference || withdrawData.internalReference || withdrawData.transactionId || withdrawData.externalId || withdrawData.transaction_id || transaction._id.toString()
       transaction.gatewayTxId = withdrawData.internalreference || withdrawData.internalReference || withdrawData.idTransaction || withdrawData.tag
-      transaction.gatewayIds = [...new Set(ids)]
+      transaction.gatewayIds = [...new Set(ids.filter(Boolean))]
       transaction.balanceDeducted = true
       await transaction.save()
 

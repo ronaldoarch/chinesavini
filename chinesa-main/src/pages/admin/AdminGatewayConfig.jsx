@@ -3,6 +3,13 @@ import { useAuth } from '../../contexts/AuthContext'
 import api from '../../services/api'
 import './AdminGatewayConfig.css'
 
+function defaultGatewayApiUrl(provider) {
+  if (provider === 'nxgate') return 'https://api.nxgate.com.br'
+  if (provider === 'escalecyber') return 'https://api.escalecyber.com/v1'
+  if (provider === 'sarrixpay') return 'https://apiv1.sarrixpay.com'
+  return 'https://api.gatebox.com.br'
+}
+
 function AdminGatewayConfig() {
   const { isAdmin } = useAuth()
   const [loading, setLoading] = useState(true)
@@ -49,7 +56,7 @@ function AdminGatewayConfig() {
           apiKey: response.data.apiKey || '',
           hmacSecret: response.data.hmacSecret && response.data.hmacSecret !== '***' ? response.data.hmacSecret : '***',
           webhookBaseUrl: response.data.webhookBaseUrl || '',
-          apiUrl: response.data.apiUrl || (provider === 'nxgate' ? 'https://api.nxgate.com.br' : provider === 'escalecyber' ? 'https://api.escalecyber.com/v1' : 'https://api.gatebox.com.br'),
+          apiUrl: response.data.apiUrl || defaultGatewayApiUrl(provider),
           isActive: response.data.isActive !== undefined ? response.data.isActive : true
         })
       }
@@ -98,6 +105,17 @@ function AdminGatewayConfig() {
       } else if (config.provider === 'escalecyber') {
         if (!config.apiKey || config.apiKey.trim() === '') {
           setError('API Key é obrigatória para Escale Cyber')
+          setSaving(false)
+          return
+        }
+      } else if (config.provider === 'sarrixpay') {
+        if (!config.clientId || config.clientId.trim() === '') {
+          setError('Client ID é obrigatório para SarrixPay')
+          setSaving(false)
+          return
+        }
+        if (!config.apiKey || config.apiKey.trim() === '') {
+          setError('Client Secret é obrigatório para SarrixPay')
           setSaving(false)
           return
         }
@@ -223,12 +241,13 @@ function AdminGatewayConfig() {
               onChange={(e) => setConfig(prev => ({
                 ...prev,
                 provider: e.target.value,
-                apiUrl: e.target.value === 'nxgate' ? 'https://api.nxgate.com.br' : e.target.value === 'escalecyber' ? 'https://api.escalecyber.com/v1' : 'https://api.gatebox.com.br'
+                apiUrl: defaultGatewayApiUrl(e.target.value)
               }))}
             >
               <option value="gatebox">GATEBOX</option>
               <option value="nxgate">NxGate</option>
               <option value="escalecyber">Escale Cyber</option>
+              <option value="sarrixpay">SarrixPay</option>
             </select>
             <small className="form-hint">
               Selecione qual gateway utilizar para PIX
@@ -333,6 +352,39 @@ function AdminGatewayConfig() {
             </div>
           )}
 
+          {config.provider === 'sarrixpay' && (
+            <>
+              <div className="form-group full-width">
+                <label>
+                  Client ID (SarrixPay) <span className="required">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={config.clientId}
+                  onChange={(e) => setConfig(prev => ({ ...prev, clientId: e.target.value }))}
+                  placeholder="UUID do client (integration)"
+                />
+                <small className="form-hint">
+                  Public integration identifier no painel SarrixPay
+                </small>
+              </div>
+              <div className="form-group full-width">
+                <label>
+                  Client Secret (SarrixPay) <span className="required">*</span>
+                </label>
+                <input
+                  type="password"
+                  value={config.apiKey}
+                  onChange={(e) => setConfig(prev => ({ ...prev, apiKey: e.target.value }))}
+                  placeholder="cs_live_..."
+                />
+                <small className="form-hint">
+                  Secret usado em POST /auth/integrations/token (não envie Bearer nas credenciais)
+                </small>
+              </div>
+            </>
+          )}
+
           <div className="form-group full-width">
             <label>
               URL Base do Webhook <span className="required">*</span>
@@ -354,7 +406,7 @@ function AdminGatewayConfig() {
               type="text"
               value={config.apiUrl}
               onChange={(e) => setConfig(prev => ({ ...prev, apiUrl: e.target.value }))}
-              placeholder={config.provider === 'nxgate' ? 'https://api.nxgate.com.br' : config.provider === 'escalecyber' ? 'https://api.escalecyber.com/v1' : 'https://api.gatebox.com.br'}
+              placeholder={defaultGatewayApiUrl(config.provider)}
             />
             <small className="form-hint">
               URL base da API (geralmente não precisa ser alterada)
@@ -471,6 +523,11 @@ function AdminGatewayConfig() {
               <strong>API Key:</strong> Obtenha no painel do Escale Cyber. Configure o webhook em <code>POST /webhooks</code> apontando para <code>{config.webhookBaseUrl || 'SEU_URL'}/api/webhooks/escalecyber</code>
             </li>
           )}
+          {config.provider === 'sarrixpay' && (
+            <li>
+              <strong>SarrixPay:</strong> OAuth2 (Client ID + Client Secret). Webhooks são cadastrados no painel SarrixPay — use a URL abaixo para receber <code>pix_in.*</code> e <code>pix_out.*</code>.
+            </li>
+          )}
           <li>
             <strong>Webhook URL:</strong> Deve ser uma URL pública acessível (HTTPS em produção)
           </li>
@@ -479,6 +536,8 @@ function AdminGatewayConfig() {
             <ul>
               {config.provider === 'escalecyber' ? (
                 <li>Escale Cyber (único): <code>{config.webhookBaseUrl || 'SEU_URL'}/api/webhooks/escalecyber</code></li>
+              ) : config.provider === 'sarrixpay' ? (
+                <li>SarrixPay (único): <code>{config.webhookBaseUrl || 'SEU_URL'}/api/webhooks/sarrixpay</code></li>
               ) : (
                 <>
                   <li>Depósitos: <code>{config.webhookBaseUrl || 'SEU_URL'}/api/webhooks/pix</code></li>
@@ -488,7 +547,7 @@ function AdminGatewayConfig() {
             </ul>
           </li>
           <li>
-            Configure esses endpoints no painel do {config.provider === 'nxgate' ? 'NxGate' : config.provider === 'escalecyber' ? 'Escale Cyber' : 'GATEBOX'} para receber notificações de pagamento
+            Configure esses endpoints no painel do {config.provider === 'nxgate' ? 'NxGate' : config.provider === 'escalecyber' ? 'Escale Cyber' : config.provider === 'sarrixpay' ? 'SarrixPay' : 'GATEBOX'} para receber notificações de pagamento
           </li>
         </ul>
       </div>

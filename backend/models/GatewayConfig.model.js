@@ -2,10 +2,10 @@ import mongoose from 'mongoose'
 
 const gatewayConfigSchema = new mongoose.Schema(
   {
-    // Provedor: gatebox | nxgate | escalecyber
+    // Provedor: gatebox | nxgate | escalecyber | sarrixpay
     provider: {
       type: String,
-      enum: ['gatebox', 'nxgate', 'escalecyber'],
+      enum: ['gatebox', 'nxgate', 'escalecyber', 'sarrixpay'],
       default: 'gatebox'
     },
     // Gatebox credentials (username/password)
@@ -17,8 +17,8 @@ const gatewayConfigSchema = new mongoose.Schema(
       type: String,
       required: false
     },
-    // NxGate credentials (OAuth2: clientId + clientSecret + hmacSecret)
-    // Escale Cyber usa apenas apiKey (X-API-Key)
+    // NxGate / SarrixPay: clientId + apiKey (client secret OAuth2)
+    // Escale Cyber: apiKey (X-API-Key)
     clientId: {
       type: String,
       required: false
@@ -61,8 +61,8 @@ gatewayConfigSchema.statics.getConfig = async function() {
         provider: 'gatebox',
         username: process.env.GATEBOX_USERNAME || '',
         password: process.env.GATEBOX_PASSWORD || '',
-        clientId: process.env.NXGATE_CLIENT_ID || '',
-        apiKey: process.env.NXGATE_CLIENT_SECRET || process.env.NXGATE_API_KEY || process.env.ESCALECYBER_API_KEY || '',
+        clientId: process.env.NXGATE_CLIENT_ID || process.env.SARRIXPAY_CLIENT_ID || '',
+        apiKey: process.env.NXGATE_CLIENT_SECRET || process.env.NXGATE_API_KEY || process.env.ESCALECYBER_API_KEY || process.env.SARRIXPAY_CLIENT_SECRET || '',
         webhookBaseUrl: process.env.WEBHOOK_BASE_URL || 'http://localhost:5000',
         apiUrl: 'https://api.gatebox.com.br',
         defaultCpf: process.env.GATEBOX_DEFAULT_CPF || '000.000.000-00'

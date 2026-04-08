@@ -53,7 +53,7 @@ router.put('/config', protect, isAdmin, async (req, res) => {
         clientId: clientId || process.env.NXGATE_CLIENT_ID || '',
         apiKey: apiKey || process.env.NXGATE_CLIENT_SECRET || process.env.NXGATE_API_KEY || process.env.ESCALECYBER_API_KEY || '',
         webhookBaseUrl: webhookBaseUrl || process.env.WEBHOOK_BASE_URL || 'http://localhost:5000',
-        apiUrl: apiUrl || (provider === 'nxgate' ? 'https://api.nxgate.com.br' : provider === 'escalecyber' ? 'https://api.escalecyber.com/v1' : 'https://api.gatebox.com.br'),
+        apiUrl: apiUrl || (provider === 'nxgate' ? 'https://api.nxgate.com.br' : provider === 'escalecyber' ? 'https://api.escalecyber.com/v1' : provider === 'sarrixpay' ? 'https://apiv1.sarrixpay.com' : 'https://api.gatebox.com.br'),
         defaultCpf: defaultCpf || process.env.GATEBOX_DEFAULT_CPF || '000.000.000-00'
       })
     }
@@ -126,6 +126,19 @@ router.post('/test', protect, isAdmin, async (req, res) => {
           message: 'API Key não configurada para Escale Cyber'
         })
       }
+    } else if (provider === 'sarrixpay') {
+      if (!config.clientId || config.clientId.trim() === '') {
+        return res.status(400).json({
+          success: false,
+          message: 'Client ID não configurado para SarrixPay'
+        })
+      }
+      if (!config.apiKey || config.apiKey.trim() === '') {
+        return res.status(400).json({
+          success: false,
+          message: 'Client Secret não configurado para SarrixPay'
+        })
+      }
     }
 
     const { realTest } = req.body || {}
@@ -135,7 +148,7 @@ router.post('/test', protect, isAdmin, async (req, res) => {
       const webhookBase = config.webhookBaseUrl || process.env.WEBHOOK_BASE_URL || 'http://localhost:5000'
       const result = await gatewayService.generatePix({
         nome_pagador: 'Teste Admin',
-        documento_pagador: config.provider === 'nxgate' ? '52998224725' : '00000000000',
+        documento_pagador: config.provider === 'nxgate' ? '52998224725' : (config.provider === 'sarrixpay' ? '52998224725' : '00000000000'),
         valor: 10,
         webhook: `${webhookBase}/api/webhooks/pix`,
         externalId: `test_${Date.now()}`,
@@ -145,13 +158,13 @@ router.post('/test', protect, isAdmin, async (req, res) => {
       if (!result.success) {
         return res.status(400).json({
           success: false,
-          message: result.message || `Falha ao chamar a API ${provider === 'nxgate' ? 'NxGate' : provider === 'escalecyber' ? 'Escale Cyber' : 'GATEBOX'}`,
+          message: result.message || `Falha ao chamar a API ${provider === 'nxgate' ? 'NxGate' : provider === 'escalecyber' ? 'Escale Cyber' : provider === 'sarrixpay' ? 'SarrixPay' : 'GATEBOX'}`,
           data: { detail: result.error }
         })
       }
       const data = result.data || {}
       const raw = data?.data || data
-      const hasCode = raw?.key || data?.key || raw?.qrCode || raw?.pixCopyPaste || raw?.copyPaste || raw?.paymentCode || raw?.qr_code || raw?.qrcode || raw?.codigo_pix || data?.qrCode || data?.pixCopyPaste || data?.copyPaste
+      const hasCode = raw?.key || data?.key || raw?.qrCode || raw?.pixCopyPaste || raw?.copyPaste || raw?.paymentCode || raw?.qr_code || raw?.qrcode || raw?.codigo_pix || raw?.br_code || data?.br_code || data?.qrCode || data?.pixCopyPaste || data?.copyPaste
       if (!hasCode) {
         console.warn('Gateway test response (no PIX code found):', JSON.stringify(result.data, null, 2))
         return res.status(400).json({
@@ -173,7 +186,7 @@ router.post('/test', protect, isAdmin, async (req, res) => {
       data: {
         provider: config.provider,
         credentialsConfigured: provider === 'gatebox' ? (config.username && config.password ? 'Sim' : 'Não') : provider === 'escalecyber' ? (config.apiKey ? 'Sim' : 'Não') : (config.clientId && config.apiKey ? 'Sim' : 'Não'),
-        apiKeyConfigured: (provider === 'nxgate' || provider === 'escalecyber') ? (config.apiKey ? 'Sim' : 'Não') : undefined,
+        apiKeyConfigured: (provider === 'nxgate' || provider === 'escalecyber' || provider === 'sarrixpay') ? (config.apiKey ? 'Sim' : 'Não') : undefined,
         webhookBaseUrl: config.webhookBaseUrl,
         apiUrl: config.apiUrl
       }

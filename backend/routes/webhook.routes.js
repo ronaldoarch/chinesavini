@@ -74,7 +74,7 @@ function logWebhook(source, req, extra = {}) {
     method: req.method,
     bodySummary,
     bodyKeys: Object.keys(body),
-    idTransaction: body.externalId || body.idTransaction || body.transactionId || body.transaction_id || body.tx_id || body.tag || body?.transaction?.externalId || body?.invoice?.externalId || body?.data?.idTransaction || body?.data?.tag,
+    idTransaction: body.externalId || body.idTransaction || body.transactionId || body.transaction_id || body.tx_id || body.tag || body?.transaction?.id || body?.reference?.transaction_ref || body?.transaction?.externalId || body?.invoice?.externalId || body?.data?.idTransaction || body?.data?.tag,
     ip: req.ip || req.connection?.remoteAddress,
     ...extra
   }).catch(err => console.error('WebhookLog create error:', err))
@@ -92,8 +92,33 @@ function getIdTransaction(body) {
     body.externalId || body.idTransaction || body.transactionId || body.transaction_id || body.tx_id || body.id || body.tag || body.internalreference || body.magic_id ||
     body?.transaction?.externalId || body?.transaction?.idTransaction || body?.transaction?.transactionId || body?.transaction?.internalreference ||
     body?.invoice?.externalId || body?.invoice?.idTransaction || body?.invoice?.transactionId ||
-    body?.data?.externalId || body?.data?.idTransaction || body?.data?.transactionId || body?.data?.id || body?.data?.tx_id || body?.data?.tag || body?.data?.magic_id || body?.data?.internalreference || body?.data?.withdrawalId
+    body?.data?.externalId || body?.data?.idTransaction || body?.data?.transactionId || body?.data?.id || body?.data?.tx_id || body?.data?.tag || body?.data?.magic_id || body?.data?.internalreference || body?.data?.withdrawalId ||
+    body?.reference?.transaction_ref || body?.transaction?.id
   )
+}
+
+/** Normaliza payload SarrixPay para processDepositWebhook / processWithdrawWebhook (Gatebox-like). */
+function normalizeSarrixPayBody(body) {
+  const ev = (body.event || '').toString().toLowerCase()
+  const b = { ...body }
+  if (ev === 'pix_in.succeeded') {
+    return {
+      ...b,
+      type: 'PIX_PAY_IN',
+      status: 'PAID',
+      data: { ...(b.transaction || {}), worked: true, status: 'succeeded' }
+    }
+  }
+  if (ev === 'pix_in.refunded' || ev === 'pix_in.failed') {
+    return { ...b, type: 'PIX_PAY_IN', status: 'FAILED' }
+  }
+  if (ev === 'pix_out.succeeded') {
+    return { ...b, type: 'PIX_CASHOUT_SUCCESS', status: 'SUCCESS', data: { ...(b.transaction || {}) } }
+  }
+  if (ev === 'pix_out.failed' || ev === 'pix_out.refunded' || ev === 'pix_out.canceled') {
+    return { ...b, type: 'PIX_OUT_FAILURE', status: 'FAILED', message: b.message }
+  }
+  return b
 }
 
 // Tipos Gatebox: PIX_PAY_IN = depósito, PIX_PAY_OUT = saque, PIX_REVERSAL / PIX_REFUND = estorno (reembolso)
@@ -356,6 +381,48 @@ router.post('/', handleEscaleCyberWebhook)
 // @desc    Webhook único Escale Cyber (depósito e saque)
 // @access  Public
 router.post('/escalecyber', handleEscaleCyberWebhook)
+
+// @route   POST /api/webhooks/sarrixpay
+// @desc    Webhook SarrixPay (eventos pix_in.* / pix_out.* normalizados)
+// @access  Public — configure a URL no painel SarrixPay
+async function handleSarrixPayWebhook(req, res) {
+  logWebhook('sarrixpay', req)
+  try {
+    const raw = req.body || {}
+    res.status(200).json({ status: 'received' })
+
+    const idTransaction =
+      raw.transaction?.id ||
+      raw.reference?.transaction_ref ||
+      getIdTransaction(raw)
+    if (!idTransaction) {
+      console.error('Webhook SarrixPay: identificador ausente', JSON.stringify(raw).slice(0, 500))
+      return
+    }
+
+    let transaction = await Transaction.findOne({ idTransaction })
+    if (!transaction) transaction = await Transaction.findOne({ gatewayTxId: idTransaction })
+    if (!transaction) transaction = await Transaction.findOne({ gatewayIds: idTransaction })
+    if (!transaction && /^[a-fA-F0-9]{24}$/.test(String(idTransaction))) {
+      transaction = await Transaction.findById(idTransaction)
+    }
+    if (!transaction) {
+      console.error(`Webhook SarrixPay: Transação não encontrada: ${idTransaction}`)
+      return
+    }
+
+    const body = normalizeSarrixPayBody(raw)
+    if (transaction.type === 'deposit') {
+      await processDepositWebhook(body, transaction)
+    } else {
+      await processWithdrawWebhook(body, transaction)
+    }
+  } catch (error) {
+    console.error('Webhook SarrixPay Error:', error)
+  }
+}
+
+router.post('/sarrixpay', handleSarrixPayWebhook)
 
 // @route   POST /api/webhooks/pix
 // @desc    Webhook for PIX payment confirmation (deposit)

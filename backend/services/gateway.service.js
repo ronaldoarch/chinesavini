@@ -2,9 +2,10 @@ import GatewayConfig from '../models/GatewayConfig.model.js'
 import gateboxService from './gatebox.service.js'
 import nxgateService from './nxgate.service.js'
 import escalecyberService from './escalecyber.service.js'
+import sarrixpayService from './sarrixpay.service.js'
 
 /**
- * Retorna o serviço do gateway configurado (gatebox, nxgate ou escalecyber).
+ * Retorna o serviço do gateway configurado.
  * @returns {Promise<{ generatePix: Function, withdrawPix: Function }>}
  */
 export async function getGatewayService() {
@@ -13,6 +14,7 @@ export async function getGatewayService() {
 
   if (provider === 'nxgate') return nxgateService
   if (provider === 'escalecyber') return escalecyberService
+  if (provider === 'sarrixpay') return sarrixpayService
   return gateboxService
 }
 
