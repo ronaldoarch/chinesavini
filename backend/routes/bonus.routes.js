@@ -22,7 +22,9 @@ router.get('/config', async (req, res) => {
         firstDepositBonusPercent: config.firstDepositBonusPercent,
         depositTiers: config.depositTiers,
         affiliateBonusPercent: config.affiliateBonusPercent,
-        chestTiers: config.chestTiers
+        chestTiers: config.chestTiers,
+        rolloverEnabled: config.rolloverEnabled === true,
+        rolloverMultiplier: config.rolloverMultiplier ?? 1
       }
     })
   } catch (error) {
@@ -70,7 +72,9 @@ router.put(
     body('firstDepositBonusPercent').optional().isFloat({ min: 0, max: 100 }),
     body('depositTiers').optional().isArray(),
     body('affiliateBonusPercent').optional().isFloat({ min: 0, max: 100 }),
-    body('chestTiers').optional().isArray()
+    body('chestTiers').optional().isArray(),
+    body('rolloverEnabled').optional().isBoolean(),
+    body('rolloverMultiplier').optional().isFloat({ min: 0, max: 500 })
   ],
   async (req, res) => {
     try {
@@ -84,7 +88,18 @@ router.put(
       }
 
       const config = await BonusConfig.getConfig()
-      const { minDeposit, maxDeposit, minWithdraw, maxWithdraw, firstDepositBonusPercent, depositTiers, affiliateBonusPercent, chestTiers } = req.body
+      const {
+        minDeposit,
+        maxDeposit,
+        minWithdraw,
+        maxWithdraw,
+        firstDepositBonusPercent,
+        depositTiers,
+        affiliateBonusPercent,
+        chestTiers,
+        rolloverEnabled,
+        rolloverMultiplier
+      } = req.body
 
       if (minDeposit !== undefined) config.minDeposit = minDeposit
       if (maxDeposit !== undefined) config.maxDeposit = maxDeposit
@@ -94,6 +109,8 @@ router.put(
       if (depositTiers !== undefined) config.depositTiers = depositTiers
       if (affiliateBonusPercent !== undefined) config.affiliateBonusPercent = affiliateBonusPercent
       if (chestTiers !== undefined) config.chestTiers = chestTiers
+      if (rolloverEnabled !== undefined) config.rolloverEnabled = Boolean(rolloverEnabled)
+      if (rolloverMultiplier !== undefined) config.rolloverMultiplier = rolloverMultiplier
 
       if (config.minDeposit > config.maxDeposit) {
         return res.status(400).json({

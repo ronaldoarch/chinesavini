@@ -7,6 +7,32 @@ import generateToken from '../utils/generateToken.js'
 import { validatePhone } from '../utils/validatePhone.js'
 import { protect } from '../middleware/auth.middleware.js'
 import facebookService from '../services/facebook.service.js'
+import BonusConfig from '../models/BonusConfig.model.js'
+import { computeWithdrawableBalance } from '../utils/rollover.util.js'
+
+async function buildAuthUserPayload(user) {
+  const bonusConfig = await BonusConfig.getConfig().catch(() => ({}))
+  const rolloverOn = bonusConfig.rolloverEnabled === true
+  return {
+    id: user._id,
+    username: user.username,
+    phone: user.formatPhone(),
+    balance: user.balance,
+    bonusBalance: 0,
+    withdrawableBalance: computeWithdrawableBalance(user, bonusConfig),
+    wageringRequirement: rolloverOn ? Math.max(0, user.wageringRequirement || 0) : 0,
+    rolloverEnabled: rolloverOn,
+    rolloverMultiplier: bonusConfig.rolloverMultiplier ?? 1,
+    referralCode: user.referralCode,
+    vipLevel: user.vipLevel,
+    role: user.role,
+    affiliateDepositBonusPercent: user.affiliateDepositBonusPercent ?? 0,
+    createdAt: user.createdAt,
+    lastLogin: user.lastLogin,
+    totalDeposits: user.totalDeposits,
+    totalWithdrawals: user.totalWithdrawals
+  }
+}
 
 const router = express.Router()
 
@@ -144,19 +170,7 @@ router.post(
         message: 'Cadastro realizado com sucesso!',
         data: {
           token,
-          user: {
-            id: user._id,
-            username: user.username,
-            phone: user.formatPhone(),
-            balance: user.balance,
-            bonusBalance: user.bonusBalance || 0,
-            withdrawableBalance: Math.max(0, (user.balance || 0) - (user.bonusBalance || 0)),
-            referralCode: user.referralCode,
-            vipLevel: user.vipLevel,
-            role: user.role,
-            affiliateDepositBonusPercent: user.affiliateDepositBonusPercent ?? 0,
-            createdAt: user.createdAt
-          }
+          user: await buildAuthUserPayload(user)
         }
       })
     } catch (error) {
@@ -239,19 +253,7 @@ router.post(
         message: 'Login realizado com sucesso!',
         data: {
           token,
-          user: {
-            id: user._id,
-            username: user.username,
-            phone: user.formatPhone(),
-            balance: user.balance,
-            bonusBalance: user.bonusBalance || 0,
-            withdrawableBalance: Math.max(0, (user.balance || 0) - (user.bonusBalance || 0)),
-            referralCode: user.referralCode,
-            vipLevel: user.vipLevel,
-            role: user.role,
-            affiliateDepositBonusPercent: user.affiliateDepositBonusPercent ?? 0,
-            createdAt: user.createdAt
-          }
+          user: await buildAuthUserPayload(user)
         }
       })
     } catch (error) {
@@ -275,22 +277,7 @@ router.get('/me', protect, async (req, res) => {
     res.json({
       success: true,
       data: {
-        user: {
-          id: user._id,
-          username: user.username,
-          phone: user.formatPhone(),
-          balance: user.balance,
-          bonusBalance: user.bonusBalance || 0,
-          withdrawableBalance: Math.max(0, (user.balance || 0) - (user.bonusBalance || 0)),
-          referralCode: user.referralCode,
-          vipLevel: user.vipLevel,
-          role: user.role,
-          totalDeposits: user.totalDeposits,
-          totalWithdrawals: user.totalWithdrawals,
-          affiliateDepositBonusPercent: user.affiliateDepositBonusPercent ?? 0,
-          createdAt: user.createdAt,
-          lastLogin: user.lastLogin
-        }
+        user: await buildAuthUserPayload(user)
       }
     })
   } catch (error) {

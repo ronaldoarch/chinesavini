@@ -67,6 +67,17 @@ const bonusConfigSchema = new mongoose.Schema(
       min: 0,
       max: 100
     },
+    // Rollover: exige apostar (multiplier × valor do bônus) antes de liberar saque
+    rolloverEnabled: {
+      type: Boolean,
+      default: false
+    },
+    rolloverMultiplier: {
+      type: Number,
+      default: 1,
+      min: 0,
+      max: 500
+    },
     // Recompensas dos baús por número de indicados qualificados
     chestTiers: {
       type: [chestTierSchema],

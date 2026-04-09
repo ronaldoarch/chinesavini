@@ -2,6 +2,8 @@ import express from 'express'
 import { protect } from '../middleware/auth.middleware.js'
 import User from '../models/User.model.js'
 import Transaction from '../models/Transaction.model.js'
+import BonusConfig from '../models/BonusConfig.model.js'
+import { wageringToAddFromBonus } from '../utils/rollover.util.js'
 
 const router = express.Router()
 
@@ -176,9 +178,12 @@ router.post('/claim/:level', protect, async (req, res) => {
       })
     }
 
-    // Add bonus to balance (bônus VIP não é sacável)
     user.balance += vipLevel.bonus
-    user.bonusBalance = (user.bonusBalance || 0) + vipLevel.bonus
+    const vipBonusCfg = await BonusConfig.getConfig().catch(() => null)
+    const wrVip = wageringToAddFromBonus(vipBonusCfg, vipLevel.bonus)
+    if (wrVip > 0) {
+      user.wageringRequirement = (user.wageringRequirement || 0) + wrVip
+    }
     if (!user.claimedVipBonuses) {
       user.claimedVipBonuses = []
     }
@@ -272,9 +277,12 @@ router.post('/claim-all', protect, async (req, res) => {
     const totalBonus = claimableLevels.reduce((sum, level) => sum + level.bonus, 0)
     const maxLevel = Math.max(...claimableLevels.map(l => l.level))
 
-    // Add bonuses (bônus VIP não é sacável)
     user.balance += totalBonus
-    user.bonusBalance = (user.bonusBalance || 0) + totalBonus
+    const vipBonusCfgAll = await BonusConfig.getConfig().catch(() => null)
+    const wrVipAll = wageringToAddFromBonus(vipBonusCfgAll, totalBonus)
+    if (wrVipAll > 0) {
+      user.wageringRequirement = (user.wageringRequirement || 0) + wrVipAll
+    }
     if (!user.claimedVipBonuses) {
       user.claimedVipBonuses = []
     }

@@ -1,5 +1,6 @@
 import User from '../models/User.model.js'
 import GameTxnLog from '../models/GameTxnLog.model.js'
+import BonusConfig from '../models/BonusConfig.model.js'
 import igamewinService from '../services/igamewin.service.js'
 import affiliateService from '../services/affiliate.service.js'
 
@@ -86,7 +87,16 @@ export async function handleSeamlessRequest(req, res) {
       }
 
       user.balance = newBalance
-      user.bonusBalance = Math.min(user.bonusBalance || 0, user.balance)
+      const bonusConfig = await BonusConfig.getConfig().catch(() => null)
+      if (bonusConfig?.rolloverEnabled === true && (bonusConfig.rolloverMultiplier ?? 0) > 0) {
+        let stakeReais = 0
+        if (txnType === 'debit' || txnType === 'debit_credit') {
+          stakeReais = betReais
+        }
+        if (stakeReais > 0) {
+          user.wageringRequirement = Math.max(0, (user.wageringRequirement || 0) - stakeReais)
+        }
+      }
       if (deltaReais < 0) {
         user.totalBets = (user.totalBets || 0) + Math.abs(deltaReais)
       }

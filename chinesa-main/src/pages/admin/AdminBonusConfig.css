@@ -30,6 +30,29 @@
   max-width: 200px;
 }
 
+.admin-bonus-config .form-group-wide {
+  max-width: 420px;
+}
+
+.admin-bonus-config .form-group-inline {
+  max-width: none;
+}
+
+.admin-bonus-config .checkbox-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  color: var(--text-white);
+  font-size: var(--font-size-md);
+}
+
+.admin-bonus-config .checkbox-label input[type='checkbox'] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--gold);
+}
+
 .admin-bonus-config .form-group input[type="number"] {
   padding: var(--spacing-sm);
   border-radius: 8px;

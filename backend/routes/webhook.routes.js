@@ -6,6 +6,7 @@ import WebhookLog from '../models/WebhookLog.model.js'
 import AffiliateDeposit from '../models/AffiliateDeposit.model.js'
 import affiliateService from '../services/affiliate.service.js'
 import facebookService from '../services/facebook.service.js'
+import { wageringToAddFromBonus } from '../utils/rollover.util.js'
 
 function calcDepositBonus(amount, isFirstDeposit, bonusConfig) {
   if (!bonusConfig) return 0
@@ -207,7 +208,10 @@ async function processDepositWebhook(body, transaction) {
       transaction.bonusAmount = bonusAmount
       await transaction.save()
       user.balance += depositAmount + bonusAmount
-      user.bonusBalance = (user.bonusBalance || 0) + depositAmount + bonusAmount
+      const wrAdd = wageringToAddFromBonus(bonusConfig, bonusAmount)
+      if (wrAdd > 0) {
+        user.wageringRequirement = (user.wageringRequirement || 0) + wrAdd
+      }
       user.totalDeposits += depositAmount
       await user.save()
       await affiliateService.updateReferralQualification(user._id)
@@ -221,13 +225,16 @@ async function processDepositWebhook(body, transaction) {
     if (user) {
       const depositAmount = transaction.netAmount
       let bonusAmount = transaction.bonusAmount ?? 0
+      const bonusConfig = await BonusConfig.getConfig().catch(() => null)
       if (bonusAmount <= 0) {
-        const bonusConfig = await BonusConfig.getConfig().catch(() => null)
         const isFirstDeposit = user.totalDeposits <= depositAmount
         bonusAmount = calcDepositBonus(depositAmount, isFirstDeposit, bonusConfig)
       }
       user.balance = Math.max(0, (user.balance || 0) - depositAmount - bonusAmount)
-      user.bonusBalance = Math.max(0, (user.bonusBalance || 0) - depositAmount - bonusAmount)
+      const wrSub = wageringToAddFromBonus(bonusConfig, bonusAmount)
+      if (wrSub > 0) {
+        user.wageringRequirement = Math.max(0, (user.wageringRequirement || 0) - wrSub)
+      }
       user.totalDeposits = Math.max(0, (user.totalDeposits || 0) - depositAmount)
       await user.save()
       console.log(`Webhook PIX (estorno): Crédito revertido para usuário ${user._id} - R$ ${depositAmount}`)
@@ -300,7 +307,6 @@ async function processWithdrawWebhook(body, transaction) {
     const shouldRefund = user && (hadBalanceDeducted || (isRefunded && wasPaid))
     if (shouldRefund) {
       user.balance = (user.balance || 0) + transaction.amount
-      user.bonusBalance = Math.min(user.bonusBalance || 0, user.balance)
       if (isRefunded && wasPaid) user.totalWithdrawals = Math.max(0, (user.totalWithdrawals || 0) - (transaction.netAmount || transaction.amount))
       await user.save()
       console.log(`Webhook PIX Withdraw: Reembolso para usuário ${user._id} - R$ ${transaction.amount} (${isRefunded ? 'saque devolvido' : 'saque falhou'}${errorMsg ? ': ' + errorMsg : ''})`)

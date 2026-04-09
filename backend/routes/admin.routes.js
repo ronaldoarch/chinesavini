@@ -305,7 +305,7 @@ router.get('/users/export-pdf', async (req, res) => {
       doc.text(`Username: ${user.username || 'N/A'}`, { indent: 20 })
       doc.text(`Telefone: ${formatPhone(user.phone)}`, { indent: 20 })
       doc.text(`Saldo: ${formatCurrency(user.balance)}`, { indent: 20 })
-      doc.text(`Saldo Bônus: ${formatCurrency(user.bonusBalance)}`, { indent: 20 })
+      doc.text(`Rollover pendente: ${formatCurrency(user.wageringRequirement || 0)}`, { indent: 20 })
       doc.text(`VIP Level: ${user.vipLevel || 0}`, { indent: 20 })
       doc.text(`Status: ${user.isActive ? 'Ativo' : 'Inativo'}`, { indent: 20 })
       doc.text(`Verificado: ${user.isVerified ? 'Sim' : 'Não'}`, { indent: 20 })

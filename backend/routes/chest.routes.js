@@ -4,6 +4,7 @@ import Chest from '../models/Chest.model.js'
 import User from '../models/User.model.js'
 import Referral from '../models/Referral.model.js'
 import BonusConfig from '../models/BonusConfig.model.js'
+import { wageringToAddFromBonus } from '../utils/rollover.util.js'
 
 const router = express.Router()
 
@@ -119,13 +120,16 @@ router.post('/:id/claim', protect, async (req, res) => {
       })
     }
 
-    // Add reward to user balance (baús = bônus, não sacável)
     const user = await User.findById(req.user._id)
     if (chest.type === 'invite') {
       user.affiliateBalance += chest.rewardAmount
     } else {
       user.balance += chest.rewardAmount
-      user.bonusBalance = (user.bonusBalance || 0) + chest.rewardAmount
+      const chestCfg = await BonusConfig.getConfig().catch(() => null)
+      const wrChest = wageringToAddFromBonus(chestCfg, chest.rewardAmount)
+      if (wrChest > 0) {
+        user.wageringRequirement = (user.wageringRequirement || 0) + wrChest
+      }
     }
     await user.save()
 

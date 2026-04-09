@@ -34,6 +34,12 @@ const userSchema = new mongoose.Schema(
       default: 0,
       min: [0, 'Saldo bônus não pode ser negativo']
     },
+    // Com rollover ativo: volume de apostas (R$) restante antes de liberar saques
+    wageringRequirement: {
+      type: Number,
+      default: 0,
+      min: 0
+    },
     isActive: {
       type: Boolean,
       default: true

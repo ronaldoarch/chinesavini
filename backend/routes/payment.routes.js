@@ -6,6 +6,7 @@ import User from '../models/User.model.js'
 import BonusConfig from '../models/BonusConfig.model.js'
 import GatewayConfig from '../models/GatewayConfig.model.js'
 import { getGatewayService } from '../services/gateway.service.js'
+import { computeWithdrawableBalance } from '../utils/rollover.util.js'
 
 const router = express.Router()
 
@@ -228,13 +229,13 @@ router.post(
 
       const { amount, pixKey, pixKeyType, cpf, holderName } = req.body
       const user = req.user
+      const bonusCfg = await BonusConfig.getConfig()
 
       // Limite de saque não se aplica a afiliados com 50% de comissão
       const isAffiliate50Percent = (user.affiliateDepositBonusPercent || 0) >= 50
       if (!isAffiliate50Percent) {
-        const withdrawConfig = await BonusConfig.getConfig()
-        const minWithdraw = withdrawConfig.minWithdraw ?? 20
-        const maxWithdraw = withdrawConfig.maxWithdraw ?? 5000
+        const minWithdraw = bonusCfg.minWithdraw ?? 20
+        const maxWithdraw = bonusCfg.maxWithdraw ?? 5000
         const amountNum = parseFloat(amount)
         if (amountNum < minWithdraw || amountNum > maxWithdraw) {
           return res.status(400).json({
@@ -244,14 +245,20 @@ router.post(
         }
       }
 
-      // Bônus não é sacável - apenas para jogar
-      const withdrawable = Math.max(0, (user.balance || 0) - (user.bonusBalance || 0))
+      const withdrawable = computeWithdrawableBalance(user, bonusCfg)
+      const wrLeft = Math.max(0, user.wageringRequirement || 0)
       if (parseFloat(amount) > withdrawable) {
+        const rolloverMsg =
+          bonusCfg.rolloverEnabled === true && wrLeft > 0
+            ? `Complete o rollover: faltam R$ ${wrLeft.toFixed(2)} em apostas para liberar saques.`
+            : null
         return res.status(400).json({
           success: false,
-          message: withdrawable <= 0
-            ? 'Seu saldo é de bônus e não pode ser sacado. Use nos jogos!'
-            : `Saldo disponível para saque: R$ ${withdrawable.toFixed(2)}. O restante é bônus para jogar.`
+          message:
+            rolloverMsg ||
+            (withdrawable <= 0
+              ? 'Saldo não disponível para saque no momento.'
+              : `Saldo disponível para saque: R$ ${withdrawable.toFixed(2)}.`)
         })
       }
       if (user.balance < parseFloat(amount)) {
@@ -302,7 +309,6 @@ router.post(
 
       // Deduct balance immediately (will be reversed if withdrawal fails via webhook)
       user.balance -= parseFloat(amount)
-      user.bonusBalance = Math.min(user.bonusBalance || 0, user.balance)
       await user.save()
 
       // Update transaction with withdrawal data (NxGate webhook usa idTransaction/tag)

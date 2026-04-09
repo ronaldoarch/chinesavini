@@ -35,6 +35,7 @@ function WithdrawModal({ isOpen, onClose, onBack, initialTab = 'saque', onWithdr
   const [withdrawSuccess, setWithdrawSuccess] = useState('')
   const [minWithdraw, setMinWithdraw] = useState(20)
   const [maxWithdraw, setMaxWithdraw] = useState(5000)
+  const [rolloverEnabled, setRolloverEnabled] = useState(false)
   const [withdrawHistory, setWithdrawHistory] = useState([])
   const [loadingHistory, setLoadingHistory] = useState(false)
   const formatWithdrawAmount = (value) => {
@@ -112,6 +113,7 @@ function WithdrawModal({ isOpen, onClose, onBack, initialTab = 'saque', onWithdr
         const config = response.data
         if (config.minWithdraw != null) setMinWithdraw(Number(config.minWithdraw) || 20)
         if (config.maxWithdraw != null) setMaxWithdraw(Number(config.maxWithdraw) || 5000)
+        setRolloverEnabled(config.rolloverEnabled === true)
       }
     } catch (error) {
       console.error('Error loading withdraw limits:', error)
@@ -429,9 +431,11 @@ function WithdrawModal({ isOpen, onClose, onBack, initialTab = 'saque', onWithdr
                       }).format(user?.withdrawableBalance ?? user?.balance ?? 0)
                     : 'R$ 0,00'}
                 </strong>
-                {(user?.bonusBalance ?? 0) > 0 && (
+                {rolloverEnabled && (user?.wageringRequirement ?? 0) > 0 && (
                   <small className="withdraw-bonus-note">
-                    Bônus ({new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(user.bonusBalance || 0)}) é para jogar, não pode ser sacado.
+                    Rollover: falta apostar{' '}
+                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(user.wageringRequirement || 0)}{' '}
+                    para liberar saques.
                   </small>
                 )}
               </div>

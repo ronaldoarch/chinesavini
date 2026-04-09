@@ -29,7 +29,9 @@ function AdminBonusConfig() {
       { referralsRequired: 500, rewardAmount: 500 },
       { referralsRequired: 1000, rewardAmount: 1088 },
       { referralsRequired: 5000, rewardAmount: 5288 }
-    ]
+    ],
+    rolloverEnabled: false,
+    rolloverMultiplier: 1
   })
 
   useEffect(() => {
@@ -55,7 +57,9 @@ function AdminBonusConfig() {
           affiliateBonusPercent: c.affiliateBonusPercent ?? 0,
           chestTiers: Array.isArray(c.chestTiers) && c.chestTiers.length > 0
             ? c.chestTiers
-            : config.chestTiers
+            : config.chestTiers,
+          rolloverEnabled: c.rolloverEnabled === true,
+          rolloverMultiplier: c.rolloverMultiplier != null ? Number(c.rolloverMultiplier) : 1
         })
       }
     } catch (err) {
@@ -161,7 +165,7 @@ function AdminBonusConfig() {
           Configuração de Bônus
         </h1>
         <p className="section-description">
-          Configure bônus de primeiro depósito, faixas de depósito, bônus de afiliados e recompensas dos baús.
+          Configure bônus de primeiro depósito, faixas de depósito, bônus de afiliados, recompensas dos baús e rollover de saque.
         </p>
       </div>
 
@@ -177,6 +181,40 @@ function AdminBonusConfig() {
           <span>{success}</span>
         </div>
       )}
+
+      <div className="config-section">
+        <h2><i className="fa-solid fa-rotate"></i> Rollover (liberação de saque)</h2>
+        <p className="section-description">
+          Com rollover <strong>desligado</strong>, todo o saldo pode ser sacado (modelo antigo por “saldo bônus” desativado).
+          Com rollover <strong>ligado</strong>, ao receber bônus (depósito, VIP, baús) o jogador precisa apostar o equivalente a{' '}
+          <strong>multiplicador × valor do bônus</strong> em apostas antes de poder sacar. Enquanto houver exigência pendente, o saque fica bloqueado.
+        </p>
+        <div className="form-group form-group-inline">
+          <label className="checkbox-label">
+            <input
+              type="checkbox"
+              checked={config.rolloverEnabled}
+              onChange={(e) => setConfig((prev) => ({ ...prev, rolloverEnabled: e.target.checked }))}
+            />
+            Ativar rollover
+          </label>
+        </div>
+        <div className="form-group form-group-wide">
+          <label>Multiplicador sobre o bônus (ex.: 10 = apostar 10× o valor do bônus)</label>
+          <input
+            type="number"
+            min="0"
+            max="500"
+            step="0.5"
+            value={config.rolloverMultiplier}
+            onChange={(e) =>
+              setConfig((prev) => ({ ...prev, rolloverMultiplier: Number(e.target.value) || 0 }))
+            }
+            disabled={!config.rolloverEnabled}
+          />
+          <small className="section-description">Use 0 para não acrescentar exigência ao creditar bônus (não recomendado com rollover ativo).</small>
+        </div>
+      </div>
 
       <div className="config-section">
         <h2><i className="fa-solid fa-coins"></i> Primeiro depósito</h2>
