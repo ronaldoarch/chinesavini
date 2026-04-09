@@ -3,6 +3,58 @@ import GatewayConfig from '../models/GatewayConfig.model.js'
 
 const DEFAULT_BASE = 'https://apiv1.sarrixpay.com'
 
+/** Base URL: só host (sem /v1 extra) — paths /auth/... e /pix/... são absolutos na doc. */
+function normalizeBaseUrl(url) {
+  if (!url || typeof url !== 'string') return DEFAULT_BASE
+  let u = url.trim().replace(/\/+$/, '')
+  if (!/^https?:\/\//i.test(u)) u = `https://${u}`
+  return u
+}
+
+function summarizeSarrixError(error, context = 'operação') {
+  const status = error.response?.status
+  const data = error.response?.data
+
+  if (status === 502 || status === 503 || status === 504) {
+    return {
+      status,
+      message: 'SarrixPay está temporariamente indisponível (erro no servidor ou Cloudflare). Tente de novo em alguns minutos ou fale com o suporte SarrixPay.',
+      logShort: `HTTP ${status} — origem SarrixPay/Cloudflare indisponível`
+    }
+  }
+
+  if (typeof data === 'string') {
+    const isHtml = /<!DOCTYPE|<html|Bad gateway|502:/i.test(data)
+    if (isHtml) {
+      return {
+        status,
+        message: status === 502
+          ? 'SarrixPay indisponível no momento (502). Aguarde e tente novamente.'
+          : 'Resposta inválida da SarrixPay. Verifique a URL da API ou contate o suporte.',
+        logShort: `HTTP ${status || '?'} — resposta HTML (proxy/erro upstream), len=${data.length}`
+      }
+    }
+    return { status, message: data.slice(0, 280).trim(), logShort: data.slice(0, 120) }
+  }
+
+  if (data && typeof data === 'object') {
+    const msg = data.message || data.detail || data.error
+    const str = typeof msg === 'string' ? msg : JSON.stringify(data)
+    let message = str
+    if (status === 404 || /not found/i.test(str)) {
+      message =
+        'Endpoint não encontrado (404). No admin, use só a URL base (ex.: https://apiv1.sarrixpay.com), sem /v1 ou paths extras, salvo orientação contrária da SarrixPay.'
+    }
+    return { status, message, logShort: str.slice(0, 200) }
+  }
+
+  return {
+    status,
+    message: error.message || `Erro ao comunicar com SarrixPay (${context}).`,
+    logShort: error.message
+  }
+}
+
 function digitsOnly(s) {
   return String(s || '').replace(/\D/g, '')
 }
@@ -45,7 +97,7 @@ class SarrixPayService {
     if (config?.provider === 'sarrixpay' && config.isActive) {
       this.clientId = (config.clientId || '').trim()
       this.clientSecret = (config.apiKey || '').trim()
-      this.baseURL = (config.apiUrl || DEFAULT_BASE).replace(/\/$/, '')
+      this.baseURL = normalizeBaseUrl(config.apiUrl || DEFAULT_BASE)
     } else {
       this.clientId = ''
       this.clientSecret = ''
@@ -141,10 +193,9 @@ class SarrixPayService {
         }
       }
     } catch (error) {
-      const err = error.response?.data || {}
-      console.error('SARRIXPAY Generate PIX Error:', JSON.stringify(err), '| status:', error.response?.status)
-      const msg = err.message || err.error || error.message || 'Erro ao gerar PIX'
-      return { success: false, error: err, message: typeof msg === 'string' ? msg : 'Erro ao gerar PIX' }
+      const { status, message, logShort } = summarizeSarrixError(error, 'gerar PIX')
+      console.error('SARRIXPAY Generate PIX:', logShort, '| status:', status, '| base:', this.baseURL)
+      return { success: false, error: error.response?.data || { message: logShort }, message }
     }
   }
 
@@ -202,11 +253,9 @@ class SarrixPayService {
         }
       }
     } catch (error) {
-      const err = error.response?.data || {}
-      console.error('SARRIXPAY Withdraw PIX Error:', JSON.stringify(err), '| status:', error.response?.status)
-      let message = err.message || err.error || error.message || 'Erro ao processar saque'
-      if (typeof message !== 'string') message = 'Erro ao processar saque'
-      return { success: false, error: err, message }
+      const { status, message, logShort } = summarizeSarrixError(error, 'saque PIX')
+      console.error('SARRIXPAY Withdraw:', logShort, '| status:', status, '| base:', this.baseURL)
+      return { success: false, error: error.response?.data || { message: logShort }, message }
     }
   }
 }

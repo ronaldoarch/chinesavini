@@ -410,6 +410,9 @@ function AdminGatewayConfig() {
             />
             <small className="form-hint">
               URL base da API (geralmente não precisa ser alterada)
+              {config.provider === 'sarrixpay' && (
+                <> SarrixPay: use só o host (ex. <code>https://apiv1.sarrixpay.com</code>) — paths <code>/auth</code> e <code>/pix</code> são adicionados automaticamente. Erro 502 vem da infraestrutura deles; 404 costuma ser URL base com path extra.</>
+              )}
             </small>
           </div>
 
