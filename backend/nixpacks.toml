@@ -1,4 +1,5 @@
 # Coolify/Railway Nixpacks: install mais leve e reproduzível (evita falha silenciosa no `npm i`).
+# Se o build falhar no passo `nix-env` (exit 255 / unpack nixpkgs), use Dockerfile no Coolify em vez de Nixpacks.
 [variables]
 NODE_OPTIONS = "--max-old-space-size=4096"
 

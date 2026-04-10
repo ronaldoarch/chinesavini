@@ -14,7 +14,9 @@ router.get('/', async (req, res) => {
     res.json({
       success: true,
       data: {
-        siteName: config.siteName || 'FORTUNEBET'
+        siteName: config.siteName || 'Plataforma',
+        shareDescription: config.shareDescription || '',
+        shareImageUrl: config.shareImageUrl || ''
       }
     })
   } catch (error) {
@@ -32,18 +34,23 @@ router.get('/', async (req, res) => {
 // @access  Private/Admin
 router.put('/', protect, isAdmin, async (req, res) => {
   try {
-    const { siteName } = req.body
+    const { siteName, shareDescription, shareImageUrl } = req.body
     let config = await SiteConfig.findOne()
     if (!config) {
-      config = await SiteConfig.create({ siteName: siteName != null ? String(siteName).trim() : 'FORTUNEBET' })
-    } else {
-      if (siteName !== undefined) config.siteName = String(siteName).trim() || 'FORTUNEBET'
-      await config.save()
+      config = await SiteConfig.create({})
     }
+    if (siteName !== undefined) config.siteName = String(siteName).trim() || 'Plataforma'
+    if (shareDescription !== undefined) config.shareDescription = String(shareDescription).trim().slice(0, 500)
+    if (shareImageUrl !== undefined) config.shareImageUrl = String(shareImageUrl).trim().slice(0, 500)
+    await config.save()
     res.json({
       success: true,
       message: 'Configuração do site atualizada',
-      data: { siteName: config.siteName }
+      data: {
+        siteName: config.siteName,
+        shareDescription: config.shareDescription || '',
+        shareImageUrl: config.shareImageUrl || ''
+      }
     })
   } catch (error) {
     console.error('Update site config error:', error)

@@ -5,7 +5,7 @@
 }
 
 .admin-site-config-form {
-  max-width: 420px;
+  max-width: 560px;
 }
 
 .admin-site-config-field {
@@ -38,6 +38,38 @@
 .admin-site-config-field input:focus {
   outline: none;
   border-color: var(--gold, #c59728);
+}
+
+.admin-site-config-field textarea {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.3);
+  color: #fff;
+  font-size: 1rem;
+  font-family: inherit;
+  resize: vertical;
+  min-height: 88px;
+}
+
+.admin-site-config-field textarea:focus {
+  outline: none;
+  border-color: var(--gold, #c59728);
+}
+
+.admin-site-config-hint {
+  display: block;
+  margin-top: 6px;
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.admin-site-config-hint code {
+  font-size: 0.85em;
+  background: rgba(0, 0, 0, 0.35);
+  padding: 2px 6px;
+  border-radius: 4px;
 }
 
 .admin-site-config-error {
