@@ -71,9 +71,12 @@ function formatPixKeyForSarrix(rawKey, pixKeyType) {
   if (pixKeyType === 'email') return key.toLowerCase()
   if (pixKeyType === 'phone') {
     const d = digitsOnly(key)
-    if (d.startsWith('55') && d.length >= 12) return d
-    if (d.length === 11) return `55${d}`
-    return d
+    if (!d) return key
+    // E.164 com + (alinhado a Gatebox/Escale / DICT)
+    if (d.startsWith('55') && d.length >= 12) return `+${d}`
+    if (d.length === 11) return `+55${d}`
+    if (d.length >= 10) return `+55${d.slice(-11)}`
+    return `+${d}`
   }
   if (pixKeyType === 'cpf' || pixKeyType === 'cnpj') return digitsOnly(key)
   return key.replace(/\s/g, '').toLowerCase()
