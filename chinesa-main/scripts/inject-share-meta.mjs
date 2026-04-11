@@ -7,13 +7,13 @@
  *   VITE_API_URL          — ex: https://api.seudominio.com/api (com /api no final)
  *   VITE_PUBLIC_SITE_URL  — URL pública do frontend, ex: https://seudominio.com (sem barra final)
  *
+ * og:image aponta para https://API/api/banners/logo-opengraph (302 até a PNG real) para WhatsApp/Meta exibirem a miniatura.
  * Se a API não responder, usa só as env acima + defaults.
  */
 import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
 import { appendOgImageCacheBust } from './og-image-cache-bust.mjs'
-import { resolveAbsoluteOgImage } from './resolve-og-image.mjs'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const root = path.resolve(__dirname, '..')
@@ -34,7 +34,6 @@ async function main() {
   let siteName = 'Plataforma'
   let shareDescription = ''
   let shareImageUrl = ''
-  let logoImagePath = ''
 
   if (apiBase) {
     try {
@@ -52,7 +51,6 @@ async function main() {
         if (d.siteName && String(d.siteName).trim()) siteName = String(d.siteName).trim()
         if (d.shareDescription != null) shareDescription = String(d.shareDescription).trim()
         if (d.shareImageUrl != null) shareImageUrl = String(d.shareImageUrl).trim()
-        if (d.logoImagePath != null) logoImagePath = String(d.logoImagePath).trim()
       } else {
         console.warn('[inject-share-meta] API status', res.status, url)
       }
@@ -68,13 +66,28 @@ async function main() {
     shareDescription ||
     `${siteName} oferece os melhores jogos online. Cadastre-se e jogue com segurança.`
 
+  const apiOrigin = apiBase.replace(/\/$/, '').replace(/\/api\/?$/, '')
+
+  function preferHttps(u) {
+    const s = String(u || '').trim()
+    if (!s) return s
+    if (
+      s.startsWith('http://') &&
+      !/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?\//i.test(s)
+    ) {
+      return `https://${s.slice(7)}`
+    }
+    return s
+  }
+
   let ogImage = ''
   if (shareImageUrl) {
-    ogImage = shareImageUrl
-  } else {
-    const fromLogo = resolveAbsoluteOgImage(logoImagePath, siteUrl, apiBase)
-    if (fromLogo) ogImage = fromLogo
-    else if (siteUrl) ogImage = `${siteUrl}/logo_plataforma.png`
+    ogImage = preferHttps(shareImageUrl)
+  } else if (apiOrigin) {
+    // URL estável: Meta/WhatsApp fazem GET aqui e seguem o 302 até a PNG/JPG real
+    ogImage = `${apiOrigin}/api/banners/logo-opengraph`
+  } else if (siteUrl) {
+    ogImage = `${siteUrl}/logo_plataforma.png`
   }
   ogImage = appendOgImageCacheBust(ogImage)
 

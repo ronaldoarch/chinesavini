@@ -5,8 +5,7 @@
   "main": "index.js",
   "scripts": {
     "dev": "vite",
-    "prebuild": "node scripts/inject-share-meta.mjs",
-    "build": "vite build",
+    "build": "node scripts/inject-share-meta.mjs && vite build",
     "preview": "vite preview"
   },
   "dependencies": {

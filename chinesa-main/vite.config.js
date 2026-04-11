@@ -57,10 +57,13 @@ function metaForHtml(mode) {
     meta.VITE_OG_DESCRIPTION ||
     env.VITE_OG_DESCRIPTION ||
     `${ogTitle} oferece os melhores jogos online. Cadastre-se e jogue com segurança.`
-  let image =
-    meta.VITE_OG_IMAGE ||
-    env.VITE_OG_IMAGE ||
-    (siteUrl ? `${siteUrl}/logo_plataforma.png` : '')
+  let image = meta.VITE_OG_IMAGE || env.VITE_OG_IMAGE || ''
+  if (!image) {
+    const apiBase = (env.VITE_API_URL || '').trim().replace(/\/$/, '')
+    const apiOrigin = apiBase.replace(/\/api\/?$/, '')
+    if (apiOrigin) image = `${apiOrigin}/api/banners/logo-opengraph`
+    else if (siteUrl) image = `${siteUrl}/logo_plataforma.png`
+  }
   image = appendOgImageCacheBust(image)
   return { title, ogTitle, desc, siteUrl, image }
 }

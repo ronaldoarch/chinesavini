@@ -215,6 +215,41 @@ router.delete('/admin/:id', protect, isAdmin, async (req, res) => {
 
 // ============ LOGO ============
 
+// @route   GET /api/banners/logo-opengraph
+// @desc    Redireciona para a imagem da logo ativa (302). WhatsApp/Meta seguem o redirect e exibem a miniatura no link.
+// @access  Public
+router.get('/logo-opengraph', async (req, res) => {
+  try {
+    res.set('Cache-Control', 'private, no-store, max-age=0')
+    const logo = await Logo.getActiveLogo()
+    const fe = (process.env.FRONTEND_URL || process.env.FRONTEND_ORIGIN || '').replace(/\/$/, '')
+    const p = logo?.imageUrl ? String(logo.imageUrl).trim() : ''
+
+    if (!p) {
+      if (fe) return res.redirect(302, `${fe}/logo_plataforma.png`)
+      return res.status(404).type('text/plain').send('Logo não configurada. Defina FRONTEND_URL no backend ou cadastre uma logo.')
+    }
+
+    if (p.startsWith('http://') || p.startsWith('https://')) {
+      return res.redirect(302, p)
+    }
+
+    if (p.startsWith('/uploads')) {
+      return res.redirect(302, p)
+    }
+
+    if (p.startsWith('/')) {
+      if (fe) return res.redirect(302, `${fe}${p}`)
+      return res.redirect(302, p)
+    }
+
+    return res.redirect(302, `/uploads/${encodeURIComponent(p)}`)
+  } catch (error) {
+    console.error('logo-opengraph error:', error)
+    res.status(500).type('text/plain').send('Erro ao resolver logo')
+  }
+})
+
 // @route   GET /api/banners/logo
 // @desc    Get active logo (public)
 // @access  Public
