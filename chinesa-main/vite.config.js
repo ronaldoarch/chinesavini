@@ -79,13 +79,13 @@ export default defineConfig(({ mode }) => ({
           (ctx.filename && ctx.filename.includes('admin.html'))
         const m = metaForHtml(mode)
         const htmlTitle = isAdmin ? `Admin — ${m.title}` : m.title
-        let out = html.replace(/%HTML_TITLE%/g, escapeAttr(htmlTitle))
+        let out = html.replace(/__META_HTML_TITLE__/g, escapeAttr(htmlTitle))
         if (!isAdmin) {
           out = out
-            .replace(/%OG_TITLE%/g, escapeAttr(m.ogTitle))
-            .replace(/%OG_DESCRIPTION%/g, escapeAttr(m.desc))
-            .replace(/%OG_URL%/g, escapeAttr(m.siteUrl))
-            .replace(/%OG_IMAGE%/g, escapeAttr(m.image))
+            .replace(/__META_OG_TITLE__/g, escapeAttr(m.ogTitle))
+            .replace(/__META_OG_DESCRIPTION__/g, escapeAttr(m.desc))
+            .replace(/__META_OG_URL__/g, escapeAttr(m.siteUrl))
+            .replace(/__META_OG_IMAGE__/g, escapeAttr(m.image))
         }
         return out
       }
