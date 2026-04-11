@@ -446,6 +446,14 @@ class ApiService {
     })
   }
 
+  /** Logo por URL absoluta (alternativa ao upload de arquivo) */
+  async setLogoFromUrl({ imageUrl, altText }) {
+    return this.request('/banners/admin/logo', {
+      method: 'PUT',
+      body: JSON.stringify({ imageUrl, altText })
+    })
+  }
+
   // Tracking (admin): webhooks e eventos Facebook
   async getTrackingWebhooks(params = {}) {
     const q = new URLSearchParams(params).toString()

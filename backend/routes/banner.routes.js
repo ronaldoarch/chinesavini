@@ -235,6 +235,54 @@ router.get('/logo', async (req, res) => {
   }
 })
 
+// @route   PUT /api/banners/admin/logo
+// @desc    Definir logo por URL absoluta (https://...) — alternativa ao upload
+// @access  Private/Admin
+router.put('/admin/logo', protect, isAdmin, async (req, res) => {
+  try {
+    const imageUrl = typeof req.body?.imageUrl === 'string' ? req.body.imageUrl.trim() : ''
+    if (!imageUrl) {
+      return res.status(400).json({
+        success: false,
+        message: 'Informe imageUrl (URL https:// da imagem)'
+      })
+    }
+    if (!/^https?:\/\//i.test(imageUrl)) {
+      return res.status(400).json({
+        success: false,
+        message: 'A URL da logo deve começar com http:// ou https://'
+      })
+    }
+    if (imageUrl.length > 500) {
+      return res.status(400).json({
+        success: false,
+        message: 'URL muito longa'
+      })
+    }
+    const altText = typeof req.body?.altText === 'string' ? req.body.altText.trim().slice(0, 120) : 'Logo'
+
+    await Logo.updateMany({}, { isActive: false })
+    const logo = await Logo.create({
+      imageUrl,
+      altText: altText || 'Logo',
+      isActive: true
+    })
+
+    res.json({
+      success: true,
+      message: 'Logo atualizada (URL)',
+      data: { logo }
+    })
+  } catch (error) {
+    console.error('Set logo URL error:', error)
+    res.status(500).json({
+      success: false,
+      message: 'Erro ao salvar logo por URL',
+      error: error.message
+    })
+  }
+})
+
 // @route   POST /api/banners/admin/logo
 // @desc    Upload/Update logo (admin)
 // @access  Private/Admin

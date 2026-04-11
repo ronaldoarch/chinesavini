@@ -39,6 +39,7 @@ function AdminBanners() {
   })
   const [bannerImage, setBannerImage] = useState(null)
   const [logoImage, setLogoImage] = useState(null)
+  const [logoUrlText, setLogoUrlText] = useState('')
   const [logoAltText, setLogoAltText] = useState('Logo')
 
   useEffect(() => {
@@ -121,33 +122,62 @@ function AdminBanners() {
     }
   }
 
+  const openLogoModal = () => {
+    if (logo?.imageUrl && /^https?:\/\//i.test(logo.imageUrl)) {
+      setLogoUrlText(logo.imageUrl)
+    } else {
+      setLogoUrlText('')
+    }
+    setLogoImage(null)
+    setShowLogoModal(true)
+  }
+
+  const copyLogoPublicUrl = async () => {
+    if (!logo?.imageUrl) return
+    const url = getImageUrl(logo.imageUrl)
+    try {
+      await navigator.clipboard.writeText(url)
+      alert('URL copiada!')
+    } catch {
+      prompt('Copie a URL:', url)
+    }
+  }
+
   const handleLogoSubmit = async (e) => {
     e.preventDefault()
-    if (!logoImage) {
-      alert('Selecione uma imagem para a logo')
+    const urlTrim = logoUrlText.trim()
+    if (!logoImage && !urlTrim) {
+      alert('Selecione um arquivo ou cole uma URL https:// da imagem')
       return
     }
 
     try {
       setLoading(true)
-      const formData = new FormData()
-      formData.append('logo', logoImage)
-      formData.append('altText', logoAltText)
-
-      const response = await api.uploadLogo(formData)
+      let response
+      if (logoImage) {
+        const formData = new FormData()
+        formData.append('logo', logoImage)
+        formData.append('altText', logoAltText)
+        response = await api.uploadLogo(formData)
+      } else {
+        response = await api.setLogoFromUrl({
+          imageUrl: urlTrim,
+          altText: logoAltText
+        })
+      }
       if (response.success) {
         await loadLogo()
         setShowLogoModal(false)
         setLogoImage(null)
+        setLogoUrlText('')
         alert('Logo atualizada com sucesso!')
-        // Reload page to update header
         window.location.reload()
       } else {
-        alert(response.message || 'Erro ao fazer upload da logo')
+        alert(response.message || 'Erro ao salvar logo')
       }
     } catch (error) {
-      console.error('Error uploading logo:', error)
-      alert('Erro ao fazer upload da logo. Verifique se a imagem é válida.')
+      console.error('Error saving logo:', error)
+      alert(error.message || 'Erro ao salvar logo.')
     } finally {
       setLoading(false)
     }
@@ -212,7 +242,7 @@ function AdminBanners() {
         <div className="banners-section">
           <div className="section-header">
             <h2>Logo</h2>
-            <button className="btn-primary" onClick={() => setShowLogoModal(true)}>
+            <button className="btn-primary" onClick={openLogoModal}>
               <i className="fa-solid fa-upload"></i>
               {logo ? 'Atualizar Logo' : 'Adicionar Logo'}
             </button>
@@ -221,6 +251,19 @@ function AdminBanners() {
             <div className="logo-preview">
               <img src={getImageUrl(logo.imageUrl)} alt={logo.altText} />
               <p>Logo atual</p>
+              <div className="logo-public-url-box">
+                <label>URL pública da logo</label>
+                <p className="logo-public-url-hint">
+                  Usada no site, favicon e preview de link (WhatsApp). <strong>Não</strong> é variável no Coolify — o
+                  frontend busca na API no build.
+                </p>
+                <div className="logo-url-row">
+                  <input type="text" readOnly value={getImageUrl(logo.imageUrl)} className="logo-url-input" />
+                  <button type="button" className="btn-copy-url" onClick={copyLogoPublicUrl}>
+                    <i className="fa-regular fa-copy"></i> Copiar
+                  </button>
+                </div>
+              </div>
             </div>
           )}
         </div>
@@ -300,12 +343,14 @@ function AdminBanners() {
             </div>
             <form onSubmit={handleLogoSubmit} className="modal-body">
               <div className="form-group">
-                <label>Imagem da Logo *</label>
+                <label>Enviar arquivo (PNG, JPG, WebP…)</label>
                 <input
                   type="file"
                   accept="image/*"
-                  onChange={(e) => setLogoImage(e.target.files[0])}
-                  required
+                  onChange={(e) => {
+                    setLogoImage(e.target.files[0] || null)
+                    if (e.target.files[0]) setLogoUrlText('')
+                  }}
                 />
                 {logoImage && (
                   <div className="image-preview">
@@ -317,6 +362,19 @@ function AdminBanners() {
                     <img src={getImageUrl(logo.imageUrl)} alt="Logo atual" />
                   </div>
                 )}
+              </div>
+              <div className="form-group logo-url-or">
+                <label>Ou URL da imagem (https://…)</label>
+                <input
+                  type="url"
+                  value={logoUrlText}
+                  onChange={(e) => {
+                    setLogoUrlText(e.target.value)
+                    if (e.target.value.trim()) setLogoImage(null)
+                  }}
+                  placeholder="https://seudominio.com/logo.png"
+                />
+                <p className="image-note">Use arquivo <strong>ou</strong> URL — um dos dois para salvar.</p>
               </div>
               <div className="form-group">
                 <label>Texto Alternativo</label>
@@ -331,7 +389,7 @@ function AdminBanners() {
                 <button type="button" onClick={() => setShowLogoModal(false)}>
                   Cancelar
                 </button>
-                <button type="submit" disabled={loading || !logoImage}>
+                <button type="submit" disabled={loading || (!logoImage && !logoUrlText.trim())}>
                   {loading ? 'Salvando...' : 'Salvar Logo'}
                 </button>
               </div>

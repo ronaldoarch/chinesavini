@@ -63,6 +63,70 @@
   margin: 0;
 }
 
+.logo-public-url-box {
+  width: 100%;
+  max-width: 640px;
+  margin-top: var(--spacing-md);
+  text-align: left;
+}
+
+.logo-public-url-box > label {
+  display: block;
+  color: var(--gold);
+  font-weight: 600;
+  margin-bottom: 6px;
+  font-size: 14px;
+}
+
+.logo-public-url-hint {
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 12px;
+  line-height: 1.45;
+  margin: 0 0 10px 0;
+}
+
+.logo-url-row {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.logo-url-input {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 12px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(0, 0, 0, 0.35);
+  color: #fff;
+  font-size: 12px;
+}
+
+.btn-copy-url {
+  flex-shrink: 0;
+  padding: 10px 14px;
+  border-radius: 6px;
+  border: 1px solid rgba(197, 151, 40, 0.5);
+  background: rgba(197, 151, 40, 0.15);
+  color: var(--gold);
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.btn-copy-url:hover {
+  background: rgba(197, 151, 40, 0.28);
+}
+
+.logo-url-or {
+  margin-top: 8px;
+  padding-top: var(--spacing-md);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
 .banners-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
