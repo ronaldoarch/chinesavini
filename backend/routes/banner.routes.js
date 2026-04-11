@@ -31,6 +31,47 @@ const storage = multer.diskStorage({
   }
 })
 
+const publicAssetsDir = path.join(__dirname, '../../chinesa-main/public')
+const MAX_OG_IMAGE_BYTES = 6 * 1024 * 1024
+
+function setOgImageResponseHeaders(res) {
+  res.set('Cross-Origin-Resource-Policy', 'cross-origin')
+  res.set('Access-Control-Allow-Origin', '*')
+  // Cache curto: crawlers podem guardar; ainda permite trocar logo sem esperar dias
+  res.set('Cache-Control', 'public, max-age=120, s-maxage=120')
+}
+
+async function tryProxyImageToResponse(imageUrl, res) {
+  const ac = new AbortController()
+  const timer = setTimeout(() => ac.abort(), 15000)
+  try {
+    const r = await fetch(imageUrl, {
+      redirect: 'follow',
+      signal: ac.signal,
+      headers: {
+        'User-Agent':
+          'facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)',
+        Accept: 'image/*'
+      }
+    })
+    clearTimeout(timer)
+    if (!r.ok) return false
+    const cl = r.headers.get('content-length')
+    if (cl && parseInt(cl, 10) > MAX_OG_IMAGE_BYTES) return false
+    const ct = r.headers.get('content-type') || ''
+    if (!ct.startsWith('image/')) return false
+    const buf = Buffer.from(await r.arrayBuffer())
+    if (buf.length > MAX_OG_IMAGE_BYTES) return false
+    setOgImageResponseHeaders(res)
+    res.set('Content-Type', ct)
+    res.send(buf)
+    return true
+  } catch {
+    clearTimeout(timer)
+    return false
+  }
+}
+
 const upload = multer({
   storage: storage,
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
@@ -216,34 +257,64 @@ router.delete('/admin/:id', protect, isAdmin, async (req, res) => {
 // ============ LOGO ============
 
 // @route   GET /api/banners/logo-opengraph
-// @desc    Redireciona para a imagem da logo ativa (302). WhatsApp/Meta seguem o redirect e exibem a miniatura no link.
+// @desc    Imagem da logo para og:image. Responde 200 com bytes (WhatsApp costuma ignorar 302 cross-domain).
 // @access  Public
 router.get('/logo-opengraph', async (req, res) => {
   try {
-    res.set('Cache-Control', 'private, no-store, max-age=0')
     const logo = await Logo.getActiveLogo()
     const fe = (process.env.FRONTEND_URL || process.env.FRONTEND_ORIGIN || '').replace(/\/$/, '')
     const p = logo?.imageUrl ? String(logo.imageUrl).trim() : ''
 
-    if (!p) {
-      if (fe) return res.redirect(302, `${fe}/logo_plataforma.png`)
-      return res.status(404).type('text/plain').send('Logo não configurada. Defina FRONTEND_URL no backend ou cadastre uma logo.')
+    const sendLocalIfExists = (absPath) => {
+      const resolved = path.resolve(absPath)
+      if (!resolved.startsWith(path.resolve(uploadsDir)) && !resolved.startsWith(path.resolve(publicAssetsDir))) {
+        return false
+      }
+      if (!fs.existsSync(resolved)) return false
+      setOgImageResponseHeaders(res)
+      res.sendFile(resolved)
+      return true
     }
 
-    if (p.startsWith('http://') || p.startsWith('https://')) {
-      return res.redirect(302, p)
-    }
-
+    // Arquivo em /uploads no disco da API
     if (p.startsWith('/uploads')) {
+      const safe = path.basename(p.replace(/^\/uploads\/?/, ''))
+      if (safe && safe !== '.' && safe !== '..') {
+        if (sendLocalIfExists(path.join(uploadsDir, safe))) return
+      }
+    }
+
+    // URL absoluta: proxy 200 (fallback 302)
+    if (p.startsWith('http://') || p.startsWith('https://')) {
+      if (await tryProxyImageToResponse(p, res)) return
       return res.redirect(302, p)
     }
 
+    // Caminho tipo /logo_plataforma.png — repo (dev) ou cópia no servidor
     if (p.startsWith('/')) {
-      if (fe) return res.redirect(302, `${fe}${p}`)
+      const rel = p.replace(/^\//, '')
+      if (rel && !rel.includes('..')) {
+        if (sendLocalIfExists(path.join(publicAssetsDir, rel))) return
+      }
+      if (fe) {
+        if (await tryProxyImageToResponse(`${fe}${p}`, res)) return
+        return res.redirect(302, `${fe}${p}`)
+      }
       return res.redirect(302, p)
     }
 
-    return res.redirect(302, `/uploads/${encodeURIComponent(p)}`)
+    // Só nome de arquivo
+    if (p) {
+      const safe = path.basename(p)
+      if (safe && sendLocalIfExists(path.join(uploadsDir, safe))) return
+    }
+
+    if (fe) {
+      if (await tryProxyImageToResponse(`${fe}/logo_plataforma.png`, res)) return
+      return res.redirect(302, `${fe}/logo_plataforma.png`)
+    }
+
+    return res.status(404).type('text/plain').send('Logo não configurada. Defina FRONTEND_URL no backend ou cadastre uma logo.')
   } catch (error) {
     console.error('logo-opengraph error:', error)
     res.status(500).type('text/plain').send('Erro ao resolver logo')
