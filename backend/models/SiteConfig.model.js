@@ -15,7 +15,7 @@ const siteConfigSchema = new mongoose.Schema(
       default: '',
       maxlength: [500, 'Descrição muito longa']
     },
-    // URL absoluta https://... da imagem OG (mín. ~300px recomendado). Vazio = usa /logo_plataforma.png + URL do site no build
+    // URL absoluta opcional para og:image; vazio = build usa logo ativa (GET /api/site-config logoImagePath)
     shareImageUrl: {
       type: String,
       trim: true,

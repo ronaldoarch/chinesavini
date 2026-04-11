@@ -69,10 +69,14 @@ function AdminSiteConfig() {
 
       <p className="admin-site-config-desc">
         O <strong>título da aba</strong> é aplicado pelo site em tempo real. O <strong>cartão de link</strong> (WhatsApp,
-        Telegram, Facebook) vem do HTML gerado no <strong>build</strong>: configure o deploy para rodar{' '}
-        <code>npm run build</code> com <code>VITE_API_URL</code> e <code>VITE_PUBLIC_SITE_URL</code>, e faça um redeploy
-        depois de alterar os textos abaixo. Imagem padrão do preview:{' '}
-        <code>/logo_plataforma.png</code> na raiz do site, se não informar URL abaixo.
+        Telegram, Facebook) vem do HTML gerado no <strong>build</strong>: configure <code>VITE_API_URL</code> e{' '}
+        <code>VITE_PUBLIC_SITE_URL</code>, rode <code>npm run build</code> e redeploy. A <strong>imagem do preview</strong>{' '}
+        usa automaticamente a <strong>logo ativa</strong> (Admin → Banners &amp; Logo). A URL manual abaixo só vale se
+        quiser <strong>substituir</strong> essa logo no compartilhamento. Se o WhatsApp ainda mostrar preview velho, use o{' '}
+        <a href="https://developers.facebook.com/tools/debug/" target="_blank" rel="noopener noreferrer">
+          Depurador de compartilhamento da Meta
+        </a>{' '}
+        na URL do site e clique em &quot;Buscar novamente&quot;.
       </p>
 
       {loading ? (
@@ -119,18 +123,19 @@ function AdminSiteConfig() {
           <div className="admin-site-config-field">
             <label htmlFor="shareImageUrl">
               <i className="fa-solid fa-image"></i>
-              URL da imagem do preview (https://… recomendado, ~1200×630 ou quadrada)
+              URL da imagem do preview (opcional — sobrescreve a logo do admin)
             </label>
             <input
               id="shareImageUrl"
               type="url"
-              placeholder="https://seudominio.com/assets/og-banner.png"
+              placeholder="Vazio = logo de Banners & Logo automaticamente"
               maxLength={500}
               value={shareImageUrl}
               onChange={(e) => setShareImageUrl(e.target.value)}
             />
             <span className="admin-site-config-hint">
-              Deixe vazio para usar <code>https://SEU_DOMÍNIO/logo_plataforma.png</code> no build.
+              Vazio: o build usa a logo cadastrada (upload fica em <code>/uploads/…</code> na API; padrão{' '}
+              <code>/logo_plataforma.png</code> no site).
             </span>
           </div>
 

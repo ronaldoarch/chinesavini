@@ -12,6 +12,8 @@
 import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
+import { appendOgImageCacheBust } from './og-image-cache-bust.mjs'
+import { resolveAbsoluteOgImage } from './resolve-og-image.mjs'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const root = path.resolve(__dirname, '..')
@@ -32,6 +34,7 @@ async function main() {
   let siteName = 'Plataforma'
   let shareDescription = ''
   let shareImageUrl = ''
+  let logoImagePath = ''
 
   if (apiBase) {
     try {
@@ -49,6 +52,7 @@ async function main() {
         if (d.siteName && String(d.siteName).trim()) siteName = String(d.siteName).trim()
         if (d.shareDescription != null) shareDescription = String(d.shareDescription).trim()
         if (d.shareImageUrl != null) shareImageUrl = String(d.shareImageUrl).trim()
+        if (d.logoImagePath != null) logoImagePath = String(d.logoImagePath).trim()
       } else {
         console.warn('[inject-share-meta] API status', res.status, url)
       }
@@ -63,9 +67,16 @@ async function main() {
   const ogDesc =
     shareDescription ||
     `${siteName} oferece os melhores jogos online. Cadastre-se e jogue com segurança.`
-  const ogImage =
-    shareImageUrl ||
-    (siteUrl ? `${siteUrl}/logo_plataforma.png` : '')
+
+  let ogImage = ''
+  if (shareImageUrl) {
+    ogImage = shareImageUrl
+  } else {
+    const fromLogo = resolveAbsoluteOgImage(logoImagePath, siteUrl, apiBase)
+    if (fromLogo) ogImage = fromLogo
+    else if (siteUrl) ogImage = `${siteUrl}/logo_plataforma.png`
+  }
+  ogImage = appendOgImageCacheBust(ogImage)
 
   const lines = [
     `VITE_HTML_TITLE=${escapeEnvValue(siteName)}`,
@@ -77,7 +88,7 @@ async function main() {
 
   const out = path.join(root, '.env.meta.generated')
   fs.writeFileSync(out, `${lines.join('\n')}\n`, 'utf8')
-  console.log('[inject-share-meta] OK →', out)
+  console.log('[inject-share-meta] OK →', out, '| og:image →', ogImage || '(vazio)')
 }
 
 main().catch((e) => {

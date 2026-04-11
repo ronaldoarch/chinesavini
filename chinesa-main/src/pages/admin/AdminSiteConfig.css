@@ -2,6 +2,12 @@
   color: rgba(255, 255, 255, 0.85);
   margin-bottom: 1.5rem;
   font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.admin-site-config-desc a {
+  color: var(--gold, #c59728);
+  text-decoration: underline;
 }
 
 .admin-site-config-form {

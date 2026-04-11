@@ -2,6 +2,7 @@ import express from 'express'
 import { protect } from '../middleware/auth.middleware.js'
 import { isAdmin } from '../middleware/admin.middleware.js'
 import SiteConfig from '../models/SiteConfig.model.js'
+import Logo from '../models/Logo.model.js'
 
 const router = express.Router()
 
@@ -11,12 +12,20 @@ const router = express.Router()
 router.get('/', async (req, res) => {
   try {
     const config = await SiteConfig.getConfig()
+    let logoImagePath = ''
+    try {
+      const logo = await Logo.getActiveLogo()
+      logoImagePath = (logo?.imageUrl || '').trim()
+    } catch (_) {
+      /* ignore */
+    }
     res.json({
       success: true,
       data: {
         siteName: config.siteName || 'Plataforma',
         shareDescription: config.shareDescription || '',
-        shareImageUrl: config.shareImageUrl || ''
+        shareImageUrl: config.shareImageUrl || '',
+        logoImagePath
       }
     })
   } catch (error) {

@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react'
 import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
+import { appendOgImageCacheBust } from './scripts/og-image-cache-bust.mjs'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -56,10 +57,11 @@ function metaForHtml(mode) {
     meta.VITE_OG_DESCRIPTION ||
     env.VITE_OG_DESCRIPTION ||
     `${ogTitle} oferece os melhores jogos online. Cadastre-se e jogue com segurança.`
-  const image =
+  let image =
     meta.VITE_OG_IMAGE ||
     env.VITE_OG_IMAGE ||
     (siteUrl ? `${siteUrl}/logo_plataforma.png` : '')
+  image = appendOgImageCacheBust(image)
   return { title, ogTitle, desc, siteUrl, image }
 }
 
