@@ -59,6 +59,28 @@ function digitsOnly(s) {
   return String(s || '').replace(/\D/g, '')
 }
 
+/**
+ * ID da cobrança PIX IN retornado pela API (o webhook envia o mesmo em transaction.id / reference.transaction_ref).
+ * A doc nem sempre usa transaction_id; costuma vir em id ou transaction.id.
+ */
+function extractSarrixPixInTransactionId(r) {
+  if (!r || typeof r !== 'object') return null
+  const id =
+    r.transaction_id ||
+    r.provider_order ||
+    r.id ||
+    r.transaction?.id ||
+    r.charge_id ||
+    r.charge?.id ||
+    r.data?.transaction_id ||
+    r.data?.id ||
+    r.data?.transaction?.id ||
+    r.result?.transaction_id ||
+    r.result?.id
+  if (id == null || id === '') return null
+  return String(id)
+}
+
 function mapPixKeyTypeToSarrix(tipoChave) {
   const t = (tipoChave || 'CPF').toString().toUpperCase()
   const map = { CPF: 'cpf', CNPJ: 'cnpj', PHONE: 'phone', EMAIL: 'email', RANDOM: 'random' }
@@ -177,7 +199,13 @@ class SarrixPayService {
       const qr = r.qr_code || {}
       const brCode = qr.br_code || r.br_code
       const payUrl = qr.pay_url || r.pay_url
-      const txId = r.transaction_id || r.provider_order
+      const txId = extractSarrixPixInTransactionId(r) || extractSarrixPixInTransactionId(qr)
+      if (!txId) {
+        console.warn(
+          'SARRIXPAY: resposta de /pix/in/charges sem ID de transação conhecido; webhook pode não casar. Keys:',
+          Object.keys(r).join(',')
+        )
+      }
 
       return {
         success: true,
@@ -243,7 +271,10 @@ class SarrixPayService {
       })
 
       const r = response.data || {}
-      const txId = r.transaction_id || r.provider_order || data.externalId
+      const txId =
+        extractSarrixPixInTransactionId(r) ||
+        r.provider_order ||
+        data.externalId
 
       return {
         success: true,

@@ -65,8 +65,11 @@ router.post(
       }
       const user = req.user
 
+      const gatewayCfg = await GatewayConfig.getConfig()
+      const gwProvider = gatewayCfg?.provider?.toLowerCase() || ''
       const webhookBase = await getWebhookBaseUrl()
-      const webhookUrl = `${webhookBase}/api/webhooks/pix`
+      const webhookPath = gwProvider === 'sarrixpay' ? '/api/webhooks/sarrixpay' : '/api/webhooks/pix'
+      const webhookUrl = `${webhookBase}${webhookPath}`
 
       // Create transaction record
       const transaction = await Transaction.create({
@@ -110,7 +113,6 @@ router.post(
         transaction._id.toString()
       ].filter(Boolean)
       const uniqueIds = [...new Set(ids)]
-      const gwProvider = (await GatewayConfig.getConfig()).provider?.toLowerCase()
       if (gwProvider === 'sarrixpay') {
         uniqueIds.push(`deposit-${transaction._id.toString()}`)
       }

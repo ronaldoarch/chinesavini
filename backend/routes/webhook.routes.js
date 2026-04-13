@@ -179,6 +179,7 @@ async function processDepositWebhook(body, transaction) {
   // Gatebox, NxGate, Escale Cyber: status pode estar em body.status ou body.data.status
   const rawStatus = (status ?? body.status ?? webhookData?.status ?? body?.invoice?.status ?? '').toString().toUpperCase()
   const rawType = (type ?? body.type ?? data?.type ?? body?.invoice?.type ?? '').toString().toUpperCase()
+  const rawEvent = (body.event ?? '').toString().toLowerCase()
   let paymentStatus = 'pending'
   // NxGate exige data.worked === true (https://nxgate-api.readme.io/reference/webhook_cashin_paid)
   const worked = webhookData?.worked === true || webhookData?.worked === 'true'
@@ -187,7 +188,9 @@ async function processDepositWebhook(body, transaction) {
   if (
     (rawType.includes('PAID') || rawType === 'QR_CODE_COPY_AND_PASTE_PAID' ||
     rawStatus === 'PAID' || rawStatus === 'PAYED' || rawStatus === 'CONFIRMED' ||
-    rawStatus === 'PAYMENT_CONFIRMED' || rawStatus === 'SUCCESS' || rawStatus === 'COMPLETED' || rawStatus === 'APPROVED') &&
+    rawStatus === 'PAYMENT_CONFIRMED' || rawStatus === 'SUCCESS' || rawStatus === 'COMPLETED' || rawStatus === 'APPROVED' ||
+    rawStatus === 'SUCCEEDED' ||
+    rawEvent === 'pix_in.succeeded') &&
     canCredit
   ) {
     paymentStatus = 'paid'
