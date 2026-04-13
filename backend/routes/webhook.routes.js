@@ -6,7 +6,7 @@ import WebhookLog from '../models/WebhookLog.model.js'
 import AffiliateDeposit from '../models/AffiliateDeposit.model.js'
 import affiliateService from '../services/affiliate.service.js'
 import facebookService from '../services/facebook.service.js'
-import { wageringToAddFromBonus } from '../utils/rollover.util.js'
+import { wageringToAddFromRolloverBase } from '../utils/rollover.util.js'
 
 function calcDepositBonus(amount, isFirstDeposit, bonusConfig) {
   if (!bonusConfig) return 0
@@ -208,7 +208,7 @@ async function processDepositWebhook(body, transaction) {
       transaction.bonusAmount = bonusAmount
       await transaction.save()
       user.balance += depositAmount + bonusAmount
-      const wrAdd = wageringToAddFromBonus(bonusConfig, bonusAmount)
+      const wrAdd = wageringToAddFromRolloverBase(bonusConfig, depositAmount)
       if (wrAdd > 0) {
         user.wageringRequirement = (user.wageringRequirement || 0) + wrAdd
       }
@@ -231,7 +231,7 @@ async function processDepositWebhook(body, transaction) {
         bonusAmount = calcDepositBonus(depositAmount, isFirstDeposit, bonusConfig)
       }
       user.balance = Math.max(0, (user.balance || 0) - depositAmount - bonusAmount)
-      const wrSub = wageringToAddFromBonus(bonusConfig, bonusAmount)
+      const wrSub = wageringToAddFromRolloverBase(bonusConfig, depositAmount)
       if (wrSub > 0) {
         user.wageringRequirement = Math.max(0, (user.wageringRequirement || 0) - wrSub)
       }

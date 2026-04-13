@@ -67,7 +67,7 @@ const bonusConfigSchema = new mongoose.Schema(
       min: 0,
       max: 100
     },
-    // Rollover: exige apostar (multiplier × valor do bônus) antes de liberar saque
+    // Rollover: exige apostar (multiplier × valor do depósito no PIX; VIP/baú usam o valor creditado)
     rolloverEnabled: {
       type: Boolean,
       default: false
