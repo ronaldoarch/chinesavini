@@ -11,7 +11,7 @@ const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 import authRoutes from './routes/auth.routes.js'
 import paymentRoutes from './routes/payment.routes.js'
-import webhookRoutes from './routes/webhook.routes.js'
+import webhookRoutes, { handleSarrixPayWebhook } from './routes/webhook.routes.js'
 import adminRoutes from './routes/admin.routes.js'
 import gamesRoutes from './routes/games.routes.js'
 import seamlessRoutes from './routes/seamless.routes.js'
@@ -93,6 +93,9 @@ app.use(express.static(publicPath, {
 
 // Webhook Escale Cyber: aceita https://api.89vipsbet.com/webhook (único para todos os eventos)
 app.use('/webhook', cors({ origin: true }), webhookRoutes)
+
+// SarrixPay: muitos painéis exigem URL sem /api — ex.: https://api.dominio/webhooks/sarrix
+app.post('/webhooks/sarrix', cors({ origin: true }), handleSarrixPayWebhook)
 
 // Routes (tracking antes de admin — /config/public é rota pública)
 app.use('/api/auth', authRoutes)

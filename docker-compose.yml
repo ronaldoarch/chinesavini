@@ -1,0 +1,25 @@
+# Deploy com Docker Compose (raiz do repositório)
+# Coolify: use caminho do compose = docker-compose.yml e diretório base = / (vazio)
+
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - '5000:5000'
+    environment:
+      NODE_ENV: production
+      PORT: 5000
+      MONGODB_URI: ${MONGODB_URI}
+      JWT_SECRET: ${JWT_SECRET}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+      WEBHOOK_BASE_URL: ${WEBHOOK_BASE_URL:-}
+    volumes:
+      - uploads-data:/app/uploads
+    restart: unless-stopped
+
+volumes:
+  uploads-data:

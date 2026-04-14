@@ -181,10 +181,14 @@ async function processDepositWebhook(body, transaction) {
   const rawType = (type ?? body.type ?? data?.type ?? body?.invoice?.type ?? '').toString().toUpperCase()
   const rawEvent = (body.event ?? '').toString().toLowerCase()
   let paymentStatus = 'pending'
-  // NxGate exige data.worked === true (https://nxgate-api.readme.io/reference/webhook_cashin_paid)
-  const worked = webhookData?.worked === true || webhookData?.worked === 'true'
+  // NxGate: worked em data ou na raiz; só bloquear crédito se worked for explicitamente false (gateway às vezes omite worked no sucesso)
+  const workedFalse =
+    webhookData?.worked === false ||
+    webhookData?.worked === 'false' ||
+    body.worked === false ||
+    body.worked === 'false'
   const isNxGateFormat = rawType === 'QR_CODE_COPY_AND_PASTE_PAID'
-  const canCredit = isNxGateFormat ? worked : true // NxGate: só creditar se worked; Gatebox: não envia worked
+  const canCredit = isNxGateFormat ? !workedFalse : true
   if (
     (rawType.includes('PAID') || rawType === 'QR_CODE_COPY_AND_PASTE_PAID' ||
     rawStatus === 'PAID' || rawStatus === 'PAYED' || rawStatus === 'CONFIRMED' ||
@@ -391,10 +395,10 @@ router.post('/', handleEscaleCyberWebhook)
 // @access  Public
 router.post('/escalecyber', handleEscaleCyberWebhook)
 
-// @route   POST /api/webhooks/sarrixpay
+// @route   POST /api/webhooks/sarrixpay  (alias em server: POST /webhooks/sarrix)
 // @desc    Webhook SarrixPay (eventos pix_in.* / pix_out.* normalizados)
 // @access  Public — configure a URL no painel SarrixPay
-async function handleSarrixPayWebhook(req, res) {
+export async function handleSarrixPayWebhook(req, res) {
   logWebhook('sarrixpay', req)
   try {
     const raw = req.body || {}
