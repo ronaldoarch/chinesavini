@@ -1,0 +1,16 @@
+# Contexto na raiz do monorepo: não enviar frontend nem artefatos pesados ao Docker
+chinesa-main
+atualizado
+.git
+.github
+**/.env
+**/.env.*
+*.md
+docs
+**/node_modules
+**/npm-debug.log*
+**/.nyc_output
+**/coverage
+**/*.log
+.DS_Store
+Thumbs.db
