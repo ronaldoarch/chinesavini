@@ -215,7 +215,8 @@ async function processDepositWebhook(body, transaction) {
       transaction.bonusAmount = bonusAmount
       await transaction.save()
       user.balance += depositAmount + bonusAmount
-      const wrAdd = wageringToAddFromRolloverBase(bonusConfig, depositAmount)
+      // Rollover global (BonusConfig): exigência = multiplicador × bônus creditado (não por usuário)
+      const wrAdd = wageringToAddFromRolloverBase(bonusConfig, bonusAmount)
       if (wrAdd > 0) {
         user.wageringRequirement = (user.wageringRequirement || 0) + wrAdd
       }
@@ -238,7 +239,7 @@ async function processDepositWebhook(body, transaction) {
         bonusAmount = calcDepositBonus(depositAmount, isFirstDeposit, bonusConfig)
       }
       user.balance = Math.max(0, (user.balance || 0) - depositAmount - bonusAmount)
-      const wrSub = wageringToAddFromRolloverBase(bonusConfig, depositAmount)
+      const wrSub = wageringToAddFromRolloverBase(bonusConfig, bonusAmount)
       if (wrSub > 0) {
         user.wageringRequirement = Math.max(0, (user.wageringRequirement || 0) - wrSub)
       }

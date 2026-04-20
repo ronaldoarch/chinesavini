@@ -185,9 +185,12 @@ function AdminBonusConfig() {
       <div className="config-section">
         <h2><i className="fa-solid fa-rotate"></i> Rollover (liberação de saque)</h2>
         <p className="section-description">
-          Com rollover <strong>desligado</strong>, todo o saldo pode ser sacado (modelo antigo por “saldo bônus” desativado).
-          Com rollover <strong>ligado</strong>, no <strong>depósito PIX</strong> a exigência é{' '}
-          <strong>multiplicador × valor depositado</strong>. Em <strong>VIP e baús</strong>, usa-se o valor do crédito de bônus como base. Enquanto houver exigência pendente, o saque fica bloqueado.
+          A regra é <strong>única neste painel</strong> (não existe multiplicador diferente por usuário).
+          Com rollover <strong>desligado</strong>, todo o saldo pode ser sacado.
+          Com rollover <strong>ligado</strong>, a exigência é{' '}
+          <strong>multiplicador × valor do bônus creditado</strong> (1º depósito, faixas de depósito, VIP, baús).
+          Cada jogador só tem o campo “quanto falta apostar”; o multiplicador vem sempre daqui.
+          Enquanto houver exigência pendente, o saque fica bloqueado.
         </p>
         <div className="form-group form-group-inline">
           <label className="checkbox-label">
@@ -200,7 +203,7 @@ function AdminBonusConfig() {
           </label>
         </div>
         <div className="form-group form-group-wide">
-          <label>Multiplicador (ex.: 10 no depósito = apostar 10× o valor depositado)</label>
+          <label>Multiplicador (ex.: 10 com bônus de R$ 50 = apostar R$ 500 para liberar saque)</label>
           <input
             type="number"
             min="0"

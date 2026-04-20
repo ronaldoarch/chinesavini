@@ -1,8 +1,9 @@
 /**
- * Rollover configurável (admin): volume de apostas antes de liberar saque.
- * Em depósitos PIX, a base é o valor depositado (multiplicador × depósito).
- * Em créditos só de bônus (VIP, baús), usa-se o valor creditado como base.
- * Quando desativado, todo o saldo é sacável (modelo antigo por bonusBalance desligado).
+ * Rollover global (BonusConfig): mesma regra para todos; o multiplicador não é “por usuário”.
+ * O valor pendente (`user.wageringRequirement`) é só o progresso individual até zerar.
+ *
+ * Base da exigência: multiplicador × valor em R$ do bônus creditado (depósito PIX com bônus,
+ * VIP, baús, etc.). Com rollover desligado, todo o saldo é tratado como sacável.
  */
 
 export function computeWithdrawableBalance(user, bonusConfig) {
@@ -17,7 +18,7 @@ export function computeWithdrawableBalance(user, bonusConfig) {
   return bal
 }
 
-/** Volume (R$) a exigir: multiplicador × base (ex.: depósito em R$ no webhook de PIX). */
+/** Volume (R$) a exigir: multiplicador × base em R$ (ex.: bônus creditado no depósito PIX). */
 export function wageringToAddFromRolloverBase(bonusConfig, baseAmountReais) {
   if (!bonusConfig || bonusConfig.rolloverEnabled !== true) {
     return 0
