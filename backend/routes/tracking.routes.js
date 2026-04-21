@@ -40,7 +40,7 @@ router.use(isAdmin)
 // @access  Private/Admin
 router.get('/webhooks', async (req, res) => {
   try {
-    const { source, status, page = 1, limit = 50, from, to } = req.query
+    const { source, status, page = 1, limit = 50, from, to, search } = req.query
     const filter = {}
     if (source) filter.source = source
     if (status) filter.status = status
@@ -48,6 +48,18 @@ router.get('/webhooks', async (req, res) => {
       filter.createdAt = {}
       if (from) filter.createdAt.$gte = new Date(from)
       if (to) filter.createdAt.$lte = new Date(to)
+    }
+    const q = typeof search === 'string' ? search.trim() : ''
+    if (q.length > 0) {
+      const esc = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+      const rx = new RegExp(esc, 'i')
+      filter.$or = [
+        { idTransaction: rx },
+        { endToEndId: rx },
+        { pixKeyMasked: rx },
+        { pixKeyType: rx },
+        { path: rx }
+      ]
     }
     const skip = (Math.max(1, parseInt(page)) - 1) * Math.min(100, Math.max(1, parseInt(limit)))
     const total = await WebhookLog.countDocuments(filter)

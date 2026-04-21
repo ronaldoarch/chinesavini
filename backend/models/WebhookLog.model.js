@@ -12,6 +12,11 @@ const webhookLogSchema = new mongoose.Schema(
     processedAt: { type: Date },
     errorMessage: { type: String },
     idTransaction: { type: String },
+    /** Id end-to-end BACEN / PSP quando o gateway envia no webhook */
+    endToEndId: { type: String },
+    /** Chave PIX mascarada (nunca o valor completo) */
+    pixKeyMasked: { type: String },
+    pixKeyType: { type: String },
     ip: { type: String }
   },
   { timestamps: true }
@@ -19,6 +24,8 @@ const webhookLogSchema = new mongoose.Schema(
 
 webhookLogSchema.index({ createdAt: -1 })
 webhookLogSchema.index({ source: 1, createdAt: -1 })
+webhookLogSchema.index({ endToEndId: 1 }, { sparse: true })
+webhookLogSchema.index({ idTransaction: 1 }, { sparse: true })
 
 const WebhookLog = mongoose.model('WebhookLog', webhookLogSchema)
 export default WebhookLog

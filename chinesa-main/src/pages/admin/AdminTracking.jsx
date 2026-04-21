@@ -41,14 +41,27 @@ function AdminTracking() {
     webhookBaseUrl: '',
     activeFacebookEvents: ['Lead', 'CompleteRegistration', 'Purchase']
   })
+  /** Busca em idTransaction, E2E, chave PIX mascarada (debounce) */
+  const [webhookSearchInput, setWebhookSearchInput] = useState('')
+  const [webhookSearchDebounced, setWebhookSearchDebounced] = useState('')
 
   const limit = 30
+
+  useEffect(() => {
+    const t = setTimeout(() => setWebhookSearchDebounced(webhookSearchInput.trim()), 450)
+    return () => clearTimeout(t)
+  }, [webhookSearchInput])
+
+  useEffect(() => {
+    if (tab !== TAB_WEBHOOKS) return
+    setPage(1)
+  }, [tab, webhookSearchDebounced])
 
   useEffect(() => {
     if (tab === TAB_WEBHOOKS) loadWebhooks()
     else if (tab === TAB_FACEBOOK) loadFacebookEvents()
     else if (tab === TAB_CONFIG) loadConfig()
-  }, [tab, page, filters])
+  }, [tab, page, filters, webhookSearchDebounced])
 
   useEffect(() => {
     if (tab === TAB_CONFIG) loadConfig()
@@ -63,6 +76,7 @@ function AdminTracking() {
       if (filters.status) params.status = filters.status
       if (filters.from) params.from = filters.from
       if (filters.to) params.to = filters.to
+      if (webhookSearchDebounced) params.search = webhookSearchDebounced
       const res = await api.getTrackingWebhooks(params)
       if (res.success) {
         setWebhooks(res.data.logs)
@@ -165,6 +179,9 @@ function AdminTracking() {
           <i className="fa-solid fa-chart-line"></i>
           Rastreamento (Webhooks e Facebook)
         </h1>
+        <p className="section-description" style={{ marginTop: '0.5rem' }}>
+          Webhooks PIX registram id da transação, <strong>end-to-end (BACEN)</strong> e <strong>chave PIX mascarada</strong> quando o gateway envia esses campos.
+        </p>
       </div>
 
       <div className="tracking-tabs">
@@ -204,6 +221,9 @@ function AdminTracking() {
               <option value="">Todos os sources</option>
               <option value="pix">PIX (depósito)</option>
               <option value="pix-withdraw">PIX Saque</option>
+              <option value="gatebox">Gatebox</option>
+              <option value="sarrixpay">SarrixPay</option>
+              <option value="escalecyber">Escale Cyber</option>
             </select>
             <select
               value={filters.status}
@@ -226,6 +246,14 @@ function AdminTracking() {
               onChange={(e) => { setFilters({ ...filters, to: e.target.value }); setPage(1) }}
               placeholder="Até"
             />
+            <input
+              type="search"
+              className="tracking-search-input"
+              value={webhookSearchInput}
+              onChange={(e) => setWebhookSearchInput(e.target.value)}
+              placeholder="Buscar ID, E2E, chave mascarada…"
+              aria-label="Buscar webhooks"
+            />
           </div>
           <div className="tracking-table-wrap">
             <p className="tracking-total">
@@ -242,13 +270,16 @@ function AdminTracking() {
                     <th>Source</th>
                     <th>Path</th>
                     <th>idTransaction</th>
+                    <th>E2E (BACEN)</th>
+                    <th>Chave PIX</th>
+                    <th>Tipo chave</th>
                     <th>Status</th>
                     <th>Body (resumo)</th>
                   </tr>
                 </thead>
                 <tbody>
                   {webhooks.length === 0 ? (
-                    <tr><td colSpan="6">Nenhum webhook registrado.</td></tr>
+                    <tr><td colSpan="9">Nenhum webhook registrado.</td></tr>
                   ) : (
                     webhooks.map((log) => (
                       <tr key={log._id}>
@@ -256,6 +287,9 @@ function AdminTracking() {
                         <td><span className="badge source">{log.source}</span></td>
                         <td>{log.path}</td>
                         <td>{log.idTransaction || '-'}</td>
+                        <td className="body-cell mono">{log.endToEndId || '-'}</td>
+                        <td className="body-cell mono">{log.pixKeyMasked || '-'}</td>
+                        <td>{log.pixKeyType || '-'}</td>
                         <td><span className={`badge status ${log.status}`}>{log.status}</span></td>
                         <td className="body-cell">{log.bodySummary ? String(log.bodySummary).slice(0, 120) + (log.bodySummary.length > 120 ? '...' : '') : '-'}</td>
                       </tr>

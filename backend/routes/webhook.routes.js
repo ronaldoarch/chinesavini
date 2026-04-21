@@ -7,6 +7,8 @@ import AffiliateDeposit from '../models/AffiliateDeposit.model.js'
 import affiliateService from '../services/affiliate.service.js'
 import facebookService from '../services/facebook.service.js'
 import { wageringToAddFromRolloverBase } from '../utils/rollover.util.js'
+import { extractPixWebhookTracking } from '../utils/pixWebhookTracking.util.js'
+import { shouldAbsorbWithdrawGatewayPixFee } from '../utils/withdrawFee.util.js'
 
 function calcDepositBonus(amount, isFirstDeposit, bonusConfig) {
   if (!bonusConfig) return 0
@@ -67,6 +69,7 @@ const router = express.Router()
 
 function logWebhook(source, req, extra = {}) {
   const body = req.body || {}
+  const track = extractPixWebhookTracking(body)
   const bodyStr = JSON.stringify(body)
   const bodySummary = bodyStr.length > 2000 ? bodyStr.slice(0, 2000) + '...' : bodyStr
   WebhookLog.create({
@@ -76,6 +79,9 @@ function logWebhook(source, req, extra = {}) {
     bodySummary,
     bodyKeys: Object.keys(body),
     idTransaction: body.externalId || body.idTransaction || body.transactionId || body.transaction_id || body.tx_id || body.tag || body?.transaction?.id || body?.reference?.transaction_ref || body?.transaction?.externalId || body?.invoice?.externalId || body?.data?.idTransaction || body?.data?.tag,
+    ...(track.endToEndId ? { endToEndId: track.endToEndId } : {}),
+    ...(track.pixKeyMasked ? { pixKeyMasked: track.pixKeyMasked } : {}),
+    ...(track.pixKeyType ? { pixKeyType: track.pixKeyType } : {}),
     ip: req.ip || req.connection?.remoteAddress,
     ...extra
   }).catch(err => console.error('WebhookLog create error:', err))
@@ -291,7 +297,12 @@ async function processWithdrawWebhook(body, transaction) {
   const feeValue = fee ?? data?.totalFee ?? data?.feeAmount ?? data?.fee
   if (feeValue !== undefined && feeValue !== null) {
     transaction.fee = parseFloat(feeValue) || 0
-    transaction.netAmount = transaction.amount - transaction.fee
+    if (transaction.type === 'withdraw' && shouldAbsorbWithdrawGatewayPixFee()) {
+      // Usuário recebe o valor integral solicitado; taxa PSP fica registrada mas não reduz netAmount ao jogador
+      transaction.netAmount = transaction.amount
+    } else {
+      transaction.netAmount = transaction.amount - transaction.fee
+    }
   }
 
   if (paymentStatus === 'paid') {

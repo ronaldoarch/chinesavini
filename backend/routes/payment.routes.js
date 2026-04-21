@@ -7,6 +7,10 @@ import BonusConfig from '../models/BonusConfig.model.js'
 import GatewayConfig from '../models/GatewayConfig.model.js'
 import { getGatewayService } from '../services/gateway.service.js'
 import { computeWithdrawableBalance } from '../utils/rollover.util.js'
+import {
+  getGatewayPixOutFeeBrl,
+  getValorForWithdrawGatewayCall
+} from '../utils/withdrawFee.util.js'
 
 const router = express.Router()
 
@@ -213,8 +217,10 @@ router.post(
       .notEmpty()
       .withMessage('CPF do titular da chave PIX é obrigatório para saque')
       .custom((value) => {
-        const digits = (value || '').replace(/\D/g, '')
-        if (digits.length !== 11) throw new Error('CPF inválido')
+        const digits = String(value || '').replace(/\D/g, '')
+        if (digits.length !== 11) {
+          throw new Error('CPF do titular: informe 11 dígitos (o CPF do dono da chave PIX de saque).')
+        }
         return true
       })
   ],
@@ -232,13 +238,16 @@ router.post(
       const { amount, pixKey, pixKeyType, cpf, holderName } = req.body
       const user = req.user
       const bonusCfg = await BonusConfig.getConfig()
+      const requestedAmount = parseFloat(amount)
+      const pixOutFeeBrl = getGatewayPixOutFeeBrl()
+      const valorParaGateway = getValorForWithdrawGatewayCall(requestedAmount)
 
       // Limite de saque não se aplica a afiliados com 50% de comissão
       const isAffiliate50Percent = (user.affiliateDepositBonusPercent || 0) >= 50
       if (!isAffiliate50Percent) {
         const minWithdraw = bonusCfg.minWithdraw ?? 20
         const maxWithdraw = bonusCfg.maxWithdraw ?? 5000
-        const amountNum = parseFloat(amount)
+        const amountNum = requestedAmount
         if (amountNum < minWithdraw || amountNum > maxWithdraw) {
           return res.status(400).json({
             success: false,
@@ -249,7 +258,7 @@ router.post(
 
       const withdrawable = computeWithdrawableBalance(user, bonusCfg)
       const wrLeft = Math.max(0, user.wageringRequirement || 0)
-      if (parseFloat(amount) > withdrawable) {
+      if (requestedAmount > withdrawable) {
         const rolloverMsg =
           bonusCfg.rolloverEnabled === true && wrLeft > 0
             ? `Complete o rollover: faltam R$ ${wrLeft.toFixed(2)} em apostas para liberar saques.`
@@ -263,7 +272,7 @@ router.post(
               : `Saldo disponível para saque: R$ ${withdrawable.toFixed(2)}.`)
         })
       }
-      if (user.balance < parseFloat(amount)) {
+      if (user.balance < requestedAmount) {
         return res.status(400).json({
           success: false,
           message: 'Saldo insuficiente'
@@ -273,13 +282,14 @@ router.post(
       const webhookBase = await getWebhookBaseUrl()
       const webhookUrl = `${webhookBase}/api/webhooks/pix-withdraw`
 
-      // Create transaction record
+      // Create transaction record (amount/netAmount = o que o usuário pediu e deve receber na conta PIX; fee = custo PSP no merchant)
       const transaction = await Transaction.create({
         user: user._id,
         type: 'withdraw',
         status: 'processing',
-        amount: parseFloat(amount),
-        netAmount: parseFloat(amount), // Will be updated with fee after webhook
+        amount: requestedAmount,
+        fee: pixOutFeeBrl,
+        netAmount: requestedAmount,
         pixKey: pixKey,
         pixKeyType: pixKeyType,
         webhookUrl
@@ -292,7 +302,7 @@ router.post(
       const documentoFormatted = String(cpf).replace(/\D/g, '')
       const gatewayService = await getGatewayService()
       const withdrawResult = await gatewayService.withdrawPix({
-        valor: amount,
+        valor: valorParaGateway,
         chave_pix: pixKey,
         tipo_chave: pixKeyType,
         documento: documentoFormatted,
@@ -309,8 +319,8 @@ router.post(
         })
       }
 
-      // Deduct balance immediately (will be reversed if withdrawal fails via webhook)
-      user.balance -= parseFloat(amount)
+      // Debita apenas o valor solicitado pelo usuário (a taxa PSP sai da conta merchant no gateway)
+      user.balance -= requestedAmount
       await user.save()
 
       // Update transaction with withdrawal data (NxGate webhook usa idTransaction/tag)

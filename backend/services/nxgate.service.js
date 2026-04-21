@@ -3,6 +3,28 @@ import GatewayConfig from '../models/GatewayConfig.model.js'
 
 const WEBHOOK_BASE_URL = process.env.WEBHOOK_BASE_URL || 'http://localhost:5000'
 
+/**
+ * Normaliza valor da chave antes do POST /pix/sacar.
+ * Muitas APIs PIX rejeitam CPF/CNPJ com pontuação ("chave inválida" / 422).
+ * Telefone: só dígitos, 11 posições (DDD + número), mesmo padrão usado na Gatebox para cash-out.
+ */
+function normalizeChavePixForNxgateWithdraw(key, keyType) {
+  if (!key || typeof key !== 'string') return key
+  const trimmed = key.trim()
+  const type = (keyType || '').toUpperCase()
+  if (type === 'PHONE') {
+    const digits = trimmed.replace(/\D/g, '')
+    if (digits.length === 11) return digits
+    if (digits.length === 13 && digits.startsWith('55')) return digits.slice(-11)
+    if (digits.length >= 11) return digits.slice(-11)
+    return digits
+  }
+  if (type === 'CPF' || type === 'CNPJ') return trimmed.replace(/\D/g, '')
+  if (type === 'EMAIL') return trimmed.toLowerCase()
+  if (type === 'RANDOM') return trimmed.replace(/\s/g, '')
+  return trimmed.replace(/\D/g, '')
+}
+
 class NxgateService {
   constructor() {
     this.nx = null
@@ -135,10 +157,11 @@ class NxgateService {
       const webhook = data.webhook || `${this.webhookBaseUrl}/api/webhooks/pix-withdraw`
       const documento = (data.documento || '').replace(/\D/g, '')
       const tipoChave = (data.tipo_chave || 'CPF').toUpperCase()
+      const chavePix = normalizeChavePixForNxgateWithdraw(String(data.chave_pix || ''), tipoChave)
 
       const payload = {
         valor: parseFloat(data.valor),
-        chave_pix: String(data.chave_pix || '').trim(),
+        chave_pix: chavePix,
         tipo_chave: tipoChave,
         webhook,
         magic_id: data.externalId
