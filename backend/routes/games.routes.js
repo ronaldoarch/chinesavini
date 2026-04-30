@@ -48,10 +48,10 @@ router.put('/config', protect, isAdmin, async (req, res) => {
     if (agentToken) config.agentToken = agentToken
     if (agentSecret) config.agentSecret = agentSecret
     if (selectedProviders) {
-      if (selectedProviders.length > 6) {
+      if (selectedProviders.length > 7) {
         return res.status(400).json({
           success: false,
-          message: 'Máximo de 6 provedores permitidos'
+          message: 'Máximo de 7 provedores permitidos'
         })
       }
       config.selectedProviders = selectedProviders
