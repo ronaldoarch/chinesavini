@@ -33,9 +33,10 @@ router.post(
   [
     body('amount').isFloat({ min: 0.01 }).withMessage('Valor inválido'),
     body('cpf')
-      .optional()
-      .custom((val) => !val || /^\d{3}\.\d{3}\.\d{3}-\d{2}$/.test(val) || /^\d{11}$/.test(val))
-      .withMessage('CPF inválido')
+      .notEmpty()
+      .withMessage('CPF é obrigatório para gerar o PIX')
+      .custom((val) => /^\d{3}\.\d{3}\.\d{3}-\d{2}$/.test(val) || /^\d{11}$/.test(val))
+      .withMessage('CPF inválido (informe 11 dígitos ou no formato 000.000.000-00)')
   ],
   async (req, res) => {
     try {
@@ -60,12 +61,13 @@ router.post(
       }
 
       let { amount, cpf } = req.body
-      // Normalize CPF: accept 11 digits or formatted 000.000.000-00
-      if (cpf && typeof cpf === 'string') {
-        const digits = cpf.replace(/\D/g, '')
-        if (digits.length === 11) {
-          cpf = `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`
-        }
+      // Normaliza CPF: aceita 11 dígitos ou formato 000.000.000-00
+      const cpfRaw = typeof cpf === 'string' ? cpf : ''
+      const cpfDigits = cpfRaw.replace(/\D/g, '')
+      if (cpfDigits.length === 11) {
+        cpf = `${cpfDigits.slice(0, 3)}.${cpfDigits.slice(3, 6)}.${cpfDigits.slice(6, 9)}-${cpfDigits.slice(9)}`
+      } else {
+        cpf = cpfRaw
       }
       const user = req.user
 
@@ -83,7 +85,7 @@ router.post(
         amount: parseFloat(amount),
         netAmount: parseFloat(amount),
         payerName: user.username,
-        payerDocument: cpf.replace(/\D/g, ''),
+        payerDocument: cpfDigits,
         webhookUrl
       })
 

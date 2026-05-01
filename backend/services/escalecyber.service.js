@@ -73,7 +73,10 @@ class EscaleCyberService {
       const config = await GatewayConfig.getConfig()
       if (config && config.provider === 'escalecyber' && config.isActive) {
         this.apiKey = (config.apiKey || '').trim()
-        this.baseURL = (config.apiUrl || ESCALECYBER_BASE_URL).replace(/\/$/, '')
+        let configuredUrl = (config.apiUrl || ESCALECYBER_BASE_URL).replace(/\/$/, '')
+        // Corrige typo comum: escalacyber.com → escalecyber.com
+        configuredUrl = configuredUrl.replace(/escalacyber\.com/i, 'escalecyber.com')
+        this.baseURL = configuredUrl
         this.webhookBaseUrl = config.webhookBaseUrl || this.webhookBaseUrl
       } else {
         this.apiKey = null
@@ -85,7 +88,7 @@ class EscaleCyberService {
   }
 
   async ensureConfig() {
-    if (!this.apiKey) await this.getConfig()
+    await this.getConfig()
     if (!this.apiKey || this.apiKey.trim() === '') {
       throw new Error('Escale Cyber não configurado. Configure a API Key no admin.')
     }
@@ -118,10 +121,17 @@ class EscaleCyberService {
       await this.ensureConfig()
 
       const documentoRaw = (data.documento_pagador || '').replace(/\D/g, '')
-      let documento = documentoRaw.length >= 11 ? documentoRaw : (await GatewayConfig.getConfig())?.defaultCpf?.replace(/\D/g, '') || documentoRaw
+      let documento = documentoRaw
+      let usingFallback = false
+      if (documentoRaw.length < 11) {
+        const fallbackCpf = (await GatewayConfig.getConfig())?.defaultCpf?.replace(/\D/g, '') || ''
+        if (fallbackCpf.length >= 11) {
+          documento = fallbackCpf
+          usingFallback = true
+        }
+      }
       if (!documento || documento.length < 11) documento = '00000000000'
       const docType = documento.length === 14 ? 'cnpj' : 'cpf'
-      // Escale Cyber: exemplo na doc usa CPF formatado (179.539.020-44)
       const customerDocument = docType === 'cpf' && documento.length === 11
         ? `${documento.slice(0, 3)}.${documento.slice(3, 6)}.${documento.slice(6, 9)}-${documento.slice(9)}`
         : docType === 'cnpj' && documento.length === 14
@@ -144,7 +154,14 @@ class EscaleCyberService {
       else if (data.metadata) payload.metadata = data.metadata
 
       if (process.env.NODE_ENV === 'production') {
-        console.log('ESCALECYBER generatePix payload (sem doc completo):', { amount: payload.amount, customerName: payload.customerName, docLen: payload.customerDocument?.length, phone: payload.customerPhone?.length })
+        console.log('ESCALECYBER generatePix payload:', {
+          amount: payload.amount,
+          customerName: payload.customerName,
+          docType,
+          docLen: payload.customerDocument?.length,
+          phone: payload.customerPhone?.length,
+          usingFallbackDoc: usingFallback
+        })
       }
 
       const response = await axios.post(
