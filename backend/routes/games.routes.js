@@ -189,11 +189,13 @@ router.get('/providers', protect, isAdmin, async (req, res) => {
 router.get('/games/:providerCode', protect, isAdmin, async (req, res) => {
   try {
     const { providerCode } = req.params
-    const response = await igamewinService.getGameList(providerCode)
+    const forceRefresh = req.query.refresh === 'true'
+    const response = await igamewinService.getGameList(providerCode, forceRefresh)
     if (response.status === 1) {
       res.json({
         success: true,
-        data: response.games
+        data: response.games,
+        cached: !forceRefresh
       })
     } else {
       res.status(400).json({
@@ -202,10 +204,13 @@ router.get('/games/:providerCode', protect, isAdmin, async (req, res) => {
       })
     }
   } catch (error) {
-    console.error('Get games error:', error)
+    console.error('Get games error:', error.message)
+    const isTimeout = error.message?.includes('timeout') || error.message?.includes('10000') || error.message?.includes('30000')
     res.status(500).json({
       success: false,
-      message: 'Erro ao buscar jogos',
+      message: isTimeout
+        ? `Timeout ao buscar jogos do provedor "${req.params.providerCode}". A API iGameWin demorou mais que 30s. Tente novamente ou verifique se o provedor está ativo no painel iGameWin.`
+        : error.message,
       error: error.message
     })
   }

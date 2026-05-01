@@ -17,11 +17,28 @@ function isSamplesMode() {
 const DEFAULT_AGENT_CODE = '4916vini'
 const DEFAULT_AGENT_TOKEN = '2b887a93fcbd11f098a0bc2411881493'
 
+// Cache em memória para game_list e provider_list (evita timeout repetido)
+const CACHE_TTL_MS = 30 * 60 * 1000 // 30 minutos
+const _cache = {}
+function cacheGet(key) {
+  const entry = _cache[key]
+  if (!entry) return null
+  if (Date.now() - entry.ts > CACHE_TTL_MS) { delete _cache[key]; return null }
+  return entry.data
+}
+function cacheSet(key, data) { _cache[key] = { data, ts: Date.now() } }
+function cacheClear(key) { if (key) delete _cache[key]; else Object.keys(_cache).forEach(k => delete _cache[k]) }
+
 class IGameWinService {
   constructor() {
     this.agentCode = process.env.IGAMEWIN_AGENT_CODE || DEFAULT_AGENT_CODE
     this.agentToken = process.env.IGAMEWIN_AGENT_TOKEN || DEFAULT_AGENT_TOKEN
     this.agentSecret = process.env.IGAMEWIN_AGENT_SECRET || ''
+  }
+
+  clearCache(providerCode = null) {
+    if (providerCode) cacheClear(`game_list_${providerCode}`)
+    else { cacheClear('provider_list'); Object.keys(_cache).forEach(k => k.startsWith('game_list_') && cacheClear(k)) }
   }
 
   async _getCredentials() {
@@ -138,14 +155,23 @@ class IGameWinService {
     return this.makeRequest('money_info', params)
   }
 
-  async getProviderList() {
-    return this.makeRequest('provider_list')
+  async getProviderList(forceRefresh = false) {
+    if (!forceRefresh) {
+      const cached = cacheGet('provider_list')
+      if (cached) return cached
+    }
+    const response = await this.makeRequest('provider_list')
+    if (response.status === 1) cacheSet('provider_list', response)
+    return response
   }
 
-  async getGameList(providerCode) {
-    const response = await this.makeRequest('game_list', {
-      provider_code: providerCode
-    })
+  async getGameList(providerCode, forceRefresh = false) {
+    const cacheKey = `game_list_${providerCode}`
+    if (!forceRefresh) {
+      const cached = cacheGet(cacheKey)
+      if (cached) return cached
+    }
+    const response = await this.makeRequest('game_list', { provider_code: providerCode })
     // Normaliza: diferentes provedores podem usar chaves diferentes para a lista
     const rawGames = response.games || response.game_list || response.data || response.game_data || []
     // Normaliza campos de cada jogo para padrão consistente
@@ -156,7 +182,9 @@ class IGameWinService {
       banner: g.banner || g.img || g.image || g.thumbnail || g.icon || '',
       status: g.status ?? g.active ?? 1
     })) : []
-    return { ...response, games }
+    const result = { ...response, games }
+    if (response.status === 1) cacheSet(cacheKey, result)
+    return result
   }
 
   async getGameHistory(userCode, gameType, start, end, page = 0, perPage = 1000) {

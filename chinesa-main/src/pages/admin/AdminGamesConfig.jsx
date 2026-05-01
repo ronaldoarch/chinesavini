@@ -81,7 +81,7 @@ function AdminGamesConfig() {
 
   const loadGames = async (providerCode, forceReload = false) => {
     if (!forceReload && gamesByProvider[providerCode]) {
-      return // Already loaded
+      return
     }
 
     try {
@@ -92,6 +92,8 @@ function AdminGamesConfig() {
           ...prev,
           [providerCode]: response.data || []
         }))
+      } else {
+        console.error(`Erro ao carregar jogos de ${providerCode}:`, response.message)
       }
     } catch (err) {
       console.error(`Error loading games for ${providerCode}:`, err)
@@ -104,27 +106,32 @@ function AdminGamesConfig() {
     const codes = providerCodes || config.selectedProviders
     if (!codes?.length) return
 
-    try {
-      setLoadingAllGames(true)
-      const results = await Promise.all(
-        codes.map(async (providerCode) => {
-          const response = await api.getGames(providerCode)
-          return { providerCode, games: response.success ? (response.data || []) : [] }
-        })
-      )
-      setGamesByProvider(prev => {
-        const next = { ...prev }
-        results.forEach(({ providerCode, games }) => {
-          next[providerCode] = games
-        })
-        return next
-      })
-    } catch (err) {
-      console.error('Error loading all games:', err)
-      setError('Erro ao carregar jogos dos provedores')
-    } finally {
-      setLoadingAllGames(false)
+    setLoadingAllGames(true)
+    setError(null)
+    const failedProviders = []
+
+    // Carrega em sequência para evitar sobrecarregar a API iGameWin com timeouts simultâneos
+    for (const providerCode of codes) {
+      try {
+        setLoadingGames(prev => ({ ...prev, [providerCode]: true }))
+        const response = await api.getGames(providerCode)
+        const games = response.success ? (response.data || []) : []
+        setGamesByProvider(prev => ({ ...prev, [providerCode]: games }))
+        if (!response.success) failedProviders.push(providerCode)
+      } catch (err) {
+        console.error(`Timeout/erro ao carregar ${providerCode}:`, err.message)
+        failedProviders.push(providerCode)
+        setGamesByProvider(prev => ({ ...prev, [providerCode]: [] }))
+      } finally {
+        setLoadingGames(prev => ({ ...prev, [providerCode]: false }))
+      }
     }
+
+    if (failedProviders.length > 0) {
+      setError(`Não foi possível carregar jogos dos provedores: ${failedProviders.join(', ')}. Eles podem estar em manutenção no painel iGameWin ou indisponíveis para este agente.`)
+    }
+
+    setLoadingAllGames(false)
   }
 
   const handleProviderToggle = async (providerCode) => {
