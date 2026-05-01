@@ -207,9 +207,9 @@ function AdminGamesConfig() {
         ...prev,
         selectedGames: [...prev.selectedGames, {
           providerCode: game.providerCode,
-          gameCode: game.game_code,
-          gameName: game.game_name,
-          banner: game.banner
+          gameCode: game.game_code || game.code || game.gameCode || game.game_id || game.id || '',
+          gameName: game.game_name || game.name || game.gameName || game.title || '',
+          banner: game.banner || game.img || game.image || game.thumbnail || game.icon || ''
         }]
       }))
     }
@@ -531,7 +531,14 @@ function AdminGamesConfig() {
           ) : (() => {
             const allGames = config.selectedProviders.flatMap(providerCode => {
               const games = gamesByProvider[providerCode] || []
-              return games.map(g => ({ ...g, providerCode }))
+              return games.map(g => ({
+                ...g,
+                providerCode,
+                // Normaliza campos para display e seleção
+                game_code: g.game_code || g.code || g.gameCode || g.game_id || g.id || '',
+                game_name: g.game_name || g.name || g.gameName || g.title || '',
+                banner: g.banner || g.img || g.image || g.thumbnail || g.icon || ''
+              }))
             })
             const filtered = allGames.filter(g => {
               const matchProvider = !gameSearchProvider || g.providerCode === gameSearchProvider
@@ -558,7 +565,7 @@ function AdminGamesConfig() {
                 <div className="games-grid">
                   {filtered.map(game => {
                     const isSelected = config.selectedGames.some(
-                      g => g.providerCode === game.providerCode && g.gameCode === game.game_code
+                      g => g.providerCode === game.providerCode && g.gameCode === game.game_code && game.game_code
                     )
                     const provider = providers.find(p => p.code === game.providerCode)
                     return (

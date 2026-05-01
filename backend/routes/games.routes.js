@@ -156,9 +156,16 @@ router.get('/providers', protect, isAdmin, async (req, res) => {
   try {
     const response = await igamewinService.getProviderList()
     if (response.status === 1) {
+      // Normaliza campos dos provedores (diferentes APIs podem usar code/provider_code)
+      const providers = (response.providers || response.provider_list || response.data || []).map(p => ({
+        ...p,
+        code: p.code || p.provider_code || p.providerCode || '',
+        name: p.name || p.provider_name || p.providerName || p.code || '',
+        status: p.status ?? 1
+      }))
       res.json({
         success: true,
-        data: response.providers
+        data: providers
       })
     } else {
       res.status(400).json({

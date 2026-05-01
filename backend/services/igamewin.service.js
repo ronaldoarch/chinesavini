@@ -133,9 +133,20 @@ class IGameWinService {
   }
 
   async getGameList(providerCode) {
-    return this.makeRequest('game_list', {
+    const response = await this.makeRequest('game_list', {
       provider_code: providerCode
     })
+    // Normaliza: diferentes provedores podem usar chaves diferentes para a lista
+    const rawGames = response.games || response.game_list || response.data || response.game_data || []
+    // Normaliza campos de cada jogo para padrão consistente
+    const games = Array.isArray(rawGames) ? rawGames.map(g => ({
+      ...g,
+      game_code: g.game_code || g.code || g.gameCode || g.game_id || g.id || '',
+      game_name: g.game_name || g.name || g.gameName || g.title || '',
+      banner: g.banner || g.img || g.image || g.thumbnail || g.icon || '',
+      status: g.status ?? g.active ?? 1
+    })) : []
+    return { ...response, games }
   }
 
   async getGameHistory(userCode, gameType, start, end, page = 0, perPage = 1000) {
