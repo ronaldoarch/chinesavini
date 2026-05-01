@@ -14,7 +14,9 @@ function balanceForGame(reais) {
 export async function handleSeamlessRequest(req, res) {
   try {
     const { method, user_code, agent_code } = req.body
-    console.log('[Seamless]', method, 'user_code:', user_code, 'agent:', agent_code)
+    if (method !== 'user_balance') {
+      console.log('[Seamless]', method, 'user_code:', user_code, 'agent:', agent_code)
+    }
     if (!method || !user_code) {
       return res.status(400).json({ status: 0, msg: 'INVALID_PARAMETER' })
     }

@@ -40,27 +40,37 @@ class IGameWinService {
     return isSamplesMode()
   }
 
-  async makeRequest(method, params = {}) {
-    try {
-      const { agentCode, agentToken } = await this._getCredentials()
-      const payload = {
-        method,
-        agent_code: agentCode,
-        agent_token: agentToken,
-        ...params
+  async makeRequest(method, params = {}, retries = 2) {
+    // Métodos de lançamento precisam de mais tempo; lista de jogos também pode demorar
+    const heavyMethods = ['game_launch', 'game_list', 'provider_list']
+    const timeout = heavyMethods.includes(method) ? 30000 : 15000
+
+    const { agentCode, agentToken } = await this._getCredentials()
+    const payload = {
+      method,
+      agent_code: agentCode,
+      agent_token: agentToken,
+      ...params
+    }
+
+    for (let attempt = 1; attempt <= retries + 1; attempt++) {
+      try {
+        const response = await axios.post(IGAMEWIN_API_URL, payload, {
+          headers: { 'Content-Type': 'application/json' },
+          timeout
+        })
+        return response.data
+      } catch (error) {
+        const isTimeout = error.code === 'ECONNABORTED' || error.message?.includes('timeout')
+        const isLastAttempt = attempt > retries
+        if (isTimeout && !isLastAttempt) {
+          console.warn(`IGameWin API timeout (${method}) — tentativa ${attempt}/${retries + 1}, aguardando...`)
+          await new Promise(r => setTimeout(r, 1500 * attempt))
+          continue
+        }
+        console.error(`IGameWin API Error (${method}):`, error.message)
+        throw new Error(error.response?.data?.msg || error.message || 'Erro ao comunicar com API de jogos')
       }
-
-      const response = await axios.post(IGAMEWIN_API_URL, payload, {
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        timeout: 10000
-      })
-
-      return response.data
-    } catch (error) {
-      console.error('IGameWin API Error:', error.message)
-      throw new Error(error.response?.data?.msg || 'Erro ao comunicar com API de jogos')
     }
   }
 
