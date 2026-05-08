@@ -19,6 +19,7 @@ function DepositModal({ isOpen, onClose, showCpfField = true, onConfirmDeposit, 
   const [selectedAmountId, setSelectedAmountId] = useState(null)
   const [depositAmount, setDepositAmount] = useState('')
   const [cpfValue, setCpfValue] = useState('')
+  const [cpfAutoFilled, setCpfAutoFilled] = useState(false)
   const [showCpfError, setShowCpfError] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
@@ -48,6 +49,37 @@ function DepositModal({ isOpen, onClose, showCpfField = true, onConfirmDeposit, 
     const timer = setTimeout(() => setShowCpfError(false), 2500)
     return () => clearTimeout(timer)
   }, [showCpfError])
+
+  // Auto-preenche CPF a partir da conta PIX cadastrada na carteira
+  useEffect(() => {
+    if (!isOpen || !showCpfField) return
+    if (cpfValue && cpfValue.replace(/\D/g, '').length === 11) return // já preenchido
+    api.getPixAccounts()
+      .then((res) => {
+        const accounts = res.data || res.accounts || (Array.isArray(res) ? res : [])
+        for (const acc of accounts) {
+          // Prefere holderCpf explícito
+          const holderCpf = String(acc.holderCpf || '').replace(/\D/g, '')
+          if (holderCpf.length === 11) {
+            const formatted = `${holderCpf.slice(0,3)}.${holderCpf.slice(3,6)}.${holderCpf.slice(6,9)}-${holderCpf.slice(9)}`
+            setCpfValue(formatted)
+            setCpfAutoFilled(true)
+            return
+          }
+          // Fallback: usa a própria chave se for do tipo CPF
+          if (acc.pixKeyType === 'CPF') {
+            const digits = String(acc.pixKey || '').replace(/\D/g, '')
+            if (digits.length === 11) {
+              const formatted = `${digits.slice(0,3)}.${digits.slice(3,6)}.${digits.slice(6,9)}-${digits.slice(9)}`
+              setCpfValue(formatted)
+              setCpfAutoFilled(true)
+              return
+            }
+          }
+        }
+      })
+      .catch(() => {})
+  }, [isOpen])
 
   useEffect(() => {
     if (!isOpen) return
@@ -247,6 +279,11 @@ function DepositModal({ isOpen, onClose, showCpfField = true, onConfirmDeposit, 
             <div className="cpf-container">
               <label htmlFor="userCpf" className="cpf-label">
                 CPF <span className="cpf-required">*</span>
+                {cpfAutoFilled && (
+                  <span style={{ fontSize: '0.7rem', color: '#4ade80', marginLeft: '6px', fontWeight: 'normal' }}>
+                    <i className="fa-solid fa-circle-check"></i> preenchido da carteira
+                  </span>
+                )}
               </label>
               <input
                 type="text"
@@ -257,7 +294,7 @@ function DepositModal({ isOpen, onClose, showCpfField = true, onConfirmDeposit, 
                 maxLength={14}
                 inputMode="numeric"
                 value={cpfValue}
-                onChange={handleCpfChange}
+                onChange={(e) => { setCpfAutoFilled(false); handleCpfChange(e) }}
               />
               <small className="cpf-hint">
                 <i className="fa-solid fa-shield-halved"></i>
