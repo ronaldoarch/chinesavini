@@ -476,25 +476,29 @@ router.post('/akadpay', async (req, res) => {
     if (!transaction && /^[a-fA-F0-9]{24}$/.test(idTransaction)) {
       transaction = await Transaction.findById(idTransaction)
     }
-    // Fallback: saque em processamento com ID ainda não salvo (race condition / restart do servidor)
+    // Fallback: saque "órfão" — em processing com idTransaction no formato MongoDB ObjectId
+    // (o ID da AkadPay não foi salvo devido a restart do servidor durante a chamada HTTP)
     if (!transaction && typeTransaction === 'PAYMENT') {
-      const amount = parseFloat(body.amount)
-      if (!isNaN(amount) && amount > 0) {
-        const since = new Date(Date.now() - 30 * 60 * 1000) // últimos 30 min
-        transaction = await Transaction.findOne({
-          type: 'withdraw',
-          status: 'processing',
-          amount,
-          createdAt: { $gte: since }
-        }).sort({ createdAt: -1 })
-        if (transaction) {
-          console.warn(`Webhook AkadPay: Transação encontrada por fallback (amount=${amount}, status=processing): ${transaction._id}`)
-          transaction.idTransaction = idTransaction
-          transaction.gatewayTxId = idTransaction
-          if (!transaction.gatewayIds) transaction.gatewayIds = []
-          if (!transaction.gatewayIds.includes(idTransaction)) transaction.gatewayIds.push(idTransaction)
-          await transaction.save()
-        }
+      const since = new Date(Date.now() - 24 * 60 * 60 * 1000) // últimas 24h
+      const processingWithdraws = await Transaction.find({
+        type: 'withdraw',
+        status: 'processing',
+        createdAt: { $gte: since }
+      }).sort({ createdAt: -1 })
+
+      // Filtra apenas os que têm idTransaction no formato MongoDB ObjectId (ID nosso, nunca atualizado com ID do gateway)
+      const orphaned = processingWithdraws.filter(t => /^[a-f0-9]{24}$/i.test(String(t.idTransaction)))
+
+      if (orphaned.length === 1) {
+        transaction = orphaned[0]
+        console.warn(`Webhook AkadPay: Saque órfão encontrado por fallback (único processing sem ID gateway): ${transaction._id} → vinculando ID ${idTransaction}`)
+        transaction.idTransaction = idTransaction
+        transaction.gatewayTxId = idTransaction
+        if (!transaction.gatewayIds) transaction.gatewayIds = []
+        if (!transaction.gatewayIds.includes(idTransaction)) transaction.gatewayIds.push(idTransaction)
+        await transaction.save()
+      } else if (orphaned.length > 1) {
+        console.error(`Webhook AkadPay: Múltiplos saques órfãos (${orphaned.length}) — não é possível determinar qual corresponde ao ID ${idTransaction}. IDs: ${orphaned.map(t => t._id).join(', ')}`)
       }
     }
     if (!transaction) {
