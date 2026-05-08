@@ -101,8 +101,9 @@ class AkadPayService {
       }
 
       const response = await axios.post(`${this.baseURL}${DEPOSIT_PATH}`, payload, {
-        headers: { 'Content-Type': 'application/json' },
-        timeout: 30000
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        timeout: 30000,
+        responseType: 'json'
       })
 
       const res = response.data || {}
@@ -129,9 +130,12 @@ class AkadPayService {
       const errBody = error.response?.data || {}
       const status = error.response?.status
       console.error('AKADPAY Generate PIX Error:', JSON.stringify(errBody), '| status:', status, '| msg:', error.message)
-      let message = errBody?.error || errBody?.message || error.message || 'Erro ao gerar PIX'
-      if (status === 400) message = errBody?.message || errBody?.error || 'Token ou Secret ausentes ou dados inválidos'
-      else if (status === 422) message = Object.values(errBody).flat().join(', ') || 'Dados inválidos'
+      // AkadPay usa HTTP 401 para erros de negócio (valor mínimo, etc), não só para auth
+      let message = errBody?.message || errBody?.error || error.message || 'Erro ao gerar PIX'
+      if (status === 422 && typeof errBody === 'object') {
+        const fields = Object.values(errBody).flat()
+        if (fields.length) message = fields.join(', ')
+      }
       return { success: false, error: errBody, message }
     }
   }
@@ -164,8 +168,9 @@ class AkadPayService {
       }
 
       const response = await axios.post(`${this.baseURL}${WITHDRAW_PATH}`, payload, {
-        headers: { 'Content-Type': 'application/json' },
-        timeout: 30000
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        timeout: 30000,
+        responseType: 'json'
       })
 
       const res = response.data || {}
@@ -183,10 +188,14 @@ class AkadPayService {
       const errBody = error.response?.data || {}
       const status = error.response?.status
       console.error('AKADPAY Withdraw PIX Error:', JSON.stringify(errBody), '| status:', status)
-      let message = errBody?.error || errBody?.message || error.message || 'Erro ao processar saque'
-      if (status === 400) message = errBody?.error || errBody?.message || 'Token ou Secret ausentes'
-      else if (status === 401) message = errBody?.message || 'Saldo insuficiente'
-      else if (status === 422) message = Object.values(errBody).flat().join(', ') || 'Dados inválidos'
+      // AkadPay usa HTTP 401 para erros de negócio (saldo insuficiente, valor mínimo, etc)
+      // e HTTP 429 para rate limiting
+      let message = errBody?.message || errBody?.error || error.message || 'Erro ao processar saque'
+      if (status === 429) message = 'Muitas requisições à AkadPay. Aguarde alguns segundos e tente novamente.'
+      else if (status === 422 && typeof errBody === 'object') {
+        const fields = Object.values(errBody).flat()
+        if (fields.length) message = fields.join(', ')
+      }
       return { success: false, error: errBody, message }
     }
   }

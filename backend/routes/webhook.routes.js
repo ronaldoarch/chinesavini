@@ -272,6 +272,8 @@ async function processWithdrawWebhook(body, transaction) {
     paymentStatus = 'failed' // Saque devolvido: reembolsar usuário
   } else if (typeUpper === 'PIX_CASHOUT_ERROR' || typeUpper === 'PIX_OUT_FAILURE' || typeUpper === 'PIX.OUT.FAILURE' || (statusUpper === 'ERROR' && !body.worked)) {
     paymentStatus = 'failed' // NxGate/Escale Cyber: saque falhou - reembolsar
+  } else if (statusUpper === 'CANCELED' || statusUpper === 'CANCELLED' || statusUpper === 'REJECTED' || statusUpper === 'REFUSED') {
+    paymentStatus = 'failed' // AkadPay e outros: saque cancelado - reembolsar
   } else if (typeUpper === 'PIX_CASHOUT_SUCCESS' || typeUpper === 'PIX_OUT_CONFIRMATION' || typeUpper === 'PIX.OUT.CONFIRMATION' || statusUpper === 'SUCCESS' || statusUpper === 'COMPLETED' || statusUpper === 'PAID' || statusUpper === 'APPROVED') {
     paymentStatus = 'paid'
   } else {
