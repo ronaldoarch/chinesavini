@@ -72,19 +72,31 @@ export async function handleSeamlessRequest(req, res) {
         return res.json({ status: 1, user_balance: balanceForGame(user.balance || 0) })
       }
 
+      // txn_types de rodadas grátis: o bet_money é apenas referência para cálculo de prêmio,
+      // o jogador NÃO é cobrado — só creditamos o win
+      const FREE_SPIN_TYPES = new Set([
+        'freegame', 'freespin', 'free_spin', 'free_rounds',
+        'freegame_debit_credit', 'freespin_debit_credit', 'free_game', 'bonus'
+      ])
+
       let deltaReais = 0
       if (txnType === 'debit') {
         deltaReais = -betReais
       } else if (txnType === 'credit') {
         deltaReais = winReais
+      } else if (FREE_SPIN_TYPES.has(txnType)) {
+        // Rodadas grátis / premiação: só credita o ganho, não debita a aposta
+        deltaReais = winReais
       } else {
+        // debit_credit e tipos desconhecidos: giro normal
         deltaReais = winReais - betReais
       }
 
       const currentBalance = Math.max(0, user.balance || 0)
       const newBalance = currentBalance + deltaReais
 
-      if (newBalance < 0) {
+      // Para rodadas grátis, nunca bloquear por saldo insuficiente
+      if (newBalance < 0 && !FREE_SPIN_TYPES.has(txnType)) {
         return res.json({ status: 0, msg: 'INSUFFICIENT_USER_FUNDS', user_balance: 0 })
       }
 
