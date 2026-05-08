@@ -242,7 +242,14 @@ router.post(
       const bonusCfg = await BonusConfig.getConfig()
       const requestedAmount = parseFloat(amount)
       const pixOutFeeBrl = getGatewayPixOutFeeBrl()
-      const valorParaGateway = getValorForWithdrawGatewayCall(requestedAmount)
+
+      // AkadPay cobra a taxa separadamente da conta do merchant — envia apenas o valor que o usuário deve receber.
+      // Outros gateways (Gatebox, NxGate etc.) deduzem a taxa do valor transferido, então precisam receber valor + taxa.
+      const gatewayCfgForFee = await GatewayConfig.getConfig()
+      const providerForFee = gatewayCfgForFee?.provider?.toLowerCase() || ''
+      const valorParaGateway = providerForFee === 'akadpay'
+        ? Math.round(requestedAmount * 100) / 100
+        : getValorForWithdrawGatewayCall(requestedAmount)
 
       // Limite de saque não se aplica a afiliados com 50% de comissão
       const isAffiliate50Percent = (user.affiliateDepositBonusPercent || 0) >= 50
