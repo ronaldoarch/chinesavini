@@ -466,7 +466,7 @@ router.post('/akadpay', async (req, res) => {
     const typeTransaction = (body.typeTransaction || '').toUpperCase()
 
     if (!idTransaction) {
-      console.error('Webhook BaasPay: idTransaction ausente. Body:', JSON.stringify(body).slice(0, 300))
+      console.error('Webhook AkadPay: idTransaction ausente. Body:', JSON.stringify(body).slice(0, 300))
       return
     }
 
@@ -476,8 +476,29 @@ router.post('/akadpay', async (req, res) => {
     if (!transaction && /^[a-fA-F0-9]{24}$/.test(idTransaction)) {
       transaction = await Transaction.findById(idTransaction)
     }
+    // Fallback: saque em processamento com ID ainda não salvo (race condition / restart do servidor)
+    if (!transaction && typeTransaction === 'PAYMENT') {
+      const amount = parseFloat(body.amount)
+      if (!isNaN(amount) && amount > 0) {
+        const since = new Date(Date.now() - 30 * 60 * 1000) // últimos 30 min
+        transaction = await Transaction.findOne({
+          type: 'withdraw',
+          status: 'processing',
+          amount,
+          createdAt: { $gte: since }
+        }).sort({ createdAt: -1 })
+        if (transaction) {
+          console.warn(`Webhook AkadPay: Transação encontrada por fallback (amount=${amount}, status=processing): ${transaction._id}`)
+          transaction.idTransaction = idTransaction
+          transaction.gatewayTxId = idTransaction
+          if (!transaction.gatewayIds) transaction.gatewayIds = []
+          if (!transaction.gatewayIds.includes(idTransaction)) transaction.gatewayIds.push(idTransaction)
+          await transaction.save()
+        }
+      }
+    }
     if (!transaction) {
-      console.error(`Webhook BaasPay: Transação não encontrada: ${idTransaction} | type: ${typeTransaction}`)
+      console.error(`Webhook AkadPay: Transação não encontrada: ${idTransaction} | type: ${typeTransaction}`)
       return
     }
 
