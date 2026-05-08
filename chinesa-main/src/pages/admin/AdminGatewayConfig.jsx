@@ -7,6 +7,7 @@ function defaultGatewayApiUrl(provider) {
   if (provider === 'nxgate') return 'https://api.nxgate.com.br'
   if (provider === 'escalecyber') return 'https://api.escalecyber.com/v1'
   if (provider === 'sarrixpay') return 'https://apiv1.sarrixpay.com'
+  if (provider === 'baaspay') return 'https://api.baaspay.com.br'
   return 'https://api.gatebox.com.br'
 }
 
@@ -116,6 +117,17 @@ function AdminGatewayConfig() {
         }
         if (!config.apiKey || config.apiKey.trim() === '') {
           setError('Client Secret é obrigatório para SarrixPay')
+          setSaving(false)
+          return
+        }
+      } else if (config.provider === 'baaspay') {
+        if (!config.clientId || config.clientId.trim() === '') {
+          setError('Token é obrigatório para BaasPay')
+          setSaving(false)
+          return
+        }
+        if (!config.apiKey || config.apiKey.trim() === '') {
+          setError('Secret é obrigatório para BaasPay')
           setSaving(false)
           return
         }
@@ -248,6 +260,7 @@ function AdminGatewayConfig() {
               <option value="nxgate">NxGate</option>
               <option value="escalecyber">Escale Cyber</option>
               <option value="sarrixpay">SarrixPay</option>
+              <option value="baaspay">BaasPay</option>
             </select>
             <small className="form-hint">
               Selecione qual gateway utilizar para PIX
@@ -380,6 +393,39 @@ function AdminGatewayConfig() {
                 />
                 <small className="form-hint">
                   Secret usado em POST /auth/integrations/token (não envie Bearer nas credenciais)
+                </small>
+              </div>
+            </>
+          )}
+
+          {config.provider === 'baaspay' && (
+            <>
+              <div className="form-group full-width">
+                <label>
+                  Token (BaasPay) <span className="required">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={config.clientId}
+                  onChange={(e) => setConfig(prev => ({ ...prev, clientId: e.target.value }))}
+                  placeholder="Token fornecido pela BaasPay"
+                />
+                <small className="form-hint">
+                  Token obtido no painel da BaasPay (campo &quot;token&quot; nas requisições)
+                </small>
+              </div>
+              <div className="form-group full-width">
+                <label>
+                  Secret (BaasPay) <span className="required">*</span>
+                </label>
+                <input
+                  type="password"
+                  value={config.apiKey}
+                  onChange={(e) => setConfig(prev => ({ ...prev, apiKey: e.target.value }))}
+                  placeholder="Secret fornecido pela BaasPay"
+                />
+                <small className="form-hint">
+                  Secret obtido no painel da BaasPay (campo &quot;secret&quot; nas requisições)
                 </small>
               </div>
             </>
@@ -531,6 +577,11 @@ function AdminGatewayConfig() {
               <strong>SarrixPay:</strong> OAuth2 (Client ID + Client Secret). Webhooks são cadastrados no painel SarrixPay — use a URL abaixo para receber <code>pix_in.*</code> e <code>pix_out.*</code>.
             </li>
           )}
+          {config.provider === 'baaspay' && (
+            <li>
+              <strong>BaasPay:</strong> Autenticação via Token + Secret enviados em cada requisição. Configure a URL do webhook único no painel BaasPay como <code>postback</code> para depósitos e <code>baasPostbackUrl</code> para saques — ambos apontam para o mesmo endpoint abaixo.
+            </li>
+          )}
           <li>
             <strong>Webhook URL:</strong> Deve ser uma URL pública acessível (HTTPS em produção)
           </li>
@@ -541,6 +592,8 @@ function AdminGatewayConfig() {
                 <li>Escale Cyber (único): <code>{config.webhookBaseUrl || 'SEU_URL'}/api/webhooks/escalecyber</code></li>
               ) : config.provider === 'sarrixpay' ? (
                 <li>SarrixPay (único): <code>{config.webhookBaseUrl || 'SEU_URL'}/api/webhooks/sarrixpay</code></li>
+              ) : config.provider === 'baaspay' ? (
+                <li>BaasPay (único — depósito e saque): <code>{config.webhookBaseUrl || 'SEU_URL'}/api/webhooks/baaspay</code></li>
               ) : (
                 <>
                   <li>Depósitos: <code>{config.webhookBaseUrl || 'SEU_URL'}/api/webhooks/pix</code></li>
@@ -550,7 +603,7 @@ function AdminGatewayConfig() {
             </ul>
           </li>
           <li>
-            Configure esses endpoints no painel do {config.provider === 'nxgate' ? 'NxGate' : config.provider === 'escalecyber' ? 'Escale Cyber' : config.provider === 'sarrixpay' ? 'SarrixPay' : 'GATEBOX'} para receber notificações de pagamento
+            Configure esses endpoints no painel do {config.provider === 'nxgate' ? 'NxGate' : config.provider === 'escalecyber' ? 'Escale Cyber' : config.provider === 'sarrixpay' ? 'SarrixPay' : config.provider === 'baaspay' ? 'BaasPay' : 'GATEBOX'} para receber notificações de pagamento
           </li>
         </ul>
       </div>

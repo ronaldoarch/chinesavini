@@ -74,7 +74,7 @@ router.post(
       const gatewayCfg = await GatewayConfig.getConfig()
       const gwProvider = gatewayCfg?.provider?.toLowerCase() || ''
       const webhookBase = await getWebhookBaseUrl()
-      const webhookPath = gwProvider === 'sarrixpay' ? '/api/webhooks/sarrixpay' : '/api/webhooks/pix'
+      const webhookPath = gwProvider === 'sarrixpay' ? '/api/webhooks/sarrixpay' : gwProvider === 'baaspay' ? '/api/webhooks/baaspay' : '/api/webhooks/pix'
       const webhookUrl = `${webhookBase}${webhookPath}`
 
       // Create transaction record

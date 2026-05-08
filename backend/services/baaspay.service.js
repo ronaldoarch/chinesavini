@@ -1,0 +1,193 @@
+import axios from 'axios'
+import GatewayConfig from '../models/GatewayConfig.model.js'
+
+const DEFAULT_BASE = 'https://api.baaspay.com.br'
+
+function digitsOnly(s) {
+  return String(s || '').replace(/\D/g, '')
+}
+
+/** Mapeia tipo de chave interno → tipo aceito pela BaasPay: cpf | email | telefone | aleatoria */
+function mapPixKeyType(tipoChave) {
+  const t = (tipoChave || 'CPF').toString().toUpperCase()
+  const map = {
+    CPF: 'cpf',
+    CNPJ: 'cnpj',
+    PHONE: 'telefone',
+    EMAIL: 'email',
+    RANDOM: 'aleatoria'
+  }
+  return map[t] || 'cpf'
+}
+
+/** Formata chave PIX conforme o tipo esperado pela BaasPay */
+function formatPixKey(rawKey, pixKeyType) {
+  const key = String(rawKey || '').trim()
+  if (!key) return key
+  if (pixKeyType === 'cpf' || pixKeyType === 'cnpj') return digitsOnly(key)
+  if (pixKeyType === 'telefone') return digitsOnly(key)
+  if (pixKeyType === 'email') return key.toLowerCase()
+  return key // aleatoria: envia como está
+}
+
+class BaasPayService {
+  constructor() {
+    this.token = null
+    this.secret = null
+    this.baseURL = DEFAULT_BASE
+    this.webhookBaseUrl = process.env.WEBHOOK_BASE_URL || 'http://localhost:5000'
+  }
+
+  async getConfig() {
+    try {
+      const config = await GatewayConfig.getConfig()
+      if (config && config.provider === 'baaspay' && config.isActive) {
+        this.token = (config.clientId || '').trim()   // Token → clientId
+        this.secret = (config.apiKey || '').trim()    // Secret → apiKey
+        this.baseURL = (config.apiUrl || DEFAULT_BASE).replace(/\/$/, '')
+        this.webhookBaseUrl = config.webhookBaseUrl || this.webhookBaseUrl
+      } else {
+        this.token = null
+        this.secret = null
+      }
+    } catch (error) {
+      console.error('BaasPay: erro ao carregar config:', error)
+      this.token = null
+      this.secret = null
+    }
+  }
+
+  async ensureConfig() {
+    await this.getConfig()
+    if (!this.token || !this.secret) {
+      throw new Error('BaasPay não configurado. Informe o Token e o Secret no admin.')
+    }
+  }
+
+  /**
+   * Gera PIX para depósito (PIX-IN)
+   * POST {apiUrl}/deposit
+   */
+  async generatePix(data) {
+    try {
+      await this.ensureConfig()
+
+      const document = digitsOnly(data.documento_pagador || '') || '00000000000'
+      const phoneRaw = digitsOnly(data.customerPhone || '')
+      // Remove código do país se existir, mantém 11 dígitos (DDD + número)
+      const phone = phoneRaw.startsWith('55') && phoneRaw.length > 11
+        ? phoneRaw.slice(2, 13)
+        : phoneRaw.slice(0, 11) || '11900000000'
+
+      const webhookBase = this.webhookBaseUrl.replace(/\/$/, '')
+      const postback = `${webhookBase}/api/webhooks/baaspay`
+
+      const payload = {
+        token: this.token,
+        secret: this.secret,
+        amount: parseFloat(data.valor),
+        debtor_name: (data.nome_pagador || 'Pagador').trim().substring(0, 100),
+        email: data.customerEmail || `${(data.nome_pagador || 'user').replace(/\s+/g, '_').toLowerCase()}@deposito.local`,
+        debtor_document_number: document,
+        phone,
+        method_pay: 'pix',
+        postback
+      }
+
+      if (process.env.NODE_ENV === 'production') {
+        console.log('BAASPAY generatePix:', { amount: payload.amount, debtor_name: payload.debtor_name, docLen: document.length })
+      }
+
+      const response = await axios.post(`${this.baseURL}/deposit`, payload, {
+        headers: { 'Content-Type': 'application/json' },
+        timeout: 30000
+      })
+
+      const res = response.data || {}
+      const idTransaction = res.idTransaction || res.id || res.transaction_id
+      const qrCode = res.qrcode || res.qr_code || res.pix_copy_paste || res.copy_paste
+      const qrImage = res.qr_code_image_url || res.qrCodeBase64 || res.qr_code_base64
+
+      return {
+        success: true,
+        data: {
+          key: qrCode,
+          paymentCode: qrCode,
+          qrCode,
+          pixCopyPaste: qrCode,
+          paymentCodeBase64: qrImage,
+          qrCodeBase64: qrImage,
+          qrCodeImage: qrImage,
+          idTransaction,
+          transactionId: idTransaction,
+          tag: idTransaction
+        }
+      }
+    } catch (error) {
+      const errBody = error.response?.data || {}
+      const status = error.response?.status
+      console.error('BAASPAY Generate PIX Error:', JSON.stringify(errBody), '| status:', status, '| msg:', error.message)
+      let message = errBody?.error || errBody?.message || error.message || 'Erro ao gerar PIX'
+      if (status === 400) message = errBody?.message || errBody?.error || 'Token ou Secret ausentes ou dados inválidos'
+      else if (status === 422) message = Object.values(errBody).flat().join(', ') || 'Dados inválidos'
+      return { success: false, error: errBody, message }
+    }
+  }
+
+  /**
+   * Saque via PIX (PIX-OUT)
+   * POST {apiUrl}/withdrawal
+   */
+  async withdrawPix(data) {
+    try {
+      await this.ensureConfig()
+
+      const pixKeyType = mapPixKeyType(data.tipo_chave)
+      const pixKey = formatPixKey(data.chave_pix, pixKeyType)
+
+      const webhookBase = this.webhookBaseUrl.replace(/\/$/, '')
+      const baasPostbackUrl = `${webhookBase}/api/webhooks/baaspay`
+
+      const payload = {
+        token: this.token,
+        secret: this.secret,
+        amount: parseFloat(data.valor),
+        pixKey,
+        pixKeyType,
+        baasPostbackUrl
+      }
+
+      if (process.env.NODE_ENV === 'production') {
+        console.log('BAASPAY withdrawPix:', { amount: payload.amount, pixKeyType })
+      }
+
+      const response = await axios.post(`${this.baseURL}/withdrawal`, payload, {
+        headers: { 'Content-Type': 'application/json' },
+        timeout: 30000
+      })
+
+      const res = response.data || {}
+      const idTransaction = res.id || res.idTransaction || res.transaction_id || data.externalId
+
+      return {
+        success: true,
+        data: {
+          idTransaction,
+          transactionId: idTransaction,
+          tag: idTransaction
+        }
+      }
+    } catch (error) {
+      const errBody = error.response?.data || {}
+      const status = error.response?.status
+      console.error('BAASPAY Withdraw PIX Error:', JSON.stringify(errBody), '| status:', status)
+      let message = errBody?.error || errBody?.message || error.message || 'Erro ao processar saque'
+      if (status === 400) message = errBody?.error || errBody?.message || 'Token ou Secret ausentes'
+      else if (status === 401) message = errBody?.message || 'Saldo insuficiente'
+      else if (status === 422) message = Object.values(errBody).flat().join(', ') || 'Dados inválidos'
+      return { success: false, error: errBody, message }
+    }
+  }
+}
+
+export default new BaasPayService()

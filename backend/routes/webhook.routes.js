@@ -449,6 +449,61 @@ export async function handleSarrixPayWebhook(req, res) {
 
 router.post('/sarrixpay', handleSarrixPayWebhook)
 
+// @route   POST /api/webhooks/baaspay
+// @desc    Webhook BaasPay (PIX-IN depósito e PIX-OUT saque)
+// @access  Public
+// PIX-IN:  { status: 'paid', idTransaction, typeTransaction: 'PIX' }
+// PIX-OUT: { status: 'paid', idTransaction, typeTransaction: 'PAYMENT' }
+router.post('/baaspay', async (req, res) => {
+  logWebhook('baaspay', req)
+  try {
+    const body = req.body || {}
+    res.status(200).json({ status: 'received' })
+
+    const idTransaction = body.idTransaction || body.id || body.transaction_id
+    const typeTransaction = (body.typeTransaction || '').toUpperCase()
+
+    if (!idTransaction) {
+      console.error('Webhook BaasPay: idTransaction ausente. Body:', JSON.stringify(body).slice(0, 300))
+      return
+    }
+
+    let transaction = await Transaction.findOne({ idTransaction })
+    if (!transaction) transaction = await Transaction.findOne({ gatewayTxId: idTransaction })
+    if (!transaction) transaction = await Transaction.findOne({ gatewayIds: idTransaction })
+    if (!transaction && /^[a-fA-F0-9]{24}$/.test(idTransaction)) {
+      transaction = await Transaction.findById(idTransaction)
+    }
+    if (!transaction) {
+      console.error(`Webhook BaasPay: Transação não encontrada: ${idTransaction} | type: ${typeTransaction}`)
+      return
+    }
+
+    // Normaliza para o formato esperado pelas funções de processamento
+    const normalizedBody = {
+      ...body,
+      status: (body.status || '').toUpperCase(),
+      // PIX → depósito (PIX_PAY_IN); PAYMENT → saque (PIX_PAY_OUT)
+      type: typeTransaction === 'PIX' ? 'PIX_PAY_IN' : typeTransaction === 'PAYMENT' ? 'PIX_PAY_OUT' : body.type
+    }
+
+    const isDeposit = typeTransaction === 'PIX' || transaction.type === 'deposit'
+    const isWithdraw = typeTransaction === 'PAYMENT' || transaction.type === 'withdraw'
+
+    if (isDeposit && transaction.type === 'deposit') {
+      await processDepositWebhook(normalizedBody, transaction)
+    } else if (isWithdraw && transaction.type === 'withdraw') {
+      await processWithdrawWebhook(normalizedBody, transaction)
+    } else if (transaction.type === 'deposit') {
+      await processDepositWebhook(normalizedBody, transaction)
+    } else {
+      await processWithdrawWebhook(normalizedBody, transaction)
+    }
+  } catch (error) {
+    console.error('Webhook BaasPay Error:', error)
+  }
+})
+
 // @route   POST /api/webhooks/pix
 // @desc    Webhook for PIX payment confirmation (deposit)
 // @access  Public (but should be validated in production)

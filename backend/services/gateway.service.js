@@ -3,6 +3,7 @@ import gateboxService from './gatebox.service.js'
 import nxgateService from './nxgate.service.js'
 import escalecyberService from './escalecyber.service.js'
 import sarrixpayService from './sarrixpay.service.js'
+import baaspayService from './baaspay.service.js'
 
 /**
  * Retorna o serviço do gateway configurado.
@@ -15,6 +16,7 @@ export async function getGatewayService() {
   if (provider === 'nxgate') return nxgateService
   if (provider === 'escalecyber') return escalecyberService
   if (provider === 'sarrixpay') return sarrixpayService
+  if (provider === 'baaspay') return baaspayService
   return gateboxService
 }
 
