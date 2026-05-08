@@ -1,13 +1,15 @@
 import axios from 'axios'
 import GatewayConfig from '../models/GatewayConfig.model.js'
 
-const DEFAULT_BASE = 'https://api.baaspay.com.br'
+const BASE_URL = 'https://painel.akadpay.com.br'
+const DEPOSIT_PATH = '/api/wallet/deposit/payment'
+const WITHDRAW_PATH = '/api/pixout'
 
 function digitsOnly(s) {
   return String(s || '').replace(/\D/g, '')
 }
 
-/** Mapeia tipo de chave interno → tipo aceito pela BaasPay: cpf | email | telefone | aleatoria */
+/** Mapeia tipo de chave interno → tipo aceito pela AkadPay: cpf | email | telefone | aleatoria */
 function mapPixKeyType(tipoChave) {
   const t = (tipoChave || 'CPF').toString().toUpperCase()
   const map = {
@@ -20,7 +22,7 @@ function mapPixKeyType(tipoChave) {
   return map[t] || 'cpf'
 }
 
-/** Formata chave PIX conforme o tipo esperado pela BaasPay */
+/** Formata chave PIX conforme o tipo esperado pela AkadPay */
 function formatPixKey(rawKey, pixKeyType) {
   const key = String(rawKey || '').trim()
   if (!key) return key
@@ -30,28 +32,29 @@ function formatPixKey(rawKey, pixKeyType) {
   return key // aleatoria: envia como está
 }
 
-class BaasPayService {
+class AkadPayService {
   constructor() {
     this.token = null
     this.secret = null
-    this.baseURL = DEFAULT_BASE
+    this.baseURL = BASE_URL
     this.webhookBaseUrl = process.env.WEBHOOK_BASE_URL || 'http://localhost:5000'
   }
 
   async getConfig() {
     try {
       const config = await GatewayConfig.getConfig()
-      if (config && config.provider === 'baaspay' && config.isActive) {
+      if (config && config.provider === 'akadpay' && config.isActive) {
         this.token = (config.clientId || '').trim()   // Token → clientId
         this.secret = (config.apiKey || '').trim()    // Secret → apiKey
-        this.baseURL = (config.apiUrl || DEFAULT_BASE).replace(/\/$/, '')
+        // Permite override da URL via admin, mas mantém base padrão
+        this.baseURL = (config.apiUrl || BASE_URL).replace(/\/$/, '')
         this.webhookBaseUrl = config.webhookBaseUrl || this.webhookBaseUrl
       } else {
         this.token = null
         this.secret = null
       }
     } catch (error) {
-      console.error('BaasPay: erro ao carregar config:', error)
+      console.error('AkadPay: erro ao carregar config:', error)
       this.token = null
       this.secret = null
     }
@@ -60,13 +63,13 @@ class BaasPayService {
   async ensureConfig() {
     await this.getConfig()
     if (!this.token || !this.secret) {
-      throw new Error('BaasPay não configurado. Informe o Token e o Secret no admin.')
+      throw new Error('AkadPay não configurado. Informe o Token e o Secret no admin.')
     }
   }
 
   /**
    * Gera PIX para depósito (PIX-IN)
-   * POST {apiUrl}/deposit
+   * POST https://painel.akadpay.com.br/api/wallet/deposit/payment
    */
   async generatePix(data) {
     try {
@@ -74,13 +77,12 @@ class BaasPayService {
 
       const document = digitsOnly(data.documento_pagador || '') || '00000000000'
       const phoneRaw = digitsOnly(data.customerPhone || '')
-      // Remove código do país se existir, mantém 11 dígitos (DDD + número)
       const phone = phoneRaw.startsWith('55') && phoneRaw.length > 11
         ? phoneRaw.slice(2, 13)
         : phoneRaw.slice(0, 11) || '11900000000'
 
       const webhookBase = this.webhookBaseUrl.replace(/\/$/, '')
-      const postback = `${webhookBase}/api/webhooks/baaspay`
+      const postback = `${webhookBase}/api/webhooks/akadpay`
 
       const payload = {
         token: this.token,
@@ -95,10 +97,10 @@ class BaasPayService {
       }
 
       if (process.env.NODE_ENV === 'production') {
-        console.log('BAASPAY generatePix:', { amount: payload.amount, debtor_name: payload.debtor_name, docLen: document.length })
+        console.log('AKADPAY generatePix:', { amount: payload.amount, debtor_name: payload.debtor_name, docLen: document.length })
       }
 
-      const response = await axios.post(`${this.baseURL}/deposit`, payload, {
+      const response = await axios.post(`${this.baseURL}${DEPOSIT_PATH}`, payload, {
         headers: { 'Content-Type': 'application/json' },
         timeout: 30000
       })
@@ -126,7 +128,7 @@ class BaasPayService {
     } catch (error) {
       const errBody = error.response?.data || {}
       const status = error.response?.status
-      console.error('BAASPAY Generate PIX Error:', JSON.stringify(errBody), '| status:', status, '| msg:', error.message)
+      console.error('AKADPAY Generate PIX Error:', JSON.stringify(errBody), '| status:', status, '| msg:', error.message)
       let message = errBody?.error || errBody?.message || error.message || 'Erro ao gerar PIX'
       if (status === 400) message = errBody?.message || errBody?.error || 'Token ou Secret ausentes ou dados inválidos'
       else if (status === 422) message = Object.values(errBody).flat().join(', ') || 'Dados inválidos'
@@ -136,7 +138,7 @@ class BaasPayService {
 
   /**
    * Saque via PIX (PIX-OUT)
-   * POST {apiUrl}/withdrawal
+   * POST https://painel.akadpay.com.br/api/pixout
    */
   async withdrawPix(data) {
     try {
@@ -146,7 +148,7 @@ class BaasPayService {
       const pixKey = formatPixKey(data.chave_pix, pixKeyType)
 
       const webhookBase = this.webhookBaseUrl.replace(/\/$/, '')
-      const baasPostbackUrl = `${webhookBase}/api/webhooks/baaspay`
+      const baasPostbackUrl = `${webhookBase}/api/webhooks/akadpay`
 
       const payload = {
         token: this.token,
@@ -158,10 +160,10 @@ class BaasPayService {
       }
 
       if (process.env.NODE_ENV === 'production') {
-        console.log('BAASPAY withdrawPix:', { amount: payload.amount, pixKeyType })
+        console.log('AKADPAY withdrawPix:', { amount: payload.amount, pixKeyType })
       }
 
-      const response = await axios.post(`${this.baseURL}/withdrawal`, payload, {
+      const response = await axios.post(`${this.baseURL}${WITHDRAW_PATH}`, payload, {
         headers: { 'Content-Type': 'application/json' },
         timeout: 30000
       })
@@ -180,7 +182,7 @@ class BaasPayService {
     } catch (error) {
       const errBody = error.response?.data || {}
       const status = error.response?.status
-      console.error('BAASPAY Withdraw PIX Error:', JSON.stringify(errBody), '| status:', status)
+      console.error('AKADPAY Withdraw PIX Error:', JSON.stringify(errBody), '| status:', status)
       let message = errBody?.error || errBody?.message || error.message || 'Erro ao processar saque'
       if (status === 400) message = errBody?.error || errBody?.message || 'Token ou Secret ausentes'
       else if (status === 401) message = errBody?.message || 'Saldo insuficiente'
@@ -190,4 +192,4 @@ class BaasPayService {
   }
 }
 
-export default new BaasPayService()
+export default new AkadPayService()

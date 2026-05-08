@@ -449,13 +449,13 @@ export async function handleSarrixPayWebhook(req, res) {
 
 router.post('/sarrixpay', handleSarrixPayWebhook)
 
-// @route   POST /api/webhooks/baaspay
-// @desc    Webhook BaasPay (PIX-IN depósito e PIX-OUT saque)
+// @route   POST /api/webhooks/akadpay
+// @desc    Webhook AkadPay (PIX-IN depósito e PIX-OUT saque)
 // @access  Public
 // PIX-IN:  { status: 'paid', idTransaction, typeTransaction: 'PIX' }
 // PIX-OUT: { status: 'paid', idTransaction, typeTransaction: 'PAYMENT' }
-router.post('/baaspay', async (req, res) => {
-  logWebhook('baaspay', req)
+router.post('/akadpay', async (req, res) => {
+  logWebhook('akadpay', req)
   try {
     const body = req.body || {}
     res.status(200).json({ status: 'received' })

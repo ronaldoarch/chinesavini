@@ -53,7 +53,7 @@ router.put('/config', protect, isAdmin, async (req, res) => {
         clientId: clientId || process.env.NXGATE_CLIENT_ID || '',
         apiKey: apiKey || process.env.NXGATE_CLIENT_SECRET || process.env.NXGATE_API_KEY || process.env.ESCALECYBER_API_KEY || '',
         webhookBaseUrl: webhookBaseUrl || process.env.WEBHOOK_BASE_URL || 'http://localhost:5000',
-        apiUrl: apiUrl || (provider === 'nxgate' ? 'https://api.nxgate.com.br' : provider === 'escalecyber' ? 'https://api.escalecyber.com/v1' : provider === 'sarrixpay' ? 'https://apiv1.sarrixpay.com' : provider === 'baaspay' ? 'https://api.baaspay.com.br' : 'https://api.gatebox.com.br'),
+        apiUrl: apiUrl || (provider === 'nxgate' ? 'https://api.nxgate.com.br' : provider === 'escalecyber' ? 'https://api.escalecyber.com/v1' : provider === 'sarrixpay' ? 'https://apiv1.sarrixpay.com' : provider === 'akadpay' ? 'https://painel.akadpay.com.br' : 'https://api.gatebox.com.br'),
         defaultCpf: defaultCpf || process.env.GATEBOX_DEFAULT_CPF || '000.000.000-00'
       })
     }
@@ -139,17 +139,17 @@ router.post('/test', protect, isAdmin, async (req, res) => {
           message: 'Client Secret não configurado para SarrixPay'
         })
       }
-    } else if (provider === 'baaspay') {
+    } else if (provider === 'akadpay') {
       if (!config.clientId || config.clientId.trim() === '') {
         return res.status(400).json({
           success: false,
-          message: 'Token não configurado para BaasPay'
+          message: 'Token não configurado para AkadPay'
         })
       }
       if (!config.apiKey || config.apiKey.trim() === '') {
         return res.status(400).json({
           success: false,
-          message: 'Secret não configurado para BaasPay'
+          message: 'Secret não configurado para AkadPay'
         })
       }
     }
@@ -161,7 +161,7 @@ router.post('/test', protect, isAdmin, async (req, res) => {
       const webhookBase = config.webhookBaseUrl || process.env.WEBHOOK_BASE_URL || 'http://localhost:5000'
       const result = await gatewayService.generatePix({
         nome_pagador: 'Teste Admin',
-        documento_pagador: (config.provider === 'nxgate' || config.provider === 'escalecyber' || config.provider === 'sarrixpay' || config.provider === 'baaspay') ? '52998224725' : '00000000000',
+        documento_pagador: (config.provider === 'nxgate' || config.provider === 'escalecyber' || config.provider === 'sarrixpay' || config.provider === 'akadpay') ? '52998224725' : '00000000000',
         valor: 10,
         webhook: `${webhookBase}/api/webhooks/pix`,
         externalId: `test_${Date.now()}`,
@@ -171,7 +171,7 @@ router.post('/test', protect, isAdmin, async (req, res) => {
       if (!result.success) {
         return res.status(400).json({
           success: false,
-          message: result.message || `Falha ao chamar a API ${provider === 'nxgate' ? 'NxGate' : provider === 'escalecyber' ? 'Escale Cyber' : provider === 'sarrixpay' ? 'SarrixPay' : provider === 'baaspay' ? 'BaasPay' : 'GATEBOX'}`,
+          message: result.message || `Falha ao chamar a API ${provider === 'nxgate' ? 'NxGate' : provider === 'escalecyber' ? 'Escale Cyber' : provider === 'sarrixpay' ? 'SarrixPay' : provider === 'akadpay' ? 'AkadPay' : 'GATEBOX'}`,
           data: { detail: result.error }
         })
       }
@@ -199,7 +199,7 @@ router.post('/test', protect, isAdmin, async (req, res) => {
       data: {
         provider: config.provider,
         credentialsConfigured: provider === 'gatebox' ? (config.username && config.password ? 'Sim' : 'Não') : provider === 'escalecyber' ? (config.apiKey ? 'Sim' : 'Não') : (config.clientId && config.apiKey ? 'Sim' : 'Não'),
-        apiKeyConfigured: (provider === 'nxgate' || provider === 'escalecyber' || provider === 'sarrixpay' || provider === 'baaspay') ? (config.apiKey ? 'Sim' : 'Não') : undefined,
+        apiKeyConfigured: (provider === 'nxgate' || provider === 'escalecyber' || provider === 'sarrixpay' || provider === 'akadpay') ? (config.apiKey ? 'Sim' : 'Não') : undefined,
         webhookBaseUrl: config.webhookBaseUrl,
         apiUrl: config.apiUrl
       }

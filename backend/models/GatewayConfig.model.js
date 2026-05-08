@@ -5,7 +5,7 @@ const gatewayConfigSchema = new mongoose.Schema(
     // Provedor: gatebox | nxgate | escalecyber | sarrixpay | baaspay
     provider: {
       type: String,
-      enum: ['gatebox', 'nxgate', 'escalecyber', 'sarrixpay', 'baaspay'],
+      enum: ['gatebox', 'nxgate', 'escalecyber', 'sarrixpay', 'akadpay'],
       default: 'gatebox'
     },
     // Gatebox credentials (username/password)
