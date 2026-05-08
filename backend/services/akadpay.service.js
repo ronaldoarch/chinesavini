@@ -27,7 +27,15 @@ function formatPixKey(rawKey, pixKeyType) {
   const key = String(rawKey || '').trim()
   if (!key) return key
   if (pixKeyType === 'cpf' || pixKeyType === 'cnpj') return digitsOnly(key)
-  if (pixKeyType === 'telefone') return digitsOnly(key)
+  if (pixKeyType === 'telefone') {
+    // Padrão BACEN para chave PIX telefone: E.164 com +55
+    // Ex: 94992961626 → +5594992961626
+    const digits = digitsOnly(key)
+    if (digits.startsWith('55') && digits.length >= 12) return `+${digits}`
+    if (digits.length === 11) return `+55${digits}`
+    if (digits.length === 10) return `+55${digits}` // sem o 9 inicial (celulares antigos)
+    return `+55${digits}`
+  }
   if (pixKeyType === 'email') return key.toLowerCase()
   return key // aleatoria: envia como está
 }
