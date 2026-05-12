@@ -159,11 +159,15 @@ router.post('/test', protect, isAdmin, async (req, res) => {
       const { getGatewayService } = await import('../services/gateway.service.js')
       const gatewayService = await getGatewayService()
       const webhookBase = config.webhookBaseUrl || process.env.WEBHOOK_BASE_URL || 'http://localhost:5000'
+      const webhookPath =
+        (config.provider === 'sarrixpay' ? '/api/webhooks/sarrixpay'
+          : (config.provider === 'escalecyber') ? '/api/webhooks/escalecyber'
+            : '/api/webhooks/pix')
       const result = await gatewayService.generatePix({
         nome_pagador: 'Teste Admin',
         documento_pagador: (config.provider === 'nxgate' || config.provider === 'escalecyber' || config.provider === 'sarrixpay' || config.provider === 'akadpay') ? '52998224725' : '00000000000',
         valor: 10,
-        webhook: `${webhookBase}/api/webhooks/pix`,
+        webhook: `${webhookBase}${webhookPath}`,
         externalId: `test_${Date.now()}`,
         customerPhone: '5511999999999',
         customerEmail: 'teste@admin.local'

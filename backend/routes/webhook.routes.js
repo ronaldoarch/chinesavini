@@ -96,7 +96,8 @@ function getIdTransaction(body) {
   const dataTag = body?.data?.tag || body?.data?.magic_id
   if (dataTag) return dataTag
   return (
-    body.externalId || body.idTransaction || body.transactionId || body.transaction_id || body.tx_id || body.id || body.tag || body.internalreference || body.magic_id ||
+    body.externalId || body?.data?.externalId || body?.data?.external_id ||
+    body.idTransaction || body.transactionId || body.transaction_id || body.tx_id || body.id || body.tag || body.internalreference || body.magic_id ||
     body?.transaction?.externalId || body?.transaction?.idTransaction || body?.transaction?.transactionId || body?.transaction?.internalreference ||
     body?.invoice?.externalId || body?.invoice?.idTransaction || body?.invoice?.transactionId ||
     body?.data?.externalId || body?.data?.idTransaction || body?.data?.transactionId || body?.data?.id || body?.data?.tx_id || body?.data?.tag || body?.data?.magic_id || body?.data?.internalreference || body?.data?.withdrawalId ||
@@ -179,6 +180,21 @@ router.post('/gatebox', async (req, res) => {
   }
 })
 
+/**
+ * Sarrix usa event/type com underscore (pix_in.succeeded).
+ * Escale Cyber costuma usar ponto em type (pix.in.succeeded).
+ */
+function isDepositSuccessEventOrType(body, dataRef) {
+  const candidates = [body.event, body.type, dataRef?.event, dataRef?.type]
+    .filter((x) => x != null && x !== '')
+    .map((x) => String(x).toLowerCase())
+  return candidates.some((ev) => {
+    if (ev === 'pix_in.succeeded' || ev === 'pix.in.succeeded') return true
+    if (/^pix\.in\./.test(ev) && /succeed|paid|completed|confirmed/.test(ev)) return true
+    return false
+  })
+}
+
 async function processDepositWebhook(body, transaction) {
   const { status, type, data } = body
   const webhookData = body.data || body.invoice || body
@@ -199,8 +215,9 @@ async function processDepositWebhook(body, transaction) {
     (rawType.includes('PAID') || rawType === 'QR_CODE_COPY_AND_PASTE_PAID' ||
     rawStatus === 'PAID' || rawStatus === 'PAYED' || rawStatus === 'CONFIRMED' ||
     rawStatus === 'PAYMENT_CONFIRMED' || rawStatus === 'SUCCESS' || rawStatus === 'COMPLETED' || rawStatus === 'APPROVED' ||
-    rawStatus === 'SUCCEEDED' ||
-    rawEvent === 'pix_in.succeeded') &&
+    rawStatus === 'SUCCEEDED' || rawStatus === 'SETTLED' || rawStatus === 'RECEIVED' || rawStatus === 'DONE' ||
+    rawEvent === 'pix_in.succeeded' ||
+    isDepositSuccessEventOrType(body, data)) &&
     canCredit
   ) {
     paymentStatus = 'paid'
@@ -354,7 +371,15 @@ async function handleEscaleCyberWebhook(req, res) {
 
     const eventType = (body.type || '').toString()
     const data = body.data || body
-    const idTransaction = data?.transactionId || data?.id || data?.withdrawalId || data?.transaction_id || data?.externalId || data?.externalTransactionId || body.id
+    const idTransaction =
+      data?.transactionId ||
+      data?.id ||
+      data?.withdrawalId ||
+      data?.transaction_id ||
+      data?.externalId ||
+      data?.external_id ||
+      data?.externalTransactionId ||
+      body.id
 
     if (!idTransaction) {
       console.error('Webhook Escale Cyber: idTransaction não fornecido. Body:', JSON.stringify(body).slice(0, 500))
