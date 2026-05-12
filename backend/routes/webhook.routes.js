@@ -429,6 +429,9 @@ async function handleEscaleCyberWebhook(req, res) {
 // @desc    Aceita https://api.89vipsbet.com/webhook
 router.post('/', handleEscaleCyberWebhook)
 
+// Painel Cyber comum: .../webhook/cyber (mesmo handler que POST /webhook)
+router.post('/cyber', handleEscaleCyberWebhook)
+
 // @route   POST /api/webhooks/escalecyber
 // @desc    Webhook único Escale Cyber (depósito e saque)
 // @access  Public
